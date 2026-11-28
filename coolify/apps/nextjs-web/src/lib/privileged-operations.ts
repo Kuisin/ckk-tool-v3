@@ -468,6 +468,21 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
     ),
     appKey: "api-clients",
   },
+  // 外向き Webhook（_specs/api.md §9）。**データを外へ出す口を作る**操作は
+  // 承認が要る（送信先の追加・URL の変更・署名鍵の再発行・有効化）。止める・
+  // 消す・購読を狭めるのは素の api_client:UPDATE で足りる。
+  {
+    key: "api_client.webhook_manage",
+    code: "api_client",
+    action: "UPDATE",
+    label: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.webhook_manage.label",
+    ),
+    description: localizedLabel(
+      "privilegedOp.PRIVILEGED_OPERATIONS.api_client.webhook_manage.description",
+    ),
+    appKey: "api-clients",
+  },
 ];
 
 const BY_KEY = new Map(PRIVILEGED_OPERATIONS.map((o) => [o.key, o]));

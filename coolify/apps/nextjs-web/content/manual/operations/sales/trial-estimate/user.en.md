@@ -1,9 +1,11 @@
 ---
-title: "Trial Estimate — User Manual"
+title: "Price Estimate — User Manual"
 description: "Enter the material and the machining conditions, and this app works out for you how much to sell one piece of that product for."
 screenshots: [trial-estimate-list-01, trial-estimate-new-01, trial-estimate-new-02, trial-estimate-detail-01, trial-estimate-detail-02, trial-estimate-detail-03]
 ---
 Enter the material cost and the machining conditions, and this app works out for you **how much to sell one piece** of that product for. The operation code is `SA01`.
+
+> This app belongs to … [Sales flow](/manual/en/process/sales)
 
 ## What you can do with this app
 
@@ -17,11 +19,12 @@ This is the first app you use when you decide the price of a new product.
 
 ## Words used on this page
 
-- **価格試算 (trial estimate)** … one record of "how much do we sell this product for", worked out from the cost.
+- **価格試算 (price estimate)** … one record of "how much do we sell this product for", worked out from the cost.
 - **工具種 (tool type)** … the shape class of the tool. Three are provided as standard: **丸棒 (round bar) / 円筒 (cylinder) / OH付 (with OH)**. The class you choose changes which fields you fill in. Each company can also add its own classes, so you may see four or more on the screen.
 - **材種 (material type)** … the kind of material. It is decided by the combination of maker and material grade.
 - **参照単価 (reference unit price)** … the purchase price for 1000 mm of the material. It is filled in automatically from past purchases.
 - **見積単価（基準）(quoted unit price, base)** … the selling price per piece worked out by this estimate. It becomes the 基準単価 (base unit price) on the price list.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the estimated unit price (base) times each multiplier of the [quantity scale](/manual/en/operations/sales/trial-estimate/settings), per quantity range. A price list made from this estimate starts with the same tiers.
 - **下書き (draft) / 確定 (confirmed) / 価格表登録済 (used in a price list)** … where the estimate stands now. 下書き means it has only been created, 確定 means it can be used in a price list, and 価格表登録済 means it has actually been used in a price list.
 
 ## Before you start
@@ -34,7 +37,7 @@ This is the first app you use when you decide the price of a new product.
 
 When you open the app, you see a list of the estimates made so far.
 
-![Trial estimate list screen](../../../assets/screenshots/trial-estimate-list-01.en.png)
+![Price estimate list screen](../../../assets/screenshots/trial-estimate-list-01.en.png)
 
 - **価格試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
 - **状態 (status)** … a colored badge shows where the estimate stands. Gray is 「下書き」(draft), blue is 「確定」(confirmed), green is 「価格表登録済」(used in a price list).
@@ -54,20 +57,22 @@ When you open the app, you see a list of the estimates made so far.
 8. In the「**加工**」(machining) area, enter the length and kind of the step machining and the neck machining, and the「**加工時間 (分)**」(machining time in minutes).
 9. In the「**コート・処理**」(coating and treatment) area, choose「**コート**」(coating),「**ラップ処理**」(lapping) and「**検査成績書**」(inspection certificate).
 10. If there is LD machining, turn on「**LD加工あり**」(has LD machining) and enter the position, outer diameter and blade length.
-11. Check「**基準数量（本）**」(base quantity in pieces). It starts at 100 pieces.
-12. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
-13. Press「**保存**」(save) at the top right of the screen.
+11. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
+12. Press「**保存**」(save) at the top right of the screen.
 
-![New trial estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
+![New price estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
 
 Every time you enter something,「**価格試算結果**」(estimate result) near the bottom of the screen is worked out again on the spot.
 
 ![Estimate result (cost breakdown and quoted unit price)](../../../assets/screenshots/trial-estimate-new-02.png)
 
-- **原価内訳（1本あたり）(cost breakdown, per piece)** … the breakdown of material cost, step machining cost, machining unit price, coating cost and so on.
-- **見積単価（基準）(quoted unit price, base)** … the selling price per piece, shown at the very bottom.
+- **原価内訳（1本あたり）(cost breakdown, per piece)** … the breakdown of material cost, step machining cost, machining unit price, coating cost and so on. Press the **ⓘ** to the right of a row to see what that cost counts.
+- **見積単価（基準）(quoted unit price, base)** … the base selling price per piece.
+- **参考：数量ごとの単価 (reference: unit price by quantity)** … the table below it shows the base price times each quantity-scale multiplier, per quantity range.
 
-> 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A trial estimate only gives the base price for one piece.
+> 💡 **Some people also see a 「発行会社」 (issuing company) field.** For people whose assigned sites span two or more [own companies](/manual/en/operations/masters/own-company/user), 「**発行会社**」 appears on the create screen. Choose which company this price estimate belongs to. Its number (`EST-…`) is taken from that company's sequence and cannot be changed afterwards. People who belong to one company do not see the field; that company is filled in automatically.
+
+> 💡 The discount for large quantities (the setting that makes each piece cheaper) is not made on this screen. It is made in the [price list](/manual/en/operations/sales/price-list/user). A price estimate only gives the base price for one piece.
 
 ## When you want to change the material price
 
@@ -82,7 +87,17 @@ Open the「**素材価格推移**」(material price history) tab to see, as a gr
 
 An estimate typed in by hand gets an orange「**カスタム**」(custom) badge.
 
-> ⚠️ If a yellow「**既定価格**」(default price) badge appears on the reference unit price, there are no purchase records for that material yet. The calculation uses the standard price registered on the material type.
+> ⚠️ If a yellow「**既定価格**」(default price) badge appears on the reference unit price, there are no purchase records for that material yet. The calculation uses the default price registered on the [material type](/manual/en/operations/masters/material-type/user) for that material type × diameter × surface finish. If that combination has no default price either, the 「既定材料単価」(default material unit price) in the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings) (SY02) is used.
+
+How the reference unit price is decided, as a diagram:
+
+```mermaid
+flowchart TD
+  q{"Are there purchase records<br/>for that material?"} -->|"Yes"| hist["Filled in automatically<br/>from past purchases"]
+  q -->|"No"| def["Material type default price<br/>(if none, SY02 default material unit price)<br/>「既定価格」badge"]
+  hist -.->|"Retype with「単価を編集」"| cust["Price typed in by hand<br/>「カスタム」badge"]
+  def -.->|"Retype with「単価を編集」"| cust
+```
 
 ## After saving, and confirming
 
@@ -94,15 +109,23 @@ To make it usable in a price list, do the following.
 2. If you have not chosen a product yet, press「**製品にリンク**」(link to a product), choose the product, and press「**保存**」(save).
 3. Press「**…**」again and choose「**確定**」(confirm).
 
-![Trial estimate detail screen with the menu open](../../../assets/screenshots/trial-estimate-detail-03.png)
+![Price estimate detail screen with the menu open](../../../assets/screenshots/trial-estimate-detail-03.png)
 
 After confirming, the status changes to「**確定**」(confirmed) and a note saying 「確定済み」(confirmed) appears at the top of the screen. You can now choose this estimate when you make a [price list](/manual/en/operations/sales/price-list/user).
+
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Confirm"| conf("確定<br/>Confirmed"):::blue
+  conf -->|"Used in a price list (automatic)"| reg("価格表登録済<br/>Registered"):::green
+```
 
 ## Looking at a saved estimate
 
 The screen of a saved estimate has five tabs.
 
-![Trial estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
+![Price estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
 
 - **価格試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
 - **素材価格推移 (material price history)** … a graph of how the purchase price of that material changed over time.
@@ -123,9 +146,17 @@ When you want to calculate again with only small changes, copy it instead of mak
 
 「（作り直し）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
 
+## Estimating cost only (cost estimate)
+
+People with the「**価格試算の原価**」(price estimate cost) permission can choose「**原価試算**」(cost estimate) under「**種別**」(type) when creating one (the default is「**売価試算**」(selling-price estimate) = the usual price estimate).
+
+- A cost estimate shows only the「**原価合計**」(total cost). No estimated unit price, gross margin or per-quantity prices are shown.
+- Cost estimates appear in the list and detail only for people with this permission.
+- A cost estimate cannot be chosen as a price list base price. When you need a selling price, open the cost estimate and press「**売価試算を作成**」(create selling-price estimate) from「**…**」at the top right: an input screen for a selling-price estimate opens with the same inputs (the original cost estimate stays as it is).
+
 ## Input fields
 
-Every field on the trial estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.
+Every field on the price estimate screen. There are many, so they are grouped by **which cost they affect**. The **?** next to a field in the app links straight to its description here.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
@@ -147,7 +178,6 @@ Every field on the trial estimate screen. There are many, so they are grouped by
 | [Lapping](#field-lapping) | Optional | Whether lapping is applied |
 | [Inspection report](#field-inspection-report) | Optional | Whether a report is supplied |
 | [LD machining / area / OD / flute length](#field-ld) | Optional | LD machining conditions |
-| [Base quantity (pcs)](#field-base-quantity) | Required | How many pieces the costing assumes |
 
 ### Quoted for [#field-customer]
 
@@ -179,7 +209,7 @@ The stock surface condition. **Black bar is cheaper but may require a centreless
 
 ### Reference price (¥/1000mm) [#field-reference-price]
 
-The price derived **automatically from purchase history** for that material type, diameter and surface. Where there is no history, the material type's default price is used. The screen shows which history it came from.
+The price derived **automatically from purchase history** for that material type, diameter and surface. Where there is no history, the material type's default price (material type × diameter × surface finish) is used, and if that is not set either, the 「既定材料単価」(default material unit price) in SY02. The screen shows which history it came from.
 
 ### Material price (manual, ¥/pc) [#field-manual-material-price]
 
@@ -221,10 +251,6 @@ Whether an inspection report is supplied. Selecting it adds the inspection cost.
 
 The conditions when LD machining applies. Turning on LD machining enables the area, outside diameter and flute length.
 
-### Base quantity (pcs) [#field-base-quantity]
-
-How many pieces the costing assumes. **Cost per piece changes with quantity** because setup is spread across them, so enter the quantity you actually expect.
-
 ## Questions and problems
 
 **Q. I cannot edit a saved estimate.**
@@ -243,7 +269,7 @@ A. That estimate is already confirmed, or already used in a price list. You do n
 A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して作り直す」(copy and re-estimate).
 
 **Q. The reference unit price shows「既定価格」(default price). The amount looks different from the real one.**
-A. There are no purchase records for that material yet, so the standard price registered on the material type is used. If you know the real price, enter it with「**単価を編集**」(edit unit price).
+A. There are no purchase records for that material yet, so the material type's default price is used (or, if that is not set, the 「既定材料単価」(default material unit price) in SY02). If you know the real price, enter it with「**単価を編集**」(edit unit price).
 
 **Q. I chose 円筒 (cylinder) and the reference unit price field disappeared.**
 A. For 円筒 (cylinder), the rule is that you enter the material price yourself in「**素材価格（手入力 ¥/本）**」(material price, entered by hand, ¥ per piece). You can still look at the purchase records for reference on the「素材価格推移」(material price history) tab.

@@ -10,6 +10,7 @@ import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type { MaterialReceiptView } from "@/components/purchase/material-receipts/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { docIdOrNull } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -23,12 +24,14 @@ export {
 } from "../../production/work-orders/data";
 
 const RECEIPT_INCLUDE = {
-  material: true,
+  item: true,
   plant: true,
   supplierBp: true,
   createdByUser: { select: { displayName: true } },
   purchaseOrderItem: {
-    include: { purchaseOrder: { select: { poNumber: true } } },
+    include: {
+      purchaseOrder: { select: { docRef: true, legacyNumber: true } },
+    },
   },
 };
 
@@ -44,9 +47,9 @@ type ReceiptRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 function mapReceipt(r: ReceiptRow): MaterialReceiptView {
   return {
     id: r.id,
-    materialId: String(r.materialId),
-    materialCode: r.material.code,
-    materialName: localized(r.material.name as LocalizedText | null),
+    itemId: String(r.itemId),
+    materialCode: r.item?.code ?? "",
+    materialName: localized(r.item?.name as LocalizedText | null),
     supplierName: r.supplierBp
       ? localized(r.supplierBp.name as LocalizedText | null)
       : null,
@@ -56,7 +59,9 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
     quantity: Number(r.quantity),
     unit: r.unit,
     receivedAt: r.receivedAt.toISOString().slice(0, 10),
-    poNumber: r.purchaseOrderItem?.purchaseOrder.poNumber ?? null,
+    // 発注書の id（`CKK~PO-2026-00001`）— リンクにそのまま使う。表示は docNo。
+    poNumber: docIdOrNull(r.purchaseOrderItem?.purchaseOrder),
+    poLegacyNumber: r.purchaseOrderItem?.purchaseOrder?.legacyNumber ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),

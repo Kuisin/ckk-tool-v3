@@ -10,17 +10,17 @@
 - RBAC スコープ: `ALL / REGION / COUNTRY / PLANT / DEPARTMENT / TEAM / SUB / OWN`
 - Middleware でルート保護
 
-### 採番（`lib/numbering.ts`）
+### 採番
 
-| キー | プレフィックス | 形式 |
-|------|--------------|------|
-| `QUOTE` | `QOT` | `QOT-YYYYMM-NNNNN` |
-| `ORDER_ACCEPT` | `ORD` | `ORD-YYYYMM-NNNNN` |
-| `PURCHASE_ORDER` | `PO` | `PO-YYYYMM-NNNNN` |
-| `DELIVERY` | `DRN` | `DRN-YYYYMM-NNNNN` |
-| `INVOICE` | `INV` | `INV-YYYYMM-NNNNN` |
+書類番号は **DB が INSERT 時に払い出す**（トリガー `app.assign_document_number`。
+マイグレーション `20261126230000_document_numbering`）。形は `PREFIX-FFFF-NNNNN`、
+連番は **自社法人 × 会計年度** ごと。アプリは番号を作らない・渡さない — 行を作って
+`doc_ref` を読み戻す。詳細は下の「採番ルール」。
 
-月次リセット付き（`numbering_sequences` テーブル）。指示書・ロット番号は通し連番。
+`lib/numbering.ts`（`numbering_sequences` テーブル・月次リセット）に残るのは
+書類ではないものだけ: `PRODUCT`（製品コード）/ `REGRIND_ITEM`（再研磨品目コード）/
+`FORM_RESPONSE`（フォーム回答）/ `INTERNAL_PAGE`（社内文書）。ロット番号
+（= `work_orders.work_order_number`）は通し連番。
 
 ### PDF 生成
 
@@ -71,14 +71,53 @@
 | 材種コード | `[A-Z][0-9]{2}[ABC-Z][0-9]{4}` | `B01B0001` |
 | 素材コード | `[材種コード]-[A-C][0-9]{3}-[0-9]{3}` | `B01B0001-A083-330` |
 | 製品コード | `PRD-YYYYMM-NNNN` | `PRD-2601-0001` |
-| 見積書 | `QOT-YYYYMM-NNNNN` | `QOT-2601-00001` |
-| 注文受取書 | `ORD-YYYYMM-NNNNN` | `ORD-2601-00001` |
-| 注文明細 | `[注文受取書コード]-NN` | `ORD-2601-00001-01` |
-| 素材発注書 | `PO-YYYYMM-NNNNN` | `PO-2601-00001` |
-| 指示書番号 | 通し連番 | `1031` |
-| ロット番号 | 通し連番（指示書番号と共用） | `1031` |
-| 納品書 | `DRN-YYYYMM-NNNNN` | `DRN-2601-00001` |
-| 請求書 | `INV-YYYYMM-NNNNN` | `INV-2601-00001` |
+| 再研磨品目コード | `RGD-YYYYMM-NNNN` | `RGD-2601-0001` |
+| フォーム回答 | `FRM-YYYYMM-NNNNN`（月次リセット） | `FRM-202607-00001` |
+| 社内文書 | `DOC-YYYYMM-NNNNN`（月次リセット） | `DOC-202607-00001` |
+| ロット番号（= 指示書番号 `work_order_number`） | 通し連番（法人をまたいで一意） | `1031` |
+| 価格試算 | `EST-FFFF-NNNNN` | `EST-2026-00001` |
+| 価格表 | `PRC-FFFF-NNNNN` | `PRC-2026-00001` |
+| 見積書 | `QOT-FFFF-NNNNN` | `QOT-2026-00001` |
+| 注文請書 | `ORD-FFFF-NNNNN` | `ORD-2026-00001` |
+| 注文明細 | `[注文請書の番号]-NN`（確定時に枝番） | `ORD-2026-00001-01` |
+| 設計依頼書 | `DSG-FFFF-NNNNN` | `DSG-2026-00001` |
+| 購買依頼 | `PRQ-FFFF-NNNNN` | `PRQ-2026-00001` |
+| 素材発注書 | `PO-FFFF-NNNNN` | `PO-2026-00001` |
+| 外注依頼 | `OUT-FFFF-NNNNN`（外注工程に依頼日が入った時点で採番） | `OUT-2026-00001` |
+| 指示書（書類番号 — 表示用） | `WOR-FFFF-NNNNN` | `WOR-2026-00001` |
+| 出荷書 | `DOR-FFFF-NNNNN` | `DOR-2026-00001` |
+| 納品書 | `DRN-FFFF-NNNNN` | `DRN-2026-00001` |
+| 請求書 | `INV-FFFF-NNNNN` | `INV-2026-00001` |
+| 入出庫伝票 | `MOV-FFFF-NNNNN` | `MOV-2026-00001` |
+| 棚卸 | `STK-FFFF-NNNNN` | `STK-2026-00001` |
+| 会計文書 | `ACC-FFFF-NNNNN`（起票日は `posted_at`） | `ACC-2026-00001` |
+
+### 書類番号（`PREFIX-FFFF-NNNNN`）の決まり
+
+- **`FFFF` = 会計年度**。年度が始まる暦年で表す（4 月始まりなら 2026-04〜2027-03 が
+  `2026`）。年度開始月は自社法人が持つ。
+- **連番は 自社法人 × 会計年度 ごと**に `00001` から。月次リセットは無い。
+- **年度を決めるのは起票日 = 作成日時の日本時間の暦日**（`app.jst_date(created_at)`）。
+  出荷日・締日などの業務日付には依らない。
+- **DB が作成時に払い出す**。保存が巻き戻れば番号も戻る（欠番なし）。払い出した番号は
+  変えない・使い回さない（キャンセルしても番号は残る）。対象の表に
+  `INSERT … ON CONFLICT DO NOTHING` を使わない（入らなかった行のぶん番号が欠ける）。
+- **法人は番号の文字列に入らない** → 同じ番号が 2 つの法人に存在し得る。
+  「どの書類か」の 3 つの姿（`lib/doc-number.ts` が契約）:
+
+  | 姿 | 例 | 使う場所 |
+  |---|---|---|
+  | 番号 | `QOT-2026-00001` | 人が読むもの（画面の表示・PDF・メール・CSV・`/api/v1` の `number`） |
+  | ref | `CKK/QOT-2026-00001` | DB の `doc_ref`（表ごとに UNIQUE）・多態参照（承認・メモ・添付・監査） |
+  | id | `CKK~QOT-2026-00001` | URL・Server Action の引数・画面 DTO |
+
+- **旧番号**（`PREFIX-YYYYMM-NNNNN`）: 既存の書類は全部振り直し、旧番号は
+  `legacy_number` に残す。詳細画面に「旧番号」として出し、一覧の検索に掛かり、
+  旧番号の URL は新しい URL へ転送する（`lib/doc-ref.ts` `resolveDocId` /
+  `lib/doc-param.ts`）。番号だけで複数の法人に当たるときは黙って選ばず、
+  発行会社の選択画面（`/doc/choose`）へ送る。
+- 利用者向けの説明はマニュアル「スタートマニュアル → 6. 書類番号のルール」
+  （`content/manual/start.md#doc-number`）が正。
 
 ---
 

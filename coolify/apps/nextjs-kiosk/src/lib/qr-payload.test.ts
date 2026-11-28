@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   encodeQrPayload,
+  parseQrDocKey,
   parseQrPayload,
   QR_KINDS,
   qrKeyOfKind,
@@ -11,9 +12,31 @@ describe("encodeQrPayload", () => {
     expect(encodeQrPayload(QR_KINDS.WO, "1234")).toBe("CKK:WO:1234");
   });
 
-  it("KEY のダッシュはそのまま（書類番号を人が読める形で載せる）", () => {
+  it("書類は「法人コード~番号」を載せる（番号は法人ごとの連番）", () => {
+    expect(encodeQrPayload(QR_KINDS.INVOICE, "CKK~INV-2026-00001")).toBe(
+      "CKK:INV:CKK~INV-2026-00001",
+    );
+    // 2 つの法人の同じ番号は別の QR になる
+    expect(encodeQrPayload(QR_KINDS.INVOICE, "SUB~INV-2026-00001")).toBe(
+      "CKK:INV:SUB~INV-2026-00001",
+    );
+  });
+
+  it("DB の参照（法人コード/番号）を渡されたら ~ へ揃える", () => {
+    expect(encodeQrPayload(QR_KINDS.QUOTE, "CKK/QOT-2026-00012")).toBe(
+      "CKK:QOT:CKK~QOT-2026-00012",
+    );
+  });
+
+  it("番号だけのキーはそのまま（PR-C より前の紙と同じ形）", () => {
     expect(encodeQrPayload(QR_KINDS.INVOICE, "INV-202608-00001")).toBe(
       "CKK:INV:INV-202608-00001",
+    );
+  });
+
+  it("書類番号でないキーの / は触らない（作業場所コードなど）", () => {
+    expect(encodeQrPayload(QR_KINDS.WORK_LOCATION, "A/01")).toBe(
+      "CKK:LOC:A/01",
     );
   });
 
@@ -31,7 +54,14 @@ describe("parseQrPayload", () => {
     expect(parseQrPayload("CKK:WO:1234")).toEqual({ kind: "WO", key: "1234" });
   });
 
-  it("KEY 内のダッシュを保つ", () => {
+  it("法人コード付きの書類キーをそのまま返す", () => {
+    expect(parseQrPayload("CKK:INV:CKK~INV-2026-00001")).toEqual({
+      kind: "INV",
+      key: "CKK~INV-2026-00001",
+    });
+  });
+
+  it("KEY 内のダッシュを保つ（法人コードの無い旧い紙）", () => {
     expect(parseQrPayload("CKK:INV:INV-202608-00001")).toEqual({
       kind: "INV",
       key: "INV-202608-00001",
@@ -90,5 +120,43 @@ describe("qrKeyOfKind", () => {
     expect(qrKeyOfKind(raw, QR_KINDS.WORK_LOCATION)).toBe("WL-A-01");
     // 他種別の QR は作業場所として解釈されない
     expect(qrKeyOfKind("CKK:WO:1234", QR_KINDS.WORK_LOCATION)).toBeNull();
+  });
+});
+
+describe("parseQrDocKey", () => {
+  it("法人コード付きのキーを分ける", () => {
+    expect(parseQrDocKey("CKK~INV-2026-00001")).toEqual({
+      companyCode: "CKK",
+      number: "INV-2026-00001",
+    });
+  });
+
+  it("エンコードした QR を読み戻せる", () => {
+    const key = qrKeyOfKind(
+      encodeQrPayload(QR_KINDS.ORDER_ACCEPTANCE, "SUB/ORD-2026-00042"),
+      QR_KINDS.ORDER_ACCEPTANCE,
+    );
+    expect(key).toBe("SUB~ORD-2026-00042");
+    expect(parseQrDocKey(key as string)).toEqual({
+      companyCode: "SUB",
+      number: "ORD-2026-00042",
+    });
+  });
+
+  it("PR-C より前の紙（番号だけ・旧番号）は法人コードが null", () => {
+    expect(parseQrDocKey("INV-202608-00001")).toEqual({
+      companyCode: null,
+      number: "INV-202608-00001",
+    });
+    expect(parseQrDocKey("qot-2026-00003")).toEqual({
+      companyCode: null,
+      number: "QOT-2026-00003",
+    });
+  });
+
+  it("書類番号でないキー（ロット番号・カード・作業場所）は null", () => {
+    expect(parseQrDocKey("1234")).toBeNull();
+    expect(parseQrDocKey("ABCD-EFGH-JKLM-NPQR")).toBeNull();
+    expect(parseQrDocKey("A/01")).toBeNull();
   });
 });

@@ -48,31 +48,38 @@ VALUES
 ON CONFLICT (bp_id, role) DO NOTHING;
 
 -- ── 製品（PRD-202607-0001〜0003）────────────────────────────────────────────
-INSERT INTO app.products (id, year_month, seq, name, material_type_id, diameter_mm, length_mm, unit, is_active, created_at, updated_at)
+-- 製品は app.items の item_type = 'PRODUCT'（品目統合の第 3 段で旧 products は
+-- 消えた）。**材種・直径・全長はここでは持たない** — 仕様は設計図の版
+-- (app.design_versions) が持つ（下の設計図の節で入れる）。
+INSERT INTO app.items (id, item_type, code, year_month, seq, name,
+  unit, is_active, created_at, updated_at)
 VALUES
-  (9001, '202607', 1, '{"ja": "超硬エンドミル 4枚刃 φ6×60", "en": "Carbide end mill 4FL φ6×60"}'::jsonb,
-   (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 6.0, 60.0, '本', true,
+  (9001, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0001', '202607', 1,
+   '{"ja": "超硬エンドミル 4枚刃 φ6×60", "en": "Carbide end mill 4FL φ6×60"}'::jsonb,
+   '本', true,
    '2026-07-01T09:10:00+09', '2026-07-01T09:10:00+09'),
-  (9002, '202607', 2, '{"ja": "超硬ドリル 2枚刃 φ4×50", "en": "Carbide drill 2FL φ4×50"}'::jsonb,
-   (SELECT id FROM app.material_types WHERE code = 'B04A0001'), 4.0, 50.0, '本', true,
+  (9002, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0002', '202607', 2,
+   '{"ja": "超硬ドリル 2枚刃 φ4×50", "en": "Carbide drill 2FL φ4×50"}'::jsonb,
+   '本', true,
    '2026-07-01T09:12:00+09', '2026-07-01T09:12:00+09'),
-  (9003, '202607', 3, '{"ja": "超硬リーマ φ8×70", "en": "Carbide reamer φ8×70"}'::jsonb,
-   (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 8.0, 70.0, '本', true,
+  (9003, 'PRODUCT'::app."ITEM_TYPE", 'PRD-202607-0003', '202607', 3,
+   '{"ja": "超硬リーマ φ8×70", "en": "Carbide reamer φ8×70"}'::jsonb,
+   '本', true,
    '2026-07-01T09:14:00+09', '2026-07-01T09:14:00+09')
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(pg_get_serial_sequence('app.products', 'id'),
-              GREATEST((SELECT MAX(id) FROM app.products), 9003));
+SELECT setval(pg_get_serial_sequence('app.items', 'id'),
+              GREATEST((SELECT MAX(id) FROM app.items), 9003));
 
 -- ── 試算（EST-202607-00001〜00003）──────────────────────────────────────────
 -- input は TrialEstimateForm が保存する TrialInput と同形（result は NULL —
 -- 表示側が input から再計算する。設定・データ固定なので決定的）。
-INSERT INTO app.estimates (year_month, seq, name, tool_type, status, customer_bp_id, product_id,
+INSERT INTO app.estimates (id, legacy_number, name, tool_type, status, customer_bp_id, item_id,
   material_type_id, diameter_code, surface_finish_code,
   reference_unit_price, reference_date, reference_overridden, input, result, registered_at,
   created_by, created_at, updated_at)
 VALUES
-  ('202607', 1, 'エンドミル φ6×60 CX400', 'ROUND_BAR', 'REGISTERED',
+  ('e5100000-0000-4000-8000-000000000001'::uuid, 'EST-202607-00001', 'エンドミル φ6×60 CX400', 'ROUND_BAR', 'REGISTERED',
    'd0000000-0000-4000-8000-000000000001'::uuid, 9001,
    (SELECT id FROM app.material_types WHERE code = 'B01A0001'), '060', 'B',
    8016.13, '2026-07-01', false,
@@ -85,7 +92,7 @@ VALUES
      "lotQuantities": [100, 0, 0], "lotMarkups": [1]}'::jsonb,
    NULL, '2026-07-03T10:00:00+09',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-02T09:30:00+09', '2026-07-03T10:00:00+09'),
-  ('202607', 2, 'ドリル φ4×50 ノンコート', 'ROUND_BAR', 'CONFIRMED',
+  ('e5100000-0000-4000-8000-000000000002'::uuid, 'EST-202607-00002', 'ドリル φ4×50 ノンコート', 'ROUND_BAR', 'CONFIRMED',
    'd0000000-0000-4000-8000-000000000001'::uuid, 9002,
    (SELECT id FROM app.material_types WHERE code = 'B04A0001'), '040', 'B',
    4306.45, '2026-07-01', false,
@@ -98,7 +105,7 @@ VALUES
      "lotQuantities": [100, 0, 0], "lotMarkups": [1]}'::jsonb,
    NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-02T11:00:00+09', '2026-07-02T14:00:00+09'),
-  ('202607', 3, 'リーマ φ8×70（検討中）', 'ROUND_BAR', 'DRAFT',
+  ('e5100000-0000-4000-8000-000000000003'::uuid, 'EST-202607-00003', 'リーマ φ8×70（検討中）', 'ROUND_BAR', 'DRAFT',
    'd0000000-0000-4000-8000-000000000001'::uuid, NULL,
    (SELECT id FROM app.material_types WHERE code = 'B01A0001'), '080', 'B',
    12609.68, '2026-07-01', false,
@@ -111,22 +118,22 @@ VALUES
      "lotQuantities": [100, 0, 0], "lotMarkups": [1]}'::jsonb,
    NULL, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-04T15:20:00+09', '2026-07-04T15:20:00+09')
-ON CONFLICT (year_month, seq) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- ── 価格表（PRC-202607-00001: デモ商事 × エンドミル φ6×60）──────────────────
-INSERT INTO app.price_list_entries (year_month, seq, customer_bp_id, product_id, currency, is_active,
+INSERT INTO app.price_list_entries (id, legacy_number, customer_bp_id, item_id, currency, is_active,
   created_by, created_at, updated_at)
-VALUES ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, 9001, 'JPY', true,
+VALUES ('e5200000-0000-4000-8000-000000000001'::uuid, 'PRC-202607-00001', 'd0000000-0000-4000-8000-000000000001'::uuid, 9001, 'JPY', true,
   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09')
-ON CONFLICT (year_month, seq) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO app.price_list_variants (id, entry_year_month, entry_seq, order_type, base_unit_price,
-  valid_from, valid_until, estimate_year_month, estimate_seq, is_active, created_at, updated_at)
+INSERT INTO app.price_list_variants (id, entry_id, order_type, base_unit_price,
+  valid_from, valid_until, estimate_id, is_active, created_at, updated_at)
 VALUES
-  ('d1000000-0000-4000-8000-000000000001'::uuid, '202607', 1, 'PRODUCTION'::app."ORDER_TYPE",
-   3220, '2026-07-01', NULL, '202607', 1, true, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09'),
-  ('d1000000-0000-4000-8000-000000000002'::uuid, '202607', 1, 'TEST'::app."ORDER_TYPE",
-   3000, '2026-07-01', '2026-12-31', NULL, NULL, true, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09')
+  ('d1000000-0000-4000-8000-000000000001'::uuid, 'e5200000-0000-4000-8000-000000000001'::uuid, 'PRODUCTION'::app."ORDER_TYPE",
+   3220, '2026-07-01', NULL, 'e5100000-0000-4000-8000-000000000001'::uuid, true, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09'),
+  ('d1000000-0000-4000-8000-000000000002'::uuid, 'e5200000-0000-4000-8000-000000000001'::uuid, 'TEST'::app."ORDER_TYPE",
+   3000, '2026-07-01', '2026-12-31', NULL, true, '2026-07-03T10:00:00+09', '2026-07-03T10:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.price_list_tiers (id, variant_id, min_quantity, max_quantity, multiplier, price_override, sort_order)
@@ -146,25 +153,25 @@ VALUES ('d3000000-0000-4000-8000-000000000001'::uuid, 'd1000000-0000-4000-8000-0
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 見積書（QOT-202607-00001〜00002）────────────────────────────────────────
-INSERT INTO app.quotes (year_month, seq, customer_bp_id, customer_branch_bp_id, status, valid_until,
+INSERT INTO app.quotes (id, legacy_number, customer_bp_id, customer_branch_bp_id, status, valid_until,
   notes, created_by, created_at, updated_at)
 VALUES
-  ('202607', 1, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL, 'ISSUED'::app."QUOTE_STATUS",
+  ('e5300000-0000-4000-8000-000000000001'::uuid, 'QOT-202607-00001', 'd0000000-0000-4000-8000-000000000001'::uuid, NULL, 'ISSUED'::app."QUOTE_STATUS",
    '2026-09-30', NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-03T11:00:00+09', '2026-07-03T13:00:00+09'),
-  ('202607', 2, 'd0000000-0000-4000-8000-000000000001'::uuid, NULL, 'DRAFT'::app."QUOTE_STATUS",
+  ('e5300000-0000-4000-8000-000000000002'::uuid, 'QOT-202607-00002', 'd0000000-0000-4000-8000-000000000001'::uuid, NULL, 'DRAFT'::app."QUOTE_STATUS",
    NULL, NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-04T16:00:00+09', '2026-07-04T16:00:00+09')
-ON CONFLICT (year_month, seq) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO app.quote_items (id, quote_year_month, quote_seq, product_id, order_type, quantity,
+INSERT INTO app.quote_items (id, quote_id, item_id, order_type, quantity,
   unit_price, price_list_tier_id, discount_amount, discount_label, amount, delivery_date, sort_order)
 VALUES
-  ('d4000000-0000-4000-8000-000000000001'::uuid, '202607', 1, 9001, 'PRODUCTION'::app."ORDER_TYPE",
+  ('d4000000-0000-4000-8000-000000000001'::uuid, 'e5300000-0000-4000-8000-000000000001'::uuid, 9001, 'PRODUCTION'::app."ORDER_TYPE",
    50, 3220, 'd2000000-0000-4000-8000-000000000002'::uuid, 0, NULL, 161000, '2026-08-20', 0),
-  ('d4000000-0000-4000-8000-000000000002'::uuid, '202607', 1, 9001, 'TEST'::app."ORDER_TYPE",
+  ('d4000000-0000-4000-8000-000000000002'::uuid, 'e5300000-0000-4000-8000-000000000001'::uuid, 9001, 'TEST'::app."ORDER_TYPE",
    10, 3000, 'd2000000-0000-4000-8000-000000000004'::uuid, 0, NULL, 30000, NULL, 1),
-  ('d4000000-0000-4000-8000-000000000003'::uuid, '202607', 2, 9001, 'PRODUCTION'::app."ORDER_TYPE",
+  ('d4000000-0000-4000-8000-000000000003'::uuid, 'e5300000-0000-4000-8000-000000000002'::uuid, 9001, 'PRODUCTION'::app."ORDER_TYPE",
    100, 3059, 'd2000000-0000-4000-8000-000000000003'::uuid, 16100, '夏季キャンペーン（5%）',
    289800, '2026-09-10', 0)
 ON CONFLICT (id) DO NOTHING;
@@ -188,38 +195,38 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 注文請書（ORD-202607-00001〜00003）──────────────────────────────────────
-INSERT INTO app.order_acceptances (year_month, seq, status, source, source_file_id,
+INSERT INTO app.order_acceptances (id, legacy_number, status, source, source_file_id,
   customer_bp_id, customer_order_ref, order_date, notes, created_by, created_at, updated_at)
 VALUES
-  ('202607', 1, 'DRAFT'::app."ORDER_ACCEPTANCE_STATUS", 'UPLOAD'::app."INTAKE_SOURCE",
+  ('e5400000-0000-4000-8000-000000000001'::uuid, 'ORD-202607-00001', 'DRAFT'::app."ORDER_ACCEPTANCE_STATUS", 'UPLOAD'::app."INTAKE_SOURCE",
    'd5000000-0000-4000-8000-000000000001'::uuid,
    'd0000000-0000-4000-8000-000000000001'::uuid, 'D-2607-0158', '2026-07-01', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-01T10:01:00+09', '2026-07-01T10:02:00+09'),
-  ('202607', 2, 'APPROVED'::app."ORDER_ACCEPTANCE_STATUS", 'FOLDER'::app."INTAKE_SOURCE",
+  ('e5400000-0000-4000-8000-000000000002'::uuid, 'ORD-202607-00002', 'APPROVED'::app."ORDER_ACCEPTANCE_STATUS", 'FOLDER'::app."INTAKE_SOURCE",
    'd5000000-0000-4000-8000-000000000002'::uuid,
    'd0000000-0000-4000-8000-000000000001'::uuid, 'D-2607-0163', '2026-07-05', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-06T08:31:00+09', '2026-07-06T09:10:00+09'),
-  ('202607', 3, 'REQUESTED'::app."ORDER_ACCEPTANCE_STATUS", 'MANUAL'::app."INTAKE_SOURCE", NULL,
+  ('e5400000-0000-4000-8000-000000000003'::uuid, 'ORD-202607-00003', 'REQUESTED'::app."ORDER_ACCEPTANCE_STATUS", 'MANUAL'::app."INTAKE_SOURCE", NULL,
    'd0000000-0000-4000-8000-000000000001'::uuid, 'D-2607-0170', '2026-07-07', NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-07T13:45:00+09', '2026-07-07T13:50:00+09')
-ON CONFLICT (year_month, seq) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- 注文明細。20260907090000_order_lines_merge で order_acceptance_items から
 -- order_lines へ改名された（下書きと実行を 1 本にまとめた）。ここは下書き段階の
 -- 行なので status は既定の DRAFT、枝番・金額は確定時に入る（NULL のまま）。
-INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, product_id,
+INSERT INTO app.order_lines (id, acceptance_id, item_id,
   product_text, order_type, quantity, unit_price, delivery_date, sort_order)
 VALUES
   -- ORD-1: 1行目は価格表（¥3,220）と異なる単価 → 価格差異バッジの実例
-  ('d6000000-0000-4000-8000-000000000001'::uuid, '202607', 1, 9001,
+  ('d6000000-0000-4000-8000-000000000001'::uuid, 'e5400000-0000-4000-8000-000000000001'::uuid, 9001,
    '超硬エンドミル 4枚刃 6mm', 'PRODUCTION'::app."ORDER_TYPE", 50, 3000, '2026-08-20', 0),
   -- ORD-1: 2行目は製品未特定の実例
-  ('d6000000-0000-4000-8000-000000000002'::uuid, '202607', 1, NULL,
+  ('d6000000-0000-4000-8000-000000000002'::uuid, 'e5400000-0000-4000-8000-000000000001'::uuid, NULL,
    '超硬エンドミル 4mm 特殊形状', 'PRODUCTION'::app."ORDER_TYPE", 20, NULL, NULL, 1),
   -- ORD-2: 価格表と一致（1〜49本 ×1.05 = ¥3,381）
-  ('d6000000-0000-4000-8000-000000000003'::uuid, '202607', 2, 9001,
+  ('d6000000-0000-4000-8000-000000000003'::uuid, 'e5400000-0000-4000-8000-000000000002'::uuid, 9001,
    '超硬エンドミル 4枚刃 6mm', 'PRODUCTION'::app."ORDER_TYPE", 30, 3381, '2026-09-01', 0),
-  ('d6000000-0000-4000-8000-000000000004'::uuid, '202607', 3, 9002,
+  ('d6000000-0000-4000-8000-000000000004'::uuid, 'e5400000-0000-4000-8000-000000000003'::uuid, 9002,
    NULL, 'PRODUCTION'::app."ORDER_TYPE", 100, 1850, '2026-09-15', 0)
 ON CONFLICT (id) DO NOTHING;
 
@@ -232,14 +239,14 @@ ON CONFLICT (id) DO NOTHING;
 -- 後から版が増えても動かない（承認ルートが変わってしまうため — design.prisma 参照）。
 -- この seed では 9001 が改訂・9002 が新規で、両方の区分が撮影できる。
 -- なお DSG-00006 の完了で 9002 にも版が付くが、既存行の区分は保存値のまま。
-INSERT INTO app.design_requests (id, request_number, trigger, quote_year_month, quote_seq,
-  order_line_id, product_id, description, status, assignee_id,
+INSERT INTO app.design_requests (id, legacy_number, trigger, quote_id,
+  order_line_id, item_id, description, status, assignee_id,
   kind, change_reason, desired_at, priority,
   requested_at, approved_at, started_at, completed_at, history,
   created_by, created_at, updated_at)
 VALUES
   ('d7000000-0000-4000-8000-000000000001'::uuid, 'DSG-202607-00001', 'QUOTE'::app."DESIGN_TRIGGER",
-   '202607', 1, NULL, 9001, '先端R0.5 の特殊形状。見積提出前に図面確認をお願いします。',
+   'e5300000-0000-4000-8000-000000000001'::uuid, NULL, 9001, '先端R0.5 の特殊形状。見積提出前に図面確認をお願いします。',
    'IN_PROGRESS'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'REVISION'::app."DESIGN_KIND", '先端形状の公差見直しに伴う改訂。', '2026-07-15', 'HIGH'::app."DESIGN_PRIORITY",
    '2026-07-03T14:10:00+09', '2026-07-03T16:00:00+09', '2026-07-04T09:00:00+09', NULL,
@@ -249,7 +256,7 @@ VALUES
      {"action":"START","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-04T00:00:00.000Z"}]'::jsonb,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T14:00:00+09', '2026-07-04T09:00:00+09'),
   ('d7000000-0000-4000-8000-000000000002'::uuid, 'DSG-202607-00002', 'QUOTE'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, 9001, '首下逃がし形状の見直し（公差 ±0.005）。',
+   NULL, NULL, 9001, '首下逃がし形状の見直し（公差 ±0.005）。',
    'COMPLETED'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'REVISION'::app."DESIGN_KIND", '首下逃がしの公差を ±0.005 へ。', '2026-07-08', 'NORMAL'::app."DESIGN_PRIORITY",
    '2026-07-02T10:10:00+09', '2026-07-02T13:00:00+09', '2026-07-03T09:00:00+09', '2026-07-06T15:30:00+09',
@@ -260,7 +267,7 @@ VALUES
      {"action":"COMPLETE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-06T06:30:00.000Z"}]'::jsonb,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-02T10:00:00+09', '2026-07-06T15:30:00+09'),
   ('d7000000-0000-4000-8000-000000000003'::uuid, 'DSG-202607-00003', 'SALES_ORDER'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, 9002, '受注後の治具設計（注文請書確定待ち）。',
+   NULL, NULL, 9002, '受注後の治具設計（注文請書確定待ち）。',
    'PENDING'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'NEW'::app."DESIGN_KIND", NULL, '2026-07-20', 'NORMAL'::app."DESIGN_PRIORITY",
    '2026-07-07T09:10:00+09', '2026-07-07T11:00:00+09', NULL, NULL,
@@ -270,7 +277,7 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-07T09:00:00+09', '2026-07-07T09:00:00+09'),
   -- 下書き（承認依頼のカードが出ている状態）
   ('d7000000-0000-4000-8000-000000000004'::uuid, 'DSG-202607-00004', 'QUOTE'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, 9002, 'テーパ部の面粗さ指定を追加した図面（下書き）。',
+   NULL, NULL, 9002, 'テーパ部の面粗さ指定を追加した図面（下書き）。',
    'DRAFT'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'NEW'::app."DESIGN_KIND", NULL, '2026-07-31', 'NORMAL'::app."DESIGN_PRIORITY",
    NULL, NULL, NULL, NULL,
@@ -278,7 +285,7 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T09:00:00+09', '2026-07-08T09:00:00+09'),
   -- 承認依頼中（承認 / 差し戻しのカードが出ている状態）
   ('d7000000-0000-4000-8000-000000000005'::uuid, 'DSG-202607-00005', 'SALES_ORDER'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, 9002, '座ぐり深さ変更に伴う図面改訂（承認待ち）。',
+   NULL, NULL, 9002, '座ぐり深さ変更に伴う図面改訂（承認待ち）。',
    'REQUESTED'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'NEW'::app."DESIGN_KIND", NULL, '2026-07-24', 'HIGH'::app."DESIGN_PRIORITY",
    '2026-07-08T13:00:00+09', NULL, NULL, NULL,
@@ -288,7 +295,7 @@ VALUES
   -- 進行中で **成果物が登録済み**（= 完了できる状態）。DSG-00001 は同じ進行中でも
   -- 成果物が無いので「図面を登録してください」になる — 2 つ並べて両方を撮る。
   ('d7000000-0000-4000-8000-000000000006'::uuid, 'DSG-202607-00006', 'SALES_ORDER'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, 9002, 'ドリル先端角の変更（図面登録済み・完了待ち）。',
+   NULL, NULL, 9002, 'ドリル先端角の変更（図面登録済み・完了待ち）。',
    'IN_PROGRESS'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    'NEW'::app."DESIGN_KIND", NULL, '2026-07-18', 'NORMAL'::app."DESIGN_PRIORITY",
    '2026-07-08T09:10:00+09', '2026-07-08T11:00:00+09', '2026-07-09T09:00:00+09', NULL,
@@ -299,13 +306,52 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T09:00:00+09', '2026-07-09T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO app.design_files (id, design_request_id, product_id, file_id, version, is_latest, notes,
+-- 設計図の版 (app.design_versions)。**仕様（材種・直径・全長）は版が持つ**
+-- （製品マスタから移した）。ファイルは design_files が design_version_id で指す。
+--   9001 汎用 v1 / v2 … 確定（v2 が最新。仕様あり）
+--   9001 デモ商事 v1  … 確定（顧客専用の系列）
+--   9002 汎用 v1      … **下書き** — 進行中の DSG-202607-00006 の成果物。
+--                       確定前なので編集でき、is_latest は立たない
+--   9003 汎用 v1      … 確定・**ファイル無し**（仕様だけの版）
+INSERT INTO app.design_versions (id, item_id, customer_bp_id, version, status,
+  design_request_id, notes, material_type_id, diameter_mm, length_mm,
+  confirmed_at, confirmed_by, created_by, created_at, updated_at)
+VALUES
+  ('d9000000-0000-4000-8000-000000000001'::uuid, 9001, NULL, 1, 'CONFIRMED'::app."DESIGN_VERSION_STATUS",
+   'd7000000-0000-4000-8000-000000000002'::uuid, NULL, NULL, NULL, NULL,
+   '2026-07-03T14:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T14:30:00+09', '2026-07-03T14:30:00+09'),
+  ('d9000000-0000-4000-8000-000000000002'::uuid, 9001, NULL, 2, 'CONFIRMED'::app."DESIGN_VERSION_STATUS",
+   'd7000000-0000-4000-8000-000000000002'::uuid, '公差修正',
+   (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 6.0, 60.0,
+   '2026-07-06T15:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-06T15:30:00+09', '2026-07-06T15:30:00+09'),
+  ('d9000000-0000-4000-8000-000000000003'::uuid, 9001, 'd0000000-0000-4000-8000-000000000001'::uuid, 1,
+   'CONFIRMED'::app."DESIGN_VERSION_STATUS", NULL, 'デモ商事向けの首下寸法違い',
+   (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 6.0, 60.0,
+   '2026-07-05T11:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-05T11:30:00+09', '2026-07-05T11:30:00+09'),
+  ('d9000000-0000-4000-8000-000000000004'::uuid, 9002, NULL, 1, 'DRAFT'::app."DESIGN_VERSION_STATUS",
+   'd7000000-0000-4000-8000-000000000006'::uuid, '先端角 140° へ変更',
+   (SELECT id FROM app.material_types WHERE code = 'B04A0001'), 4.0, 50.0,
+   NULL, NULL,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-09T10:30:00+09', '2026-07-09T10:30:00+09'),
+  ('d9000000-0000-4000-8000-000000000005'::uuid, 9003, NULL, 1, 'CONFIRMED'::app."DESIGN_VERSION_STATUS",
+   NULL, NULL,
+   (SELECT id FROM app.material_types WHERE code = 'B01A0001'), 8.0, 70.0,
+   '2026-07-01T09:14:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-01T09:14:00+09', '2026-07-01T09:14:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.design_files (id, design_version_id, design_request_id, item_id, file_id, version, is_latest, notes,
   created_by, created_at)
 VALUES
-  ('d8000000-0000-4000-8000-000000000001'::uuid, 'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
+  ('d8000000-0000-4000-8000-000000000001'::uuid, 'd9000000-0000-4000-8000-000000000001'::uuid,
+   'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
    'd5000000-0000-4000-8000-000000000003'::uuid, 1, false, NULL,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T14:30:00+09'),
-  ('d8000000-0000-4000-8000-000000000002'::uuid, 'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
+  ('d8000000-0000-4000-8000-000000000002'::uuid, 'd9000000-0000-4000-8000-000000000002'::uuid,
+   'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
    'd5000000-0000-4000-8000-000000000004'::uuid, 2, true, '公差修正',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-06T15:30:00+09')
 ON CONFLICT (id) DO NOTHING;
@@ -316,18 +362,20 @@ ON CONFLICT (id) DO NOTHING;
 --
 -- デモ商事の版は依頼を経ない登録（design_request_id = null）なので一覧で「手動」、
 -- 9002 の版は DSG-00006 の成果物なので「依頼」と出る — 出どころ列の両方を撮れる。
-INSERT INTO app.design_files (id, design_request_id, product_id, customer_bp_id, file_id,
+INSERT INTO app.design_files (id, design_version_id, design_request_id, item_id, customer_bp_id, file_id,
   version, is_latest, role, notes, created_by, created_at)
 VALUES
-  ('d8000000-0000-4000-8000-000000000003'::uuid, NULL, 9001,
+  ('d8000000-0000-4000-8000-000000000003'::uuid, 'd9000000-0000-4000-8000-000000000003'::uuid, NULL, 9001,
    'd0000000-0000-4000-8000-000000000001'::uuid,
    'd5000000-0000-4000-8000-000000000005'::uuid, 1, true,
    'BLUEPRINT'::app."DESIGN_FILE_ROLE", 'デモ商事向けの首下寸法違い',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-05T11:30:00+09'),
   -- 進行中の DSG-202607-00006 の成果物。**これがあるから完了できる**
-  -- （成果物ゼロの依頼は完了できない — completeDesign）。
-  ('d8000000-0000-4000-8000-000000000004'::uuid, 'd7000000-0000-4000-8000-000000000006'::uuid, 9002,
-   NULL, 'd5000000-0000-4000-8000-000000000006'::uuid, 1, true,
+  -- （成果物ゼロの依頼は完了できない — completeDesign）。版は下書きなので
+  -- is_latest は立たない（確定したときに立つ）。
+  ('d8000000-0000-4000-8000-000000000004'::uuid, 'd9000000-0000-4000-8000-000000000004'::uuid,
+   'd7000000-0000-4000-8000-000000000006'::uuid, 9002,
+   NULL, 'd5000000-0000-4000-8000-000000000006'::uuid, 1, false,
    'BLUEPRINT'::app."DESIGN_FILE_ROLE", '先端角 140° へ変更',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-09T10:30:00+09')
 ON CONFLICT (id) DO NOTHING;
@@ -337,5 +385,39 @@ UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-00
  WHERE id = 'd7000000-0000-4000-8000-000000000001'::uuid;
 UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-000000000001'::uuid
  WHERE id = 'd7000000-0000-4000-8000-000000000002'::uuid;
+
+-- ── 学習した照合名（match_aliases）を 1 件ずつ ──────────────────────────────
+-- 取込の突合で人が結び付けた表記の実例。**移行の試験のため**に置く: この表は
+-- 多態（target_type + target_id）で FK が無く、これまでデモ DB に 1 行も無かった
+-- ので、表を書き換える migration が空の表でしか試されず、dev の実データで
+-- 初めて落ちた（20261101090000 の CHECK の順序）。行があれば CI の
+-- 「base のデータ入り DB へ head の migration を当てる」で捕まる。
+INSERT INTO app.match_aliases (target_type, target_id, alias, alias_key, hit_count, last_seen_at, created_at, updated_at)
+SELECT 'items', i.id::text, 'デモ製品（旧表記）', 'デモ製品旧表記', 2, '2026-07-10T02:00:00+09', '2026-07-01T02:00:00+09', '2026-07-10T02:00:00+09'
+  FROM app.items i WHERE i.item_type = 'PRODUCT' ORDER BY i.id LIMIT 1
+ON CONFLICT (target_type, alias_key) DO NOTHING;
+INSERT INTO app.match_aliases (target_type, target_id, alias, alias_key, hit_count, last_seen_at, created_at, updated_at)
+VALUES ('business_partners', 'd0000000-0000-4000-8000-000000000001', 'デモ商事（株）', 'デモ商事', 3, '2026-07-10T02:00:00+09', '2026-07-01T02:00:00+09', '2026-07-10T02:00:00+09')
+ON CONFLICT (target_type, alias_key) DO NOTHING;
+
+-- ── 見積書の明細備考（行ごと・複数行）────────────────────────────────────────
+-- 値引きのある QOT-202607-00002 の行に入れる。PDF では値引きの注意書きの下に
+-- 改行ごと刷られる（無いと、明細備考がどう出るのかを画面でも帳票でも見られない）。
+UPDATE app.quote_items
+   SET notes = E'刃先はシャープエッジ指定。\n10 本ずつ防錆紙で包んで納品。'
+ WHERE id = 'd4000000-0000-4000-8000-000000000003'::uuid AND notes IS NULL;
+
+-- 系列メモ — その製品 × 受注元の図面すべてに共通すること。版を改訂しても引き継ぐ。
+-- owner_id は「品目 id : 受注元（汎用は空）」（lib/design-files-core.ts seriesMemoOwnerId）。
+INSERT INTO app.document_memos (owner_type, owner_id, kind, content, plain_text,
+  created_by, updated_by, created_at, updated_at)
+SELECT 'design_series', '9001:d0000000-0000-4000-8000-000000000001', 'MEMO',
+       '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"首下の逃がしは客先図面の指示を優先する。刃先の面取りは不要（客先確認済み）。"}]}]}'::jsonb,
+       '首下の逃がしは客先図面の指示を優先する。刃先の面取りは不要（客先確認済み）。',
+       'a0b1c2d3-0000-4000-8000-000000005107'::uuid, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+       '2026-07-05T13:10:00+09', '2026-07-05T13:10:00+09'
+ WHERE NOT EXISTS (SELECT 1 FROM app.document_memos
+                    WHERE owner_type = 'design_series'
+                      AND owner_id = '9001:d0000000-0000-4000-8000-000000000001');
 
 COMMIT;

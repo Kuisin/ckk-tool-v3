@@ -21,13 +21,19 @@ export const dynamic = "force-dynamic";
 /** 指示書 編集 (PD22 → edit). DRAFT のみ — それ以外は詳細へ戻す。 */
 export default async function ProductionWorkOrdersEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(
+    id,
+    "/edit",
+    searchParams,
+  );
   if (workOrderNumber == null) notFound();
 
   const workOrder = await fetchWorkOrder(workOrderNumber);

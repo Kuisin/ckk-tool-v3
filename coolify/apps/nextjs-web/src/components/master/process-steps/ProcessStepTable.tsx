@@ -45,8 +45,16 @@ import {
   processCategoryLabel,
   processCategoryOptions,
   processExecutionLabel,
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
 } from "@/lib/enum-labels";
-import { isPrepStep } from "@/lib/workflow-core";
+import {
+  ROUTE_KIND_COLOR,
+  ROUTE_KIND_LABEL_KEY,
+  routeKindsForStep,
+} from "@/lib/process-route-kinds";
+import { stepAllowedForType, type WorkOrderType } from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   type ProcessStepModalTarget,
@@ -80,9 +88,10 @@ export interface ProcessStepRow {
   lotInputMode: string;
   /** 作業計画の必須項目（工程ごと — lib/work-plan-core.ts）。 */
   workLocationRequired: boolean;
+  /** この工程を載せてよい指示書種別（在庫分 / 製造分 / 再研磨）。 */
+  allowedWorkOrderTypes: WorkOrderType[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
   sortOrder: number;
   isActive: boolean;
 }
@@ -128,6 +137,9 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const [search, setSearch] = useUrlStringState("q");
   const [categoryFilter, setCategoryFilter] = useUrlSelectState("category");
   const [statusFilter, setStatusFilter] = useUrlSelectState("status");
+  // 「再研磨の指示書で使える工程はどれか」を一覧で引けるようにする — 設定を
+  // 変えたあとに確かめる場所がここしかない。
+  const [woTypeFilter, setWoTypeFilter] = useUrlSelectState("workOrderType");
 
   const [deleteRow, setDeleteRow] = useState<ProcessStepModalTarget | null>(
     null,
@@ -140,6 +152,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     setSearch(null);
     setCategoryFilter(null);
     setStatusFilter(null);
+    setWoTypeFilter(null);
   };
 
   const filtered = rows.filter((r) => {
@@ -150,7 +163,15 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     const matchesCategory = !categoryFilter || r.category === categoryFilter;
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesCategory && matchesStatus;
+    // 開始工程は種別が固定なので、一覧の絞り込みも同じ規則で答える
+    // （行の配列だけを見ると製品出しが製造分に出てしまう）。
+    const matchesWoType =
+      !woTypeFilter ||
+      stepAllowedForType(
+        r,
+        woTypeFilter as "FROM_STOCK" | "MANUFACTURE" | "REGRIND",
+      );
+    return matchesSearch && matchesCategory && matchesStatus && matchesWoType;
   });
 
   const bulkSetActive = (targets: ProcessStepRow[], isActive: boolean) => {
@@ -245,23 +266,27 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       ),
     },
     {
-      // 準備 / 製造 のどちらの工程リストに入るか（isPrepStep — カテゴリから決まる）
+      // どの工程リストに入れられるか（準備 / 製造 / 再研磨。1 つの工程が製造と
+      // 再研磨の両方に入ることもある — lib/process-route-kinds.ts）。
       key: "routeKind",
       header: tr("master.processSteps.routeKind"),
       sortable: true,
       hideable: true,
-      width: 80,
-      sortValue: (r) => (isPrepStep(r) ? 0 : 1),
+      width: 110,
+      sortValue: (r) => routeKindsForStep(r).join(","),
       render: (r) => (
-        <Badge
-          color={isPrepStep(r) ? "teal" : "indigo"}
-          size="xs"
-          variant="light"
-        >
-          {isPrepStep(r)
-            ? tr("master.processSteps.routeKindPrep")
-            : tr("master.processSteps.routeKindManufacturing")}
-        </Badge>
+        <Group gap={4} wrap="nowrap">
+          {routeKindsForStep(r).map((kind) => (
+            <Badge
+              color={ROUTE_KIND_COLOR[kind]}
+              key={kind}
+              size="xs"
+              variant="light"
+            >
+              {tr(`master.processSteps.${ROUTE_KIND_LABEL_KEY[kind]}`)}
+            </Badge>
+          ))}
+        </Group>
       ),
     },
     {
@@ -361,6 +386,29 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         ),
     },
     {
+      // この工程を載せてよい指示書種別（工程マスタが持つ）。
+      key: "workOrderTypes",
+      header: tr("master.processSteps.workOrderTypesShort"),
+      hideable: true,
+      width: 150,
+      render: (r) => (
+        <Group gap={4} wrap="wrap">
+          {(["FROM_STOCK", "MANUFACTURE", "REGRIND"] as const)
+            .filter((t) => stepAllowedForType(r, t))
+            .map((t) => (
+              <Badge
+                color={WORK_ORDER_TYPE_COLOR[t] ?? "gray"}
+                key={t}
+                size="xs"
+                variant="light"
+              >
+                {workOrderTypeLabel(t, locale) ?? t}
+              </Badge>
+            ))}
+        </Group>
+      ),
+    },
+    {
       // 作業計画の必須項目（日付は常に必須なので出さない）
       key: "planRequired",
       header: tr("master.processSteps.planRequiredShort"),
@@ -376,9 +424,6 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             : null,
           r.planTimeRequired
             ? tr("master.processSteps.planFieldTimeShort")
-            : null,
-          r.planQuantityRequired
-            ? tr("master.processSteps.planFieldQuantityShort")
             : null,
         ].filter((x): x is string => x != null);
         return parts.length === 0 ? (
@@ -430,6 +475,12 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
           >
             {tr("master.prepRoutes.title")}
           </SecondaryButton>
+          <SecondaryButton
+            href={`${BASE_PATH}/regrind-routes`}
+            leftSection={<IconGitBranch size={14} />}
+          >
+            {tr("master.regrindRoutes.title")}
+          </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
@@ -443,6 +494,15 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             onChange={setCategoryFilter}
             placeholder={tr("common.category")}
             value={categoryFilter}
+            w={isMobile ? 130 : 150}
+          />
+          <Select
+            aria-label={tr("master.processSteps.workOrderTypes")}
+            clearable
+            data={workOrderTypeOptions(locale)}
+            onChange={setWoTypeFilter}
+            placeholder={tr("master.processSteps.workOrderTypes")}
+            value={woTypeFilter}
             w={isMobile ? 130 : 150}
           />
           <Select

@@ -107,77 +107,92 @@ export function MasterDetailShell({
     [basePath, minMasterWidth, maxMasterWidth],
   );
 
-  if (isMobile) {
-    // 詳細ルートでも見出しは出す — 無いと画面に h1–h3 が 1 つも無く、
-    // どのアプリの中に居るのかも読み取れない（パンくずはモバイルでは隠れる）。
-    if (!onList)
-      return (
-        <Stack gap="md">
-          {header}
-          {children}
-        </Stack>
-      );
-    return (
-      <Stack gap="md">
-        {header}
-        {master}
-      </Stack>
-    );
-  }
+  // 携帯の幅では 一覧 か 詳細 のどちらか片方だけを出す（詳細ルートでも見出しは
+  // 出す — 無いと画面に h1–h3 が 1 つも無く、どのアプリの中に居るのかも
+  // 読み取れない。パンくずはモバイルでは隠れる）。
+  //
+  // **幅が変わっても詳細（children）を同じ位置・同じ key で描き続ける。** 以前は
+  // 携帯用と PC 用で別の木を返していたので、幅が 768px をまたぐ（タブレットを
+  // 回す・ウィンドウを縮める）たびに詳細が作り直され、入力途中の値（不良の行・
+  // 仕上がり寸法・開いていた検査表）が消えていた。工程の実行画面はタブレットで
+  // 使う画面で、回しただけで入力が消えるのは困る。
+  const showMaster = !isMobile || onList;
+  const showDetail = !isMobile || !onList;
 
   return (
     <Stack gap="md">
       {header}
       <Flex
         align="stretch"
+        direction={isMobile ? "column" : "row"}
         gap={0}
         ref={containerRef}
-        style={{ minHeight: 360 }}
+        style={isMobile ? undefined : { minHeight: 360 }}
       >
-        <Box
-          style={{
-            width,
-            flexShrink: 0,
-            alignSelf: "flex-start",
-            position: "sticky",
-            top: 8,
-            maxHeight: "calc(100vh - 210px)",
-            overflowY: "auto",
-          }}
-        >
-          {master}
-        </Box>
-        {/* biome-ignore lint/a11y/useSemanticElements: interactive drag splitter needs role=separator with aria-valuenow, not a semantic <hr> */}
-        <Box
-          aria-label={tr("ui.masterDetailShell.adjustThePaneWidth")}
-          aria-orientation="vertical"
-          aria-valuemax={maxMasterWidth}
-          aria-valuemin={minMasterWidth}
-          aria-valuenow={Math.round(width)}
-          onKeyDown={onKeyDown}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          role="separator"
-          style={{
-            width: 12,
-            flexShrink: 0,
-            cursor: "col-resize",
-            display: "flex",
-            justifyContent: "center",
-            touchAction: "none",
-            alignSelf: "stretch",
-          }}
-          tabIndex={0}
-        >
+        {showMaster && isMobile && <Box key="master">{master}</Box>}
+        {showMaster && !isMobile && (
           <Box
+            key="master"
             style={{
-              width: 1,
-              background: "var(--mantine-color-default-border)",
+              width,
+              flexShrink: 0,
+              alignSelf: "flex-start",
+              position: "sticky",
+              // 固定ヘッダーの下に貼り付き、固定フッターの上で終わる。以前は
+              // top: 8 / 100vh - 210px の決め打ちで、スクロールすると一覧の頭
+              // （追加ボタン・検索）がヘッダーの裏へ潜り、最上部では末尾が
+              // フッターの裏に隠れていた。
+              top: "calc(var(--app-shell-header-offset, 0rem) + var(--mantine-spacing-xs))",
+              maxHeight:
+                "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-footer-offset, 0rem) - env(safe-area-inset-bottom, 0px) - 2 * var(--mantine-spacing-xs))",
+              overflowY: "auto",
             }}
-          />
-        </Box>
-        <Box style={{ flex: 1, minWidth: 0 }}>{children}</Box>
+          >
+            {master}
+          </Box>
+        )}
+        {!isMobile && (
+          /* biome-ignore lint/a11y/useSemanticElements: interactive drag splitter needs role=separator with aria-valuenow, not a semantic <hr> */
+          <Box
+            aria-label={tr("ui.masterDetailShell.adjustThePaneWidth")}
+            aria-orientation="vertical"
+            aria-valuemax={maxMasterWidth}
+            aria-valuemin={minMasterWidth}
+            aria-valuenow={Math.round(width)}
+            key="splitter"
+            onKeyDown={onKeyDown}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            role="separator"
+            style={{
+              width: 12,
+              flexShrink: 0,
+              cursor: "col-resize",
+              display: "flex",
+              justifyContent: "center",
+              touchAction: "none",
+              alignSelf: "stretch",
+            }}
+            tabIndex={0}
+          >
+            <Box
+              style={{
+                width: 1,
+                background: "var(--mantine-color-default-border)",
+              }}
+            />
+          </Box>
+        )}
+        {showDetail && (
+          <Box
+            className={isMobile ? undefined : "master-detail-detail"}
+            key="detail"
+            style={isMobile ? undefined : { flex: 1, minWidth: 0 }}
+          >
+            {children}
+          </Box>
+        )}
       </Flex>
     </Stack>
   );

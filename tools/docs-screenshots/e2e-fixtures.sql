@@ -29,4 +29,4 @@ DELETE FROM app.work_order_final_inspections;
 -- 5. 明細 …-01 に受注残を作る（デモシードは 受注 50 に対し 100 出荷済みで、
 --    「まとめますか」に出せる兄弟がいなくなる）。
 UPDATE app.order_lines SET quantity = 200
- WHERE branch = 1 AND acceptance_year_month = '202607' AND acceptance_seq = 3;
+ WHERE branch = 1 AND acceptance_id = 'e5400000-0000-4000-8000-000000000003'::uuid;

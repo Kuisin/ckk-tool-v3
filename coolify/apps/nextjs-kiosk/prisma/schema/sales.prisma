@@ -6,14 +6,16 @@
 // （選択で試算は REGISTERED へ）。見積書 (QOT-) は価格表
 // (バリアント × 倍率 tiers + 値引きルール) からのみ価格を解決する。
 //
-// キー方針: 文書テーブルは複合キー (year_month + seq) — 文書番号
-// EST-YYYYMM-NNNNN / QOT-YYYYMM-NNNNN はキーから導出し、単一カラムには
-// 保存しない。価格表エントリは自然複合キー (顧客, 製品)。
+// キー方針: 文書テーブルの行は uuid。文書番号（EST-FFFF-NNNNN / QOT-… — 自社法人 ×
+// 会計年度の連番）は DB が作成時に払い出して doc_number / doc_ref に持つ。
 
 enum OrderType {
   PRODUCTION
   TEST
   SAMPLE
+  /// 再研磨 — 顧客が使った工具（自社製・他社製）を預かって研ぎ直す。
+  /// 製造ではない: 指示書は REGRIND 種別、在庫は顧客所有バケット（item_inventory.owner_bp_id）。
+  REGRIND
   OTHER
 
   @@map("ORDER_TYPE")
@@ -26,6 +28,17 @@ enum EstimateStatus {
   REGISTERED
 
   @@map("ESTIMATE_STATUS")
+  @@schema("app")
+}
+
+/// 価格試算の種別。PRICE = 売価試算（見積単価まで出す — 従来の価格試算）、
+/// COST = 原価試算（原価合計だけを出す。権限 estimate_cost を持つ人にしか
+/// 見えず、価格表の基準単価ソースにはできない）。
+enum EstimateKind {
+  COST
+  PRICE
+
+  @@map("ESTIMATE_KIND")
   @@schema("app")
 }
 
@@ -53,20 +66,42 @@ enum PriceDiscountType {
 }
 
 // 試算 (SA05 見積試算) — 計算入力のスナップショット + 参照価格。
-// 文書番号 EST-{year_month}-{seq:5桁} はキーから導出。
+// 文書番号 EST-FFFF-NNNNN は DB が払い出す（doc_number）。
 model Estimate {
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   name                String
   // 工具種 — 管理者定義（system_settings trial_pricing.tool_types）。
   // 組み込み: ROUND_BAR / CYLINDER / OH（旧 TRIAL_TOOL_TYPE enum）。
   toolType            String         @map("tool_type") @db.VarChar(64)
   status              EstimateStatus @default(DRAFT)
+  // 種別 — 原価試算 / 売価試算。作成後は変えない（売価試算にしたいときは
+  // 「売価試算を作成」で入力を複写した別の PRICE 行を作る）。
+  kind                EstimateKind   @default(PRICE)
   customerBpId        String?        @map("customer_bp_id") @db.Uuid
-  // 対象製品（任意）。1製品に複数試算を紐付け可。価格表作成時の
+  // 対象品目（任意）。1 品目に複数の価格試算を紐付け可。価格表作成時の
   // 基準単価ソース候補はこのリンクで解決する。
-  productId           Int?           @map("product_id")
+  itemId              Int?           @map("item_id")
   // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
   // 参照価格は material_type_prices（¥/1000mm）＋ 仕入実績から解決する。
   materialTypeId      Int?           @map("material_type_id")
@@ -91,7 +126,7 @@ model Estimate {
 
   salesRep      User?                  @relation("EstimateSalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner?       @relation("EstimateCustomer", fields: [customerBpId], references: [id])
-  product       Product?               @relation(fields: [productId], references: [id])
+  item          Item?                  @relation("EstimateItem", fields: [itemId], references: [id], onDelete: Restrict)
   materialType  MaterialType?          @relation(fields: [materialTypeId], references: [id])
   diameter      MaterialDiameter?      @relation(fields: [diameterCode], references: [code])
   surfaceFinish MaterialSurfaceFinish? @relation(fields: [surfaceFinishCode], references: [code])
@@ -99,38 +134,107 @@ model Estimate {
 
   priceListVariants PriceListVariant[]
 
-  @@id([yearMonth, seq])
+  ownCompany OwnCompany @relation("EstimateOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
+  @@index([itemId])
+  @@index([ownCompanyId])
   @@map("estimates")
   @@schema("app")
 }
 
-// 価格表エントリ — 他文書と同じ複合キー (year_month, seq)。表示番号
-// PRC-YYYYMM-NNNNN はキーから導出（URL id にも使用）。自然キー
+// 価格表エントリ — 行は uuid。表示番号 PRC-FFFF-NNNNN は DB が払い出す
+// （doc_number。URL の id は `<法人コード>~<番号>`）。自然キー
 // (顧客, 製品) は作成後不変の識別として UNIQUE で維持。
 // 注文種別ごとの価格（基準単価・期間・tiers・値引き）は variants に持つ。
+/// 価格表の独自値承認の状態（段数非依存 — 何段目かは approval_requests.step_no）。
+enum PriceListApprovalStatus {
+  /// 承認不要（独自値が無い、または追加承認の段が組まれていない）。
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("PRICE_LIST_APPROVAL_STATUS")
+  @@schema("app")
+}
+
 model PriceListEntry {
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   customerBpId String @map("customer_bp_id") @db.Uuid
-  productId    Int    @map("product_id")
+  /// 統合品目（app.items）。価格表の対象品目。
+  itemId       Int    @map("item_id")
+  /// 対象工具（任意）。**再研磨の品目（役務）の価格表だけ**が持てる — 同じ
+  /// 研ぎ直しでも、どの工具を研ぐかで顧客ごとの値段が違うことがあるため。
+  /// null = その役務の「工具を問わない」価格。解決は 工具一致 → 工具なし →
+  /// 標準価格 の順（components/sales/quotes/model.ts selectPriceEntry）。
+  /// 製品（PRODUCT）でも他社製品でもよい（lib/sales-item-guard.ts）。
+  toolItemId   Int?   @map("tool_item_id")
 
   currency  String   @default("JPY")
   isActive  Boolean  @default(true) @map("is_active")
   // 営業担当（作成時に顧客の主担当を複写したスナップショット）。
   salesRepId String? @map("sales_rep_id") @db.Uuid
+  // 独自値の追加承認（承認設定 MS0B）。価格試算から引き継いでいない価格
+  // （手動の基準単価・価格試算と違う基準単価・段階単価の上書き）を持つ価格表は、
+  // 段が組まれていれば保存のたびに承認を通る。PENDING / REJECTED の間は
+  // **価格の解決に使われない**（見積書・注文請書から「承認待ち」として見える）。
+  // 段が無ければ NONE のまま = 従来どおり。判定は lib/custom-value-approval-core.ts。
+  approvalStatus PriceListApprovalStatus @default(NONE) @map("approval_status")
+  // いまの approval_status が指している独自値の指紋。保存し直しても独自値が
+  // 変わっていなければ承認をやり直さない（営業担当だけ直した、など）。
+  customValueSignature String? @map("custom_value_signature")
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   salesRep      User?              @relation("PriceListEntrySalesRep", fields: [salesRepId], references: [id])
   customerBp    BusinessPartner    @relation("PriceListEntryCustomer", fields: [customerBpId], references: [id])
-  product       Product            @relation(fields: [productId], references: [id])
+  item          Item               @relation("PriceListEntryItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem      Item?              @relation("PriceListEntryToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   createdByUser User?              @relation("PriceListEntryCreatedBy", fields: [createdBy], references: [id])
   variants      PriceListVariant[]
 
-  @@id([yearMonth, seq])
-  @@unique([customerBpId, productId])
+  ownCompany OwnCompany @relation("PriceListEntryOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
+  // 価格表の識別は (発行会社 × 顧客 × 品目 × 対象工具)。作成後不変。価格表は
+  // 会社ごとに別々に持つ（同じ顧客 × 品目でも会社ごとに 1 本ずつ）。工具は null を
+  // 1 つの値として数える（工具なしの価格表は会社 × 顧客 × 品目に 1 つだけ）—
+  // Prisma は部分 unique index を表現できないので、2 本の部分 unique index を
+  // マイグレーション 20261126260000_price_list_identity_per_company に直書きしている:
+  //   tool_item_id IS NULL     → (own_company_id, customer_bp_id, item_id)
+  //   tool_item_id IS NOT NULL → (own_company_id, customer_bp_id, item_id, tool_item_id)
+  @@index([itemId])
+  @@index([toolItemId])
+  @@index([ownCompanyId])
   @@map("price_list_entries")
   @@schema("app")
 }
@@ -140,26 +244,29 @@ model PriceListEntry {
 // （TEST/SAMPLE は終了日必須）。tiers / discounts はバリアント配下。
 model PriceListVariant {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  entryYearMonth String    @map("entry_year_month") @db.Char(6)
-  entrySeq       Int       @map("entry_seq")
+  entryId String @map("entry_id") @db.Uuid
+  entryYearMonth String?    @map("entry_year_month") @db.Char(6) @ignore
+  entrySeq       Int?       @map("entry_seq") @ignore
   orderType      OrderType @map("order_type")
 
   baseUnitPrice     Decimal   @default(0) @map("base_unit_price") @db.Decimal(12, 2)
   validFrom         DateTime  @map("valid_from") @db.Date
   validUntil        DateTime? @map("valid_until") @db.Date
-  estimateYearMonth String?   @map("estimate_year_month") @db.Char(6)
-  estimateSeq       Int?      @map("estimate_seq")
+  estimateId String? @map("estimate_id") @db.Uuid
+  estimateYearMonth String?   @map("estimate_year_month") @db.Char(6) @ignore
+  estimateSeq       Int?      @map("estimate_seq") @ignore
   isActive          Boolean   @default(true) @map("is_active")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entry    PriceListEntry @relation(fields: [entryYearMonth, entrySeq], references: [yearMonth, seq])
-  estimate Estimate?      @relation(fields: [estimateYearMonth, estimateSeq], references: [yearMonth, seq])
+  entry    PriceListEntry @relation(fields: [entryId], references: [id])
+  estimate Estimate?      @relation(fields: [estimateId], references: [id])
 
   tiers     PriceListTier[]
   discounts PriceListDiscount[]
 
-  @@unique([entryYearMonth, entrySeq, orderType])
+  @@unique([entryId, orderType])
+  @@index([estimateId])
   @@map("price_list_variants")
   @@schema("app")
 }
@@ -207,11 +314,30 @@ model PriceListDiscount {
   @@schema("app")
 }
 
-// 見積書 — 文書番号 QOT-{year_month}-{seq:5桁} はキーから導出。
+// 見積書 — 文書番号 QOT-FFFF-NNNNN は DB が払い出す（doc_number）。
 // 価格は価格表からのみ解決（手入力なし・印刷用文書）。
 model Quote {
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   customerBpId       String      @map("customer_bp_id") @db.Uuid
   customerBranchBpId String?     @map("customer_branch_bp_id") @db.Uuid
@@ -235,18 +361,35 @@ model Quote {
   items            QuoteItem[]
   designRequests   DesignRequest[]
 
-  @@id([yearMonth, seq])
+  orderAcceptances OrderAcceptance[] @relation("AcceptanceQuote")
+
+  ownCompany OwnCompany @relation("QuoteOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
+  @@index([ownCompanyId])
   @@map("quotes")
   @@schema("app")
 }
 
 model QuoteItem {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  quoteYearMonth String    @map("quote_year_month") @db.Char(6)
-  quoteSeq       Int       @map("quote_seq")
-  productId      Int       @map("product_id")
+  quoteId String @map("quote_id") @db.Uuid
+  quoteYearMonth String?    @map("quote_year_month") @db.Char(6) @ignore
+  quoteSeq       Int?       @map("quote_seq") @ignore
+  /// 統合品目（app.items）。見積明細の品目。再研磨の明細では再研磨の品目（役務）。
+  itemId         Int       @map("item_id")
+  /// 研ぎ直す工具（app.items の PRODUCT。他社製品のこともある）。
+  ///
+  /// **再研磨の明細だけが持つ**（order_lines.tool_item_id と同じ規約 — DB の CHECK
+  /// quote_items_tool_only_for_regrind）。価格表は 工具一致 → 工具なし → 標準価格
+  /// の順で引くので、工具が無いと工具ごとの価格表が見積書に当たらない。
+  /// 注文請書を見積書から作るとき、明細の工具もここから写す。
+  toolItemId     Int?      @map("tool_item_id")
   orderType      OrderType @map("order_type")
   quantity       Int
   unitPrice      Decimal   @map("unit_price") @db.Decimal(12, 2)
@@ -266,12 +409,16 @@ model QuoteItem {
   taxCategoryId Int?     @map("tax_category_id")
   taxRate       Decimal? @map("tax_rate") @db.Decimal(5, 4)
 
-  quote         Quote          @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
-  product       Product        @relation(fields: [productId], references: [id])
+  quote         Quote          @relation(fields: [quoteId], references: [id])
+  item          Item           @relation("QuoteItemItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem      Item?          @relation("QuoteItemToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   priceListTier PriceListTier? @relation(fields: [priceListTierId], references: [id])
   taxCategory   TaxCategory?   @relation(fields: [taxCategoryId], references: [id], onDelete: Restrict)
 
   @@index([taxCategoryId])
+  @@index([itemId])
+  @@index([toolItemId])
+  @@index([quoteId])
   @@map("quote_items")
   @@schema("app")
 }

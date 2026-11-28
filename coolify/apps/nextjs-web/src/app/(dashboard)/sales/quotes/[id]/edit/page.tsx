@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { isEditable } from "@/components/sales/quotes/model";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
-import { parseDocKey } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { fetchCustomerOptions } from "../../../trial-estimates/data";
 import {
@@ -23,14 +23,22 @@ export const dynamic = "force-dynamic";
  */
 export default async function SalesQuotesEditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("quotes");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(id, "QOT");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "quotes",
+    "QOT",
+    id,
+    "/sales/quotes",
+    "/edit",
+    searchParams,
+  );
 
   const [
     quote,
@@ -50,7 +58,7 @@ export default async function SalesQuotesEditPage({
   if (!quote) notFound();
   // 価格表に載っている製品だけ（フォームが選べるのはそれだけ）。
   const taxCategoryByProduct = await fetchProductTaxCategories(
-    entries.map((e) => Number(e.productId)),
+    entries.map((e) => Number(e.itemId)),
   );
   if (!isEditable(quote)) {
     redirect(`/sales/quotes/${quote.quoteNumber}`);

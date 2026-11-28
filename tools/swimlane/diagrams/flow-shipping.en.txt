@@ -1,0 +1,334 @@
+/title/
+Shipping — from delivery order to delivery
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_ship>
+label: Shipping;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SH03>
+label: SH03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH01>
+label: SH01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH02>
+label: SH02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DO>
+label: Del. order;
+side: right;
+max-chars: 12;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DN>
+label: Del. note;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<OL>
+label: Order line;
+side: right;
+max-chars: 12;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<MV>
+label: Movement;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_ship: Check the queue] <block_neutral>
+label: Not planned;
+props: APP_SH03;
+desc: The Not planned tab of Pending shipments lists finished order lines not yet on a delivery order, by delivery date. The other tab lists delivery orders not yet shipped.;
+if (Entry) is (From list) than #purple
+  [role_ship: Press New] <block_apply>
+  label: List;
+  props: APP_SH01;
+  desc: An empty form opens; you pick the order acceptance yourself.;
+elseif (From acceptance) than #purple
+  [role_ship: From acceptance] <block_apply>
+  label: Acceptance;
+  props: APP_SA04;
+  desc: Opens with every shippable line of that order acceptance.;
+elseif (From order line) than #purple
+  [role_ship: From order line] <block_apply>
+  label: Order line;
+  props: APP_SA05;
+  desc: Create delivery order on an order line (or a Pending shipments row). Opens with that one order line.;
+elseif (From work order) than #purple
+  [role_ship: From work order] <block_apply>
+  label: Work order;
+  props: APP_PD02;
+  desc: Opens with that work order's order lines. If the same acceptance has more shippable lines, it asks whether to combine them.;
+endif
+[role_ship: Set lines and lots] <block_apply>
+label: Lines;
+props: APP_SH01,DO;
+desc: Quantities fill in from the work orders' finished quantity, spread over lots (work order numbers) in order within stock on hand. Pick the from site. Another acceptance can be added only for the same customer, ship-to, delivery method and end user.;
+if (Type) is (Dispatch) than #purple
+  [role_ship: Close and price] <block_apply>
+  label: Variance;
+  props: APP_SH01;
+  desc: Choose whether this shipment closes the order lines, and the billing unit price (order price / re-read the price list for the delivered quantity). Default: do not close, order price.;
+elseif (Stock storage) than #purple
+endif
+if (Quantity) is (Over remaining) than #red
+  [role_ship: Fix the quantity] <block_reject>
+  label: Over;
+  props: APP_SH01;
+  desc: Unless a work order allows quantity variance, more than the remaining order quantity cannot be saved. If allowed, up to the customer's tolerance.;
+  [loop]
+elseif (Short of remaining) than #orange
+  [role_ship: Confirm partial] <block_wait>
+  label: Partial;
+  props: APP_SH01;
+  desc: A partial-shipment confirmation appears; if the variance is outside tolerance it also warns that approval may be needed at confirm. The rest can go on a later delivery order.;
+elseif (Exact) than #blue
+endif
+[role_ship: Save as draft] <block_apply>
+label: Save;
+props: APP_SH01,DO;
+desc: The delivery order is saved as Draft. While Draft it can be edited, including extra charges. The quantity already holds the remaining order quantity.;
+if (Next) is (Drop it) than #red
+  [role_ship: Cancel the draft] <block_end>
+  label: Cancel;
+  props: APP_SH01;
+  desc: Only a Draft can be cancelled (the delivery order is deleted). After confirm it cannot be removed.;
+elseif (Confirm) than #blue
+endif
+[role_ship: Press Confirm] <block_apply>
+label: Confirm;
+props: APP_SH01;
+desc: The dialog previews the delivery notes to be created: recipients and whether prices are printed.;
+if (Variance) is (Not allowed) than #red
+  [role_ship: Cannot confirm] <block_reject>
+  label: Error;
+  props: APP_SH01;
+  desc: Other delivery orders pushed the total past the ordered quantity, or it tries to close short without a work order's permission. Fix it.;
+  [loop]
+elseif (Needs approval) than #orange
+  [role_system: Request approval] <block_system>
+  label: Request;
+  desc: If the customer's settings require approval for this variance, an approval request is sent instead of confirming; the order stays Draft. With no steps in Approval settings (MS0B) it confirms straight away.;
+  if (Decision) is (Send back) than #red
+    [role_ship: Fix and re-confirm] <block_reject>
+    label: Sent back;
+    props: APP_SH01;
+    desc: Sent back with a reason. Fix the draft and press Confirm again.;
+    [loop]
+  else
+    [role_appr: Approve variance] <block_approve>
+    label: Approve;
+    props: APP_CM01;
+    desc: Approve from the Pending list or the card on the delivery order. After the last step it is Approved and pressing Confirm again confirms it.;
+  endif
+elseif (No approval) than #blue
+endif
+[role_system: Confirm and lock] <block_system>
+label: Confirmed;
+props: DO;
+desc: The delivery order becomes Confirmed and locked. Billing unit prices are written into the lines and no longer follow the price list.;
+if (Del. notes) is (Storage) than #blue
+elseif (Standard) than #blue
+  [role_system: Create 1 note] <block_system>
+  label: 1 note;
+  props: DN;
+  desc: One delivery note to the customer, with prices, is created as Issued.;
+elseif (Direct) than #blue
+  [role_system: Create 2 notes] <block_system>
+  label: 2 notes;
+  props: DN;
+  desc: Two notes are created as Issued: without prices to the end user and with prices to the customer.;
+endif
+[role_ship: Print the notes] <block_apply>
+label: PDF;
+props: APP_SH02,DN;
+desc: The PDF is in the recipient's language (Japanese if the partner has none set). Opening the priced direct-delivery note asks for confirmation.;
+[role_ship: Press Ship] <block_apply>
+label: Ship;
+props: APP_SH01;
+desc: Stock is counted first (nothing is written).;
+if (Stock) is (Short, hold) than #red
+  [role_ship: Wait as confirmed] <block_wait>
+  label: Hold;
+  props: APP_ST03;
+  desc: Cancel on the stock-shortage dialog: nothing happens. Each row's link opens Stock & requirements to check incoming stock.;
+  [loop]
+elseif (Short, ship) than #orange
+  [role_ship: Ship anyway] <block_reject>
+  label: Short ship;
+  props: APP_SH01;
+  desc: The shipment goes through and stock goes negative. An orange notice appears and the movement line is marked as issued short. Fix with a stock take or a manual movement.;
+elseif (Enough) than #blue
+endif
+[role_system: Record shipment] <block_system>
+label: Shipped;
+props: DO,MV;
+desc: The delivery order becomes Shipped with the shipped date. One inventory movement is created and stock moves. The order's owner is notified.;
+if (After) is (Storage) than #blue
+  [role_system: Put into storage] <block_system>
+  label: Storage;
+  desc: Stock increases at the from site. Order line status does not change and nothing goes to billing.;
+elseif (Remaining) than #blue
+  [role_system: Partially shipped] <block_system>
+  label: Partial;
+  props: OL;
+  desc: Product stock goes down. Order lines below the ordered quantity and not closed become Partially shipped.;
+elseif (Done) than #blue
+  [role_system: Mark shipped] <block_system>
+  label: Shipped;
+  props: OL;
+  desc: Product stock goes down. Order lines that reached the ordered quantity (or more), or were closed, become Shipped.;
+endif
+[role_cust: Receive goods] <block_neutral>
+label: Receive;
+desc: The delivery note travels with the goods. For direct delivery the unpriced note goes to the end user.;
+[role_ship: Mark delivered] <block_apply>
+label: Delivered;
+props: APP_SH02,DN;
+desc: The delivery note becomes Delivered with the date. Only possible once the delivery order is Shipped. Dispatches that got here are billable.;
+if (Return) is (Yes) than #orange
+  [role_cust: Return goods] <block_neutral>
+  label: Return;
+  desc: Shipped goods come back from the customer.;
+  [role_ship: Record the return] <block_apply>
+  label: Return;
+  props: APP_SH01,MV;
+  desc: Shipped dispatches only. Up to the shipped quantity goes back to the same lot at the from site (no shelf). The delivery order, order lines and billing do not change.;
+elseif (No) than #blue
+endif

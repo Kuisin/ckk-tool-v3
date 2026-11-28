@@ -42,17 +42,22 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { KioskStepProgram } from "@/lib/design-programs";
+import type { KioskSeriesMemo } from "@/lib/design-series-memo";
 import { fillMessage } from "@/lib/i18n";
 import { missingInspectionSheets } from "@/lib/inspection-core";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
-import type { MyStepView, StepLocationGate } from "@/lib/steps";
+import type { MarkingView, MyStepView, StepLocationGate } from "@/lib/steps";
 import {
   cleanReasonEntries,
   type DefectReasonEntry,
+  deriveSuccessFromList,
+  dispositionTotals,
   quantitiesFromList,
 } from "@/lib/steps-core";
+import { REGRIND_RECEIPT_STEP_CODE } from "@/lib/workflow-core";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
 import { QrScannerView } from "../QrScannerView";
@@ -62,7 +67,15 @@ import { StepDefectForm } from "./StepDefectForm";
 import { StepFinalInspectionForm } from "./StepFinalInspectionForm";
 import { StepInspectionApprovalPanel } from "./StepInspectionApprovalPanel";
 import { StepInspectionForm } from "./StepInspectionForm";
+import { StepProgramsSection } from "./StepProgramsSection";
 import { isQuantityFormValid, StepQuantityForm } from "./StepQuantityForm";
+import { StepSeriesMemoSection } from "./StepSeriesMemoSection";
+import {
+  EMPTY_WIP_DRAFT,
+  type KioskWipRecordingView,
+  StepWipRecordingForm,
+  wipRecordingCheck,
+} from "./StepWipRecordingForm";
 import {
   callStepAction,
   stateColor,
@@ -88,6 +101,17 @@ type Props = {
    * 画面内で読み取ったときと同じ扱い）。
    */
   initialWorkLocationCode?: string | null;
+  /** 印字番号（指示書に割り当てた注文明細ごと。採番済みのみ）。 */
+  markings?: MarkingView[];
+  /** この工程の加工プログラム（機械一致が先頭）。 */
+  programs?: KioskStepProgram[];
+  /** 図面系列のメモ（加工プログラムと同じ規則で選んだ系列。無ければ null）。 */
+  seriesMemo?: KioskSeriesMemo | null;
+  /**
+   * 仕掛品として在庫に置く分を記録するための材料（経路の候補・ブランクの寸法・
+   * 工程名）。再研磨の指示書では null。
+   */
+  wipRecording?: KioskWipRecordingView | null;
 };
 
 type Phase = "IDLE" | "STARTING" | "COMPLETING";
@@ -97,8 +121,12 @@ export function StepExecutionView({
   recording,
   locationGate,
   backTo = "list",
+  markings = [],
   backParams = "",
   initialWorkLocationCode = null,
+  programs = [],
+  seriesMemo = null,
+  wipRecording = null,
 }: Props) {
   const router = useRouter();
   const { m } = useI18n();
@@ -106,7 +134,7 @@ export function StepExecutionView({
   // 指示書スキャン経由ならその指示書のビュー、作業場所の一覧経由ならその一覧へ
   const backHref =
     backTo === "workOrder"
-      ? `/wo-scan/${step.workOrderNumber}`
+      ? `/wo-scan/${step.workOrderNumber}${backParams}`
       : backTo === "location"
         ? `/work-location${backParams}`
         : "/steps";
@@ -162,6 +190,17 @@ export function StepExecutionView({
     step.inputQuantity ??
     step.expectedInputQuantity ??
     step.workOrderPlannedQuantity;
+
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端の良品）。
+  // 数量記録なしの工程は受入数がそのまま良品数になる。
+  const [wipDraft, setWipDraft] = useState(EMPTY_WIP_DRAFT);
+  const wipQuantities = {
+    defectSemiFinished: isNone ? 0 : dispositionTotals(defects).semi,
+    outputSuccess: isNone
+      ? completeInput
+      : deriveSuccessFromList(completeInput, defects),
+  };
+  const wipCheck = wipRecordingCheck(wipRecording, wipQuantities, wipDraft);
 
   const run = async (
     body: Parameters<typeof callStepAction>[1],
@@ -225,10 +264,15 @@ export function StepExecutionView({
         // 区分列・良品はリストから導出して送る（サーバーもリストから再計算）
         quantities: isNone ? null : quantitiesFromList(completeInput, defects),
         defectReasons: isNone ? undefined : cleanReasonEntries(defects),
+        wipRecording: wipCheck.input,
       },
       () => {
         playLogoutSound();
         router.replace(backHref);
+        // 遷移だけでは layout（隅の「作業中 n 件」）がサーバーで描き直されない —
+        // layout は遷移をまたいで使い回されるので、完了した工程が丸薬に残っていた。
+        // ルーターの操作は順に処理されるので、この refresh は戻った先で効く。
+        router.refresh();
       },
     );
 
@@ -265,6 +309,16 @@ export function StepExecutionView({
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
+            {markings.map((mk) => (
+              <Text ff="monospace" key={mk.perLine} size="sm">
+                {fillMessage(
+                  mk.split > 0
+                    ? m.steps.card.markingSplit
+                    : m.steps.card.marking,
+                  mk,
+                )}
+              </Text>
+            ))}
             <Group gap="md" mt="xs">
               {step.inputQuantity != null && (
                 <Text size="sm">
@@ -276,6 +330,17 @@ export function StepExecutionView({
               {step.lotText != null && (
                 <Text c="dimmed" ff="monospace" size="sm">
                   {fillMessage(m.steps.card.lot, { t: step.lotText })}
+                </Text>
+              )}
+              {step.dueDate != null && (
+                <Text
+                  c={step.dueOverdue ? "red" : "dimmed"}
+                  fw={step.dueOverdue ? 700 : undefined}
+                  size="sm"
+                >
+                  {fillMessage(m.steps.card.dueDate, {
+                    d: step.dueDate.replaceAll("-", "/"),
+                  })}
                 </Text>
               )}
               {step.plannedWorkHours != null && (
@@ -298,6 +363,12 @@ export function StepExecutionView({
             </Group>
           </Stack>
         </Paper>
+
+        {/* 加工プログラム — 指示書の図面の版から、この工程の分（機械一致が先頭） */}
+        <StepProgramsSection programs={programs} stepId={step.stepId} />
+
+        {/* 系列メモ — 図面（製品 × 受注元）の全版で共通の注意。読むだけ */}
+        <StepSeriesMemoSection memo={seriesMemo} />
 
         {/* 作業場所の制限 — この端末の場所では実行できない工程 */}
         {locationBlocked && !working && (
@@ -439,7 +510,11 @@ export function StepExecutionView({
               ) : (
                 <>
                   <NumberStepper
-                    label={m.steps.quantity[trackedMode].input}
+                    label={
+                      step.stepCode === REGRIND_RECEIPT_STEP_CODE
+                        ? m.steps.quantity.REGRIND_RECEIPT.input
+                        : m.steps.quantity[trackedMode].input
+                    }
                     min={0}
                     onChange={setStartInput}
                     value={startInput}
@@ -556,11 +631,20 @@ export function StepExecutionView({
                     <StepQuantityForm
                       defects={defects}
                       defectTypes={recording.defectTypes}
+                      hideSemi={step.workOrderType === "REGRIND"}
                       inputQuantity={completeInput}
                       mode={trackedMode}
                       onChange={setDefects}
+                      stepCode={step.stepCode}
                     />
                   )}
+                  <StepWipRecordingForm
+                    defectSemiFinished={wipQuantities.defectSemiFinished}
+                    draft={wipDraft}
+                    onChange={setWipDraft}
+                    outputSuccess={wipQuantities.outputSuccess}
+                    view={wipRecording}
+                  />
                   <Group grow>
                     <Button
                       disabled={busy}
@@ -574,6 +658,7 @@ export function StepExecutionView({
                       color="green"
                       disabled={
                         inspectionBlocked ||
+                        wipCheck.issues.length > 0 ||
                         (!isNone &&
                           !isQuantityFormValid(
                             defects,

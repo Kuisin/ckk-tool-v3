@@ -21,8 +21,9 @@
 import "server-only";
 
 import { quoteDisplayStatus } from "@/components/sales/quotes/model";
+import { deliveryNoteTotals } from "@/components/shipping/delivery-notes/model";
 import { type Prisma, prisma } from "./db";
-import { formatDocNumber } from "./doc-number";
+import { type DocKey, docIdOf, docNumberOf } from "./doc-number";
 import { type LocalizedTextInput, localized } from "./format";
 import { portalAccessFor, portalScopeFor } from "./portal-access";
 import type { PortalResourceType, PortalTarget } from "./portal-access-core";
@@ -30,22 +31,17 @@ import type { PortalSession } from "./portal-auth";
 // 種別とラベルは client-safe なほうに置いてある（このファイルは server-only なので
 // クライアント部品から値を import できない）。
 import {
-  PORTAL_DOCUMENT_PREFIX,
   type PortalDocumentType,
+  VISIBLE_ACCEPTANCE_STATUS,
+  VISIBLE_DELIVERY_NOTE_STATUS,
+  VISIBLE_INVOICE_STATUS,
+  VISIBLE_QUOTE_STATUS,
 } from "./portal-documents-core";
 import type {
   PortalDocumentDetailDto,
   PortalDocumentDto,
   PortalRelatedDocumentDto,
 } from "./portal-progress-core";
-
-/**
- * 見積書は社外に見せてよい状態だけ。DRAFT（下書き）・期限切れは出さない。
- * EXPIRED は保存しない派生状態（components/sales/quotes/model.ts
- * quoteDisplayStatus）なので、ここでは validUntil を直接条件に入れる
- * （下の quoteVisibleWhere）。
- */
-const VISIBLE_QUOTE_STATUS = ["ISSUED"] as const;
 
 /** 「発行済み × 期限切れでない」— 見積の一覧・単件アクセス判定で共有する条件。 */
 function quoteVisibleWhere(now: Date = new Date()): Prisma.QuoteWhereInput {
@@ -54,15 +50,6 @@ function quoteVisibleWhere(now: Date = new Date()): Prisma.QuoteWhereInput {
     OR: [{ validUntil: null }, { validUntil: { gte: now } }],
   };
 }
-/** 注文請書は「確定して先へ進んだもの」だけ。IMPORT / DRAFT は取込の途中。 */
-const VISIBLE_ACCEPTANCE_STATUS = [
-  "APPROVED",
-  "COMPLETED",
-  "ARCHIVED",
-] as const;
-/** 納品書・請求書は発行済み以降。 */
-const VISIBLE_DELIVERY_NOTE_STATUS = ["ISSUED", "DELIVERED"] as const;
-const VISIBLE_INVOICE_STATUS = ["ISSUED", "SENT", "PAID"] as const;
 
 function iso(d: Date | null | undefined): string | null {
   return d ? d.toISOString() : null;
@@ -79,6 +66,30 @@ function money(v: { toString(): string } | null | undefined): string | null {
  * 小数第 2 位までの通貨（Decimal(12,2)）なので、銭単位の整数に直してから
  * 足す —— 浮動小数のまま足すと `¥10,000.000000000002` が出る。
  */
+/**
+ * 納品書の合計は**税込**にする。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+ * ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+ *
+ * 金額は他の欄と同じく文字列で返す（`sumAmounts` と同じ規約）。
+ */
+function noteTotalInclTax(r: {
+  includePrice: boolean;
+  items: readonly { amount: unknown; taxRate: unknown }[];
+  deliveryOrder: {
+    customerBp: { customerAttrs: { taxType: string } | null };
+  };
+}): string | null {
+  const totals = deliveryNoteTotals({
+    includePrice: r.includePrice,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
+    items: r.items.map((it) => ({
+      amount: it.amount != null ? Number(it.amount) : null,
+      taxRate: it.taxRate != null ? Number(it.taxRate) : null,
+    })),
+  });
+  return totals == null ? null : String(totals.totalAmountInclTax);
+}
+
 function sumAmounts(
   items: readonly { amount: string | null }[],
 ): string | null {
@@ -100,6 +111,13 @@ export {
 export interface PortalDocumentListItem extends PortalDocumentDto {
   type: PortalDocumentType;
 }
+
+/** 新しい順（会計年度 → 連番）。複数の自社法人の書類は混ざってよい。 */
+const NEWEST_FIRST = [
+  { fiscalYear: "desc" as const },
+  { docSeq: "desc" as const },
+  { id: "desc" as const },
+];
 
 /**
  * 一覧。**スコープが空なら DB を引かない**（`in: []` は全件ではなく 0 件だが、
@@ -133,17 +151,17 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           createdAt: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("QOT", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.createdAt),
         totalAmount: null, // 見積の合計は明細の集計。一覧では出さない。
         hasPdf: r.pdfFileId != null,
@@ -151,6 +169,8 @@ export async function listPortalDocuments(
     }
 
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— ヘッダには無い。
+      // 明細のどれか 1 行が一致すればその請書は見える。
       const rows = await prisma.orderAcceptance.findMany({
         where: {
           status: { in: [...VISIBLE_ACCEPTANCE_STATUS] },
@@ -159,19 +179,28 @@ export async function listPortalDocuments(
             { customerBranchBpId: { in: bpIds } },
             ...(endUserBpIds.length
               ? [
-                  { endUserBpId: { in: endUserBpIds } },
-                  { shipToBpId: { in: endUserBpIds } },
+                  {
+                    items: {
+                      some: {
+                        OR: [
+                          { endUserBpId: { in: endUserBpIds } },
+                          { shipToBpId: { in: endUserBpIds } },
+                        ],
+                      },
+                    },
+                  },
                 ]
               : []),
           ],
         },
-        select: { yearMonth: true, seq: true, createdAt: true },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        select: { docRef: true, createdAt: true },
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("ORD", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.createdAt),
         totalAmount: null,
         hasPdf: false,
@@ -191,18 +220,18 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           deliveredAt: true,
           createdAt: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("DRN", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.deliveredAt ?? r.createdAt),
         // 金額は include_price に従う（詳細で出す。一覧では出さない）。
         totalAmount: null,
@@ -220,19 +249,19 @@ export async function listPortalDocuments(
           ],
         },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           issuedAt: true,
           createdAt: true,
           totalAmount: true,
           pdfFileId: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: 200,
       });
       return rows.map((r) => ({
         type,
-        number: formatDocNumber("INV", r),
+        id: docIdOf(r),
+        number: docNumberOf(r),
         issuedOn: iso(r.issuedAt ?? r.createdAt),
         totalAmount: money(r.totalAmount),
         hasPdf: r.pdfFileId != null,
@@ -247,11 +276,13 @@ export async function listPortalDocuments(
  */
 export async function portalTargetOf(
   type: PortalDocumentType,
-  yearMonth: string,
-  seq: number,
+  docKey: DocKey,
 ): Promise<PortalTarget | null> {
-  const id = formatDocNumber(PORTAL_DOCUMENT_PREFIX[type], { yearMonth, seq });
-  const key = { yearMonth_seq: { yearMonth, seq } };
+  // id は番号（人が読む業務キー）、ref は法人コード付きの参照 — 付与・リンクの
+  // resource_id とは ref で突き合わせる（番号だけでは比べない）。
+  const id = docNumberOf(docKey);
+  const ref = docKey.docRef;
+  const key = { docRef: docKey.docRef };
 
   switch (type) {
     case "quotes": {
@@ -277,6 +308,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -284,14 +316,14 @@ export async function portalTargetOf(
       };
     }
     case "order_acceptances": {
+      // 出荷先・エンドユーザーは明細ごと（§8）— 全明細ぶんまとめて集合にする。
       const r = await prisma.orderAcceptance.findUnique({
         where: key,
         select: {
           customerBpId: true,
           customerBranchBpId: true,
-          shipToBpId: true,
-          endUserBpId: true,
           status: true,
+          items: { select: { shipToBpId: true, endUserBpId: true } },
         },
       });
       if (!r || !VISIBLE_ACCEPTANCE_STATUS.includes(r.status as never))
@@ -299,12 +331,17 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
-        endUserBpIds: [r.endUserBpId, r.shipToBpId].filter(
-          (v): v is string => !!v,
-        ),
+        endUserBpIds: [
+          ...new Set(
+            r.items
+              .flatMap((it) => [it.endUserBpId, it.shipToBpId])
+              .filter((v): v is string => !!v),
+          ),
+        ],
       };
     }
     case "delivery_notes": {
@@ -322,6 +359,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.recipientBpId, r.recipientBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -338,6 +376,7 @@ export async function portalTargetOf(
       return {
         type,
         id,
+        ref,
         customerBpIds: [r.customerBpId, r.customerBranchBpId].filter(
           (v): v is string => !!v,
         ),
@@ -359,8 +398,8 @@ export type PortalDocumentDetail = PortalDocumentDetailDto;
  */
 export interface PortalRelatedRef {
   type: PortalDocumentType;
-  yearMonth: string;
-  seq: number;
+  /** 相手の書類の参照（行の doc_ref）。 */
+  docRef: string;
   issuedOn: string | null;
 }
 
@@ -381,7 +420,7 @@ export async function visiblePortalRelated(
   const seen = new Set<string>();
   const unique: PortalRelatedRef[] = [];
   for (const r of refs) {
-    const k = `${r.type}:${r.yearMonth}:${r.seq}`;
+    const k = `${r.type}:${r.docRef}`;
     if (seen.has(k)) continue;
     seen.add(k);
     unique.push(r);
@@ -390,11 +429,16 @@ export async function visiblePortalRelated(
 
   const resolved = await Promise.all(
     unique.map(async (r) => {
-      const target = await portalTargetOf(r.type, r.yearMonth, r.seq);
+      const target = await portalTargetOf(r.type, r);
       if (!target) return null;
       const access = await portalAccessFor(session, target);
       if (!access.canView) return null;
-      return { type: r.type, number: target.id, issuedOn: r.issuedOn };
+      return {
+        type: r.type,
+        id: docIdOf(r),
+        number: docNumberOf(r),
+        issuedOn: r.issuedOn,
+      };
     }),
   );
   return resolved.filter((r): r is PortalRelatedDocumentDto => r !== null);
@@ -402,10 +446,10 @@ export async function visiblePortalRelated(
 
 /** 明細の見出し。製品マスタに突合済みならその名称、未突合なら注文書の品名。 */
 function lineLabel(
-  product: { name: unknown } | null,
+  item: { name: unknown } | null,
   fallback?: string | null,
 ): string {
-  if (product?.name) return localized(product.name as LocalizedTextInput);
+  if (item?.name) return localized(item.name as LocalizedTextInput);
   return fallback ?? "—";
 }
 
@@ -420,18 +464,18 @@ function date(d: Date | null | undefined): string | null {
 export async function getPortalDocument(
   session: PortalSession,
   type: PortalDocumentType,
-  yearMonth: string,
-  seq: number,
+  docKey: DocKey,
 ): Promise<PortalDocumentDetail | null> {
-  const target = await portalTargetOf(type, yearMonth, seq);
+  const target = await portalTargetOf(type, docKey);
   if (!target) return null;
   const access = await portalAccessFor(session, target);
   if (!access.canView) return null;
 
-  const key = { yearMonth_seq: { yearMonth, seq } };
+  const key = { docRef: docKey.docRef };
   const base = {
     type,
-    number: target.id,
+    id: docIdOf(docKey),
+    number: docNumberOf(docKey),
     showsPrices: true,
     validUntil: null,
     customerOrderRef: null,
@@ -459,7 +503,7 @@ export async function getPortalDocument(
               unitPrice: true,
               amount: true,
               deliveryDate: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -468,18 +512,17 @@ export async function getPortalDocument(
       if (!r) return null;
       // 見積から起こされた注文請書へ辿れるようにする（「この見積はどうなった？」）。
       const acceptances = await prisma.orderAcceptance.findMany({
-        where: { quoteYearMonth: yearMonth, quoteSeq: seq },
+        where: { quote: { docRef: docKey.docRef } },
         select: {
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           orderDate: true,
           createdAt: true,
         },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: NEWEST_FIRST,
         take: MAX_RELATED,
       });
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -499,8 +542,7 @@ export async function getPortalDocument(
           session,
           acceptances.map((a) => ({
             type: "order_acceptances" as const,
-            yearMonth: a.yearMonth,
-            seq: a.seq,
+            docRef: a.docRef,
             issuedOn: date(a.orderDate) ?? iso(a.createdAt),
           })),
         ),
@@ -515,10 +557,9 @@ export async function getPortalDocument(
           orderDate: true,
           customerOrderRef: true,
           currency: true,
-          quoteYearMonth: true,
-          quoteSeq: true,
+          quote: { select: { docRef: true } },
           items: {
-            // ★ 許可リスト。lot_number / is_locked / product_id は取らない。
+            // ★ 許可リスト。lot_number / is_locked / item_id は取らない。
             select: {
               branch: true,
               quantity: true,
@@ -526,15 +567,14 @@ export async function getPortalDocument(
               amount: true,
               deliveryDate: true,
               productText: true,
-              product: { select: { name: true } },
+              item: { select: { name: true } },
               deliveryItems: {
                 select: {
                   deliveryOrder: {
                     select: {
                       deliveryNotes: {
                         select: {
-                          yearMonth: true,
-                          seq: true,
+                          docRef: true,
                           deliveredAt: true,
                           createdAt: true,
                         },
@@ -545,9 +585,9 @@ export async function getPortalDocument(
               },
               invoiceItems: {
                 select: {
-                  invoiceYearMonth: true,
-                  invoiceSeq: true,
-                  invoice: { select: { issuedAt: true, createdAt: true } },
+                  invoice: {
+                    select: { docRef: true, issuedAt: true, createdAt: true },
+                  },
                 },
               },
             },
@@ -562,21 +602,15 @@ export async function getPortalDocument(
       if (!r) return null;
 
       const refs: PortalRelatedRef[] = [];
-      if (r.quoteYearMonth && r.quoteSeq != null) {
-        refs.push({
-          type: "quotes",
-          yearMonth: r.quoteYearMonth,
-          seq: r.quoteSeq,
-          issuedOn: null,
-        });
+      if (r.quote) {
+        refs.push({ type: "quotes", docRef: r.quote.docRef, issuedOn: null });
       }
       for (const line of r.items) {
         for (const di of line.deliveryItems) {
           for (const n of di.deliveryOrder.deliveryNotes) {
             refs.push({
               type: "delivery_notes",
-              yearMonth: n.yearMonth,
-              seq: n.seq,
+              docRef: n.docRef,
               issuedOn: iso(n.deliveredAt ?? n.createdAt),
             });
           }
@@ -584,15 +618,14 @@ export async function getPortalDocument(
         for (const ii of line.invoiceItems) {
           refs.push({
             type: "invoices",
-            yearMonth: ii.invoiceYearMonth,
-            seq: ii.invoiceSeq,
+            docRef: ii.invoice.docRef,
             issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
           });
         }
       }
 
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product, it.productText),
+        label: lineLabel(it.item, it.productText),
         quantity: it.quantity,
         unitPrice: money(it.unitPrice),
         amount: money(it.amount),
@@ -625,20 +658,28 @@ export async function getPortalDocument(
               quantity: true,
               unitPrice: true,
               amount: true,
-              product: { select: { name: true } },
+              // 税率は出荷書の確定時に行へ焼き込んである。
+              taxRate: true,
+              item: { select: { name: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
           deliveryOrder: {
             select: {
+              // 税率を持たない旧データのフォールバック元（顧客の課税区分）。
+              customerBp: {
+                select: { customerAttrs: { select: { taxType: true } } },
+              },
               items: {
                 select: {
                   orderLine: {
                     select: {
-                      acceptanceYearMonth: true,
-                      acceptanceSeq: true,
                       acceptance: {
-                        select: { orderDate: true, createdAt: true },
+                        select: {
+                          docRef: true,
+                          orderDate: true,
+                          createdAt: true,
+                        },
                       },
                     },
                   },
@@ -656,33 +697,31 @@ export async function getPortalDocument(
         if (!line) continue;
         refs.push({
           type: "order_acceptances",
-          yearMonth: line.acceptanceYearMonth,
-          seq: line.acceptanceSeq,
+          docRef: line.acceptance.docRef,
           issuedOn:
             date(line.acceptance.orderDate) ?? iso(line.acceptance.createdAt),
         });
       }
       const invoiced = await prisma.invoiceItem.findMany({
-        where: { deliveryNoteYearMonth: yearMonth, deliveryNoteSeq: seq },
+        where: { deliveryNote: { docRef: docKey.docRef } },
         select: {
-          invoiceYearMonth: true,
-          invoiceSeq: true,
-          invoice: { select: { issuedAt: true, createdAt: true } },
+          invoice: {
+            select: { docRef: true, issuedAt: true, createdAt: true },
+          },
         },
         take: MAX_RELATED,
       });
       for (const ii of invoiced) {
         refs.push({
           type: "invoices",
-          yearMonth: ii.invoiceYearMonth,
-          seq: ii.invoiceSeq,
+          docRef: ii.invoice.docRef,
           issuedOn: iso(ii.invoice.issuedAt ?? ii.invoice.createdAt),
         });
       }
 
       // **include_price に必ず従う** — 価格を載せない納品書に金額を出さない。
       const lineItems = r.items.map((it) => ({
-        label: lineLabel(it.product),
+        label: lineLabel(it.item),
         quantity: it.quantity,
         unitPrice: r.includePrice ? money(it.unitPrice) : null,
         amount: r.includePrice ? money(it.amount) : null,
@@ -691,7 +730,9 @@ export async function getPortalDocument(
       return {
         ...base,
         issuedOn: iso(r.deliveredAt ?? r.createdAt),
-        totalAmount: r.includePrice ? sumAmounts(lineItems) : null,
+        // **合計は税込**。同じ納品書の PDF が「合計金額（税込）」を刷るので、
+        // ポータルの一覧だけ税抜だと取引先には別の書類に見える。
+        totalAmount: noteTotalInclTax(r),
         hasPdf: r.pdfFileId != null,
         pdfFileId: r.pdfFileId,
         currency: "JPY",
@@ -722,8 +763,7 @@ export async function getPortalDocument(
               quantity: true,
               unitPrice: true,
               amount: true,
-              deliveryNoteYearMonth: true,
-              deliveryNoteSeq: true,
+              deliveryNote: { select: { docRef: true } },
             },
             orderBy: { sortOrder: "asc" },
           },
@@ -733,11 +773,10 @@ export async function getPortalDocument(
 
       const refs: PortalRelatedRef[] = [];
       for (const it of r.items) {
-        if (it.deliveryNoteYearMonth && it.deliveryNoteSeq != null) {
+        if (it.deliveryNote) {
           refs.push({
             type: "delivery_notes",
-            yearMonth: it.deliveryNoteYearMonth,
-            seq: it.deliveryNoteSeq,
+            docRef: it.deliveryNote.docRef,
             issuedOn: null,
           });
         }

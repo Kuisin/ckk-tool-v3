@@ -15,6 +15,11 @@ import {
   PIN_MAX_ATTEMPTS,
   PIN_REVERIFY_DEVICE_IDLE_MS,
   PIN_REVERIFY_MAX_MS,
+  PIN_TICKET_MAX_PER_WINDOW,
+  PIN_TICKET_WINDOW_MS,
+  pinFailureStateAfter,
+  pinVerifyReason,
+  withinPinTicketLimit,
 } from "./kiosk-auth-core";
 
 const T0 = new Date("2026-08-11T00:00:00Z");
@@ -69,6 +74,27 @@ describe("needsPinVerify (端末別 48h + 2 週間キャップ)", () => {
   });
 });
 
+describe("pinVerifyReason（説明文の出し分け）", () => {
+  it("初めての端末・48h 未使用は DEVICE_IDLE", () => {
+    expect(pinVerifyReason(T0, null, T0)).toBe("DEVICE_IDLE");
+    expect(pinVerifyReason(at(PIN_REVERIFY_DEVICE_IDLE_MS), T0, T0)).toBe(
+      "DEVICE_IDLE",
+    );
+  });
+  it("端末は使っているが 2 週間たったら PERIODIC", () => {
+    const now = at(PIN_REVERIFY_MAX_MS);
+    expect(pinVerifyReason(now, at(PIN_REVERIFY_MAX_MS - 60_000), T0)).toBe(
+      "PERIODIC",
+    );
+  });
+  it("両方成り立つときは DEVICE_IDLE、どちらも無ければ null", () => {
+    expect(pinVerifyReason(at(PIN_REVERIFY_MAX_MS), T0, T0)).toBe(
+      "DEVICE_IDLE",
+    );
+    expect(pinVerifyReason(at(60_000), T0, T0)).toBeNull();
+  });
+});
+
 describe("PIN ロック", () => {
   it("上限未満はカウントのみ", () => {
     const s = nextPinFailureState(T0, 0);
@@ -84,6 +110,69 @@ describe("PIN ロック", () => {
     expect(isPinLocked(at(PIN_LOCK_MS - 1), until)).toBe(true);
     expect(isPinLocked(until, until)).toBe(false);
     expect(isPinLocked(T0, null)).toBe(false);
+  });
+});
+
+describe("pinFailureStateAfter (加算後カウントからロック判定)", () => {
+  it("上限未満はそのカウントを保ちロックしない", () => {
+    expect(pinFailureStateAfter(T0, 1)).toEqual({
+      failedAttempts: 1,
+      lockedUntil: null,
+    });
+    expect(pinFailureStateAfter(T0, PIN_MAX_ATTEMPTS - 1)).toEqual({
+      failedAttempts: PIN_MAX_ATTEMPTS - 1,
+      lockedUntil: null,
+    });
+  });
+  it("上限到達でロック・カウントは 0 に戻す", () => {
+    const s = pinFailureStateAfter(T0, PIN_MAX_ATTEMPTS);
+    expect(s.failedAttempts).toBe(0);
+    expect(s.lockedUntil?.getTime()).toBe(T0.getTime() + PIN_LOCK_MS);
+  });
+  it("上限超過（同時撃ちで複数が到達値を読んでも）同じくロック", () => {
+    const s = pinFailureStateAfter(T0, PIN_MAX_ATTEMPTS + 3);
+    expect(s.failedAttempts).toBe(0);
+    expect(s.lockedUntil?.getTime()).toBe(T0.getTime() + PIN_LOCK_MS);
+  });
+  it("nextPinFailureState（加算前）と 1 ずれて一致する", () => {
+    expect(nextPinFailureState(T0, PIN_MAX_ATTEMPTS - 1)).toEqual(
+      pinFailureStateAfter(T0, PIN_MAX_ATTEMPTS),
+    );
+    expect(nextPinFailureState(T0, 0)).toEqual(pinFailureStateAfter(T0, 1));
+  });
+});
+
+describe("withinPinTicketLimit (PIN_VERIFY チケット発行レート)", () => {
+  it("窓内の発行が上限未満なら true", () => {
+    const recent = Array.from({ length: PIN_TICKET_MAX_PER_WINDOW - 1 }, () =>
+      T0.getTime(),
+    );
+    expect(withinPinTicketLimit(T0, recent)).toBe(true);
+  });
+  it("窓内の発行が上限に達したら false", () => {
+    const recent = Array.from({ length: PIN_TICKET_MAX_PER_WINDOW }, () =>
+      T0.getTime(),
+    );
+    expect(withinPinTicketLimit(T0, recent)).toBe(false);
+  });
+  it("窓の外（それ以前）の発行は数えない", () => {
+    // すべて 1 窓より前 → 0 件扱い
+    const old = Array.from({ length: PIN_TICKET_MAX_PER_WINDOW + 5 }, () =>
+      T0.getTime(),
+    );
+    const now = at(PIN_TICKET_WINDOW_MS + 1);
+    expect(withinPinTicketLimit(now, old)).toBe(true);
+  });
+  it("窓の境界ちょうどは窓外（> 判定）", () => {
+    // cutoff = now - WINDOW。発行時刻 == cutoff は含めない
+    const now = at(PIN_TICKET_WINDOW_MS);
+    const atCutoff = Array.from({ length: PIN_TICKET_MAX_PER_WINDOW }, () =>
+      T0.getTime(),
+    );
+    expect(withinPinTicketLimit(now, atCutoff)).toBe(true);
+  });
+  it("空配列は常に true", () => {
+    expect(withinPinTicketLimit(T0, [])).toBe(true);
   });
 });
 

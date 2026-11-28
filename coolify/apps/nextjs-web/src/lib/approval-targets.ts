@@ -17,6 +17,8 @@
  * 呼び出し元は `approvalTargetLabel(targetType, locale)` を使うこと。
  */
 
+import { isNewDocNumber } from "./doc-number";
+import { docUrlId, parseDocId } from "./doc-ref-core";
 import type { Locale } from "./i18n";
 import { label } from "./messages";
 
@@ -32,6 +34,13 @@ export const APPROVAL_TARGET_TYPES = [
   "internal_pages",
   "design_requests",
   "delivery_orders",
+  "stock_takes",
+  "invoices",
+  "invoice_payments",
+  "design_versions",
+  "price_list_entries",
+  "work_order_aborts",
+  "design_program_changes",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -46,7 +55,44 @@ export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
  * APPROVAL_TARGET_TYPES からは外さない（承認依頼中一覧・履歴はそのまま動く）。
  */
 export const FLOW_SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
-  APPROVAL_TARGET_TYPES.filter((t) => t !== "form_responses");
+  APPROVAL_TARGET_TYPES.filter(
+    (t) => t !== "form_responses" && t !== "price_list_entries",
+  );
+
+/**
+ * 「独自値の追加承認」（approval_custom_value_steps）を持てる書類種別と、
+ * その書類で何を独自値と数えるかの説明（messages のキー）。
+ *
+ * 独自値の追加承認は通常の承認フローとは**別建ての段構成**で、書類に前の書類
+ * から引き継いでいない値があるときだけ、通常の段の後ろに足される
+ * （lib/custom-value-approval-core.ts）。どの書類にも同じ仕組みで足せるが、
+ * 「何が独自値か」は書類ごとに決めて判定を書く必要がある — ここに載っている
+ * 書類だけが判定を持っている。書類を足すときは、ここに 1 行 + 承認依頼の
+ * 入口で `startApprovalFlow({ customValues })` を渡す。
+ *
+ * 価格表（price_list_entries）は通常のフローを持たない（MS0B の一覧に出ない）—
+ * 承認を通るのは独自値があるときだけ。
+ */
+export const CUSTOM_VALUE_TARGETS: Partial<
+  Record<ApprovalTargetType, { descriptionKey: string }>
+> = {
+  price_list_entries: {
+    descriptionKey: "master.customValueApproval.describePriceList",
+  },
+  order_acceptances: {
+    descriptionKey: "master.customValueApproval.describeOrderAcceptance",
+  },
+};
+
+export function hasCustomValueLayer(targetType: string): boolean {
+  return isApprovalTargetType(targetType) && targetType in CUSTOM_VALUE_TARGETS;
+}
+
+/** MS0B で設定する書類種別（通常のフロー or 独自値の追加承認のどちらかを持つ）。 */
+export const SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
+  APPROVAL_TARGET_TYPES.filter(
+    (t) => FLOW_SETTINGS_TARGET_TYPES.includes(t) || t in CUSTOM_VALUE_TARGETS,
+  );
 
 /**
  * 適用モード（approval_flows.apply_mode: PRE = 承認後に適用 / POST = 即時適用 +
@@ -172,6 +218,75 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "delivery-orders",
     approvePermission: "delivery_order",
   },
+  stock_takes: {
+    label: label("common.stockTake", "ja"),
+    color: "violet",
+    href: (id) => `/inventory/stock-takes/${id}`,
+    appKey: "stock-takes",
+    approvePermission: "inventory",
+  },
+  // 請求書の発行前承認 — **追加費用（料金マスタから手動で足した明細）が
+  // ある請求書だけ**が通る（§9）。追加費用の無い請求書はこれまでどおり
+  // 依頼を作らない。
+  invoices: {
+    label: label("common.invoice", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
+  // 請求書の入金前承認 — 支払い済みにする操作そのもの（§9）。対象は
+  // invoices と同じ行（targetId = 請求書番号）だが、発行前承認とは別の段構成を
+  // 持てるよう種別を分ける（work_orders / work_order_flow_changes と同じ規約）。
+  invoice_payments: {
+    label: label("common.invoicePayment", "ja"),
+    color: "pink",
+    href: (id) => `/billing/invoices/${id}`,
+    appKey: "invoices",
+    approvePermission: "invoice",
+  },
+  // 設計図の版の確定前承認。段が 1 つも無ければ承認を通らずに確定する
+  // （出荷書と同じ — フローを組まない限り今までどおり）。対象は版の uuid
+  // （版には業務キーが無い）。
+  design_versions: {
+    label: label("common.designVersion", "ja"),
+    color: "violet",
+    href: (id) => `/production/design-files/versions/${id}`,
+    appKey: "design-files",
+    approvePermission: "design_file",
+  },
+  // 指示書の打ち切り — 対象は申請そのもの（uuid）。人が見たいのは指示書
+  // （保留中の申請は指示書詳細にカードで出る）なので、工程フロー変更と同じく
+  // 指示書番号へ読み替えて 302 する中継ページを置く。段が 1 つも無ければ
+  // 申請と同時に適用する（未設定 = 素通し）。
+  work_order_aborts: {
+    label: label("common.workOrderAbort", "ja"),
+    color: "red",
+    href: (id) => `/production/work-orders/aborts/${id}`,
+    appKey: "work-orders",
+    approvePermission: "work_order",
+  },
+  // 加工プログラムの変更（追加 / 直す / 新しい版 / 削除 / 廃止）— 対象は申請
+  // そのもの（uuid）。人が見たいのは図面の版（保留中の申請はその詳細に
+  // カードで出る）なので、版の詳細へ読み替えて 302 する中継ページを置く。
+  // 段が 1 つも無ければ申請と同時に当たる（未設定 = 素通し）。
+  design_program_changes: {
+    label: label("common.designProgramChange", "ja"),
+    color: "violet",
+    href: (id) => `/production/design-files/program-changes/${id}`,
+    appKey: "design-files",
+    approvePermission: "design_file",
+  },
+  // 価格表は**独自値があるときだけ**承認を通る（価格試算から引き継いでいない
+  // 基準単価・段階単価の上書き）。通常のフローは持たない。承認待ちの価格表は
+  // 価格の解決に使われない。
+  price_list_entries: {
+    label: label("common.priceList", "ja"),
+    color: "blue",
+    href: (id) => `/sales/price-lists/${id}`,
+    appKey: "price-lists",
+    approvePermission: "price_list",
+  },
 };
 
 export function isApprovalTargetType(v: string): v is ApprovalTargetType {
@@ -190,6 +305,13 @@ const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
   purchase_requests: "common.purchaseRequest",
   design_requests: "common.designRequest2",
   delivery_orders: "common.deliveryOrder",
+  stock_takes: "common.stockTake",
+  invoices: "common.invoice",
+  invoice_payments: "common.invoicePayment",
+  design_versions: "common.designVersion",
+  price_list_entries: "common.priceList",
+  work_order_aborts: "common.workOrderAbort",
+  design_program_changes: "common.designProgramChange",
 };
 
 /**
@@ -208,14 +330,28 @@ export function approvalTargetLabel(
   );
 }
 
-/** 詳細ページの URL（未知の種別は null）。 */
+/**
+ * 詳細ページの URL（未知の種別は null）。
+ *
+ * `targetId` は DB の参照（`CKK/ORD-2026-00001`）のまま渡してよい — URL には
+ * `/` を使えないので、ここで id の姿（`CKK~ORD-2026-00001`）へ直す。
+ * フォーム回答・社内文書（番号が全社で一意のままの書類）は番号だけにする。
+ * uuid・ロット番号・すでに id の姿のものはそのまま。
+ */
 export function approvalTargetHref(
   targetType: string,
   targetId: string,
 ): string | null {
-  return isApprovalTargetType(targetType)
-    ? APPROVAL_TARGET[targetType].href(targetId)
-    : null;
+  if (!isApprovalTargetType(targetType)) return null;
+  const { companyCode, number } = parseDocId(targetId);
+  const id = !companyCode
+    ? targetId
+    : isNewDocNumber(number)
+      ? docUrlId(companyCode, number)
+      : targetType === "form_responses" || targetType === "internal_pages"
+        ? number
+        : targetId;
+  return APPROVAL_TARGET[targetType].href(id);
 }
 
 /** 承認に必要な権限コード（未知の種別は null）。 */

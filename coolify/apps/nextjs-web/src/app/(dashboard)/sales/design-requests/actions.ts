@@ -3,8 +3,9 @@
 /**
  * Server Actions — 設計依頼書 (app.design_requests, SA06)。
  *
- * - 採番: nextDocumentNumber("DESIGN") → DSG-YYYYMM-NNNNN（文字列保存、月次
- *   リセット）。URL id も依頼番号。
+ * - 採番: 依頼番号 DSG-FFFF-NNNNN は DB が払い出す（INSERT トリガー。自社法人 ×
+ *   会計年度の連番）。行は参照 doc_ref で引き、URL id と Server Action の引数は
+ *   法人コード付きの番号（CKK~DSG-2026-00001）。
  * - トリガ（見積時/受注時/単独）と参照元（見積書/注文明細）は作成後変更不可。
  *   単独は見積にも受注にも紐づかない起票（新製品の検討・客先からの事前相談・
  *   社内の改善）で、参照元を両方 null にする。
@@ -32,16 +33,17 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { parseDocKey } from "@/lib/doc-number";
+import { companyForDesign } from "@/lib/doc-company";
+import { docIdOf, docNo, parseDocKey } from "@/lib/doc-number";
+import { requireDocRef } from "@/lib/doc-ref";
 import { type NotificationType, notify } from "@/lib/notifications";
-import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
   actionError,
@@ -61,8 +63,8 @@ const priorityEnum = z.enum(["NORMAL", "HIGH"]);
 /** 作成・更新で共通の項目（トリガと参照元だけが作成時限定）。 */
 function commonInputShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return {
-    /** 製品は必須 — 依頼区分の自動判定に要る。 */
-    productId: z.string().min(1, tr("common.selectAProduct")),
+    /** 製品は必須 — 依頼区分の自動判定に要る。値は品目 (items.id)。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
     /**
      * 対象の受注元。完成した版がどの系列に載るかを決める。
      * null = 汎用（どの顧客の指示書からも使える）。
@@ -88,7 +90,7 @@ function commonInputShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
 function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
     trigger: triggerEnum,
-    /** 見積時: 見積書番号 QOT-YYYYMM-NNNNN（任意）。 */
+    /** 見積時: 見積書の id（CKK~QOT-…。任意）。 */
     quoteNumber: z.string().nullable(),
     /** 受注時: 注文明細 uuid（任意）。 */
     orderLineId: z.string().nullable(),
@@ -106,6 +108,14 @@ export type DesignRequestCreateInput = z.infer<
 export type DesignRequestUpdateInput = z.infer<
   ReturnType<typeof updateInputSchema>
 >;
+
+/**
+ * 設計依頼の id（CKK~DSG-…）→ 行を引く where。形が違う id（番号だけ・旧番号）は
+ * どの行にも当たらない参照にする = 対象なし。
+ */
+function byNumber(number: string) {
+  return { docRef: parseDocKey(number, "DSG")?.docRef ?? "-" };
+}
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -155,7 +165,7 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
  * たびに引き直すと、他の依頼が先に完了した瞬間に区分が変わってしまう）。
  */
 async function detectDesignKind(
-  productId: number,
+  itemId: number,
   customerBpId: string | null = null,
 ): Promise<{
   kind: "NEW" | "REVISION";
@@ -165,7 +175,7 @@ async function detectDesignKind(
   // 版は (製品 × 受注元) ごとの系列なので、区分もその系列だけを見て決める。
   // 「顧客 A には図面があるが B にはまだ無い」は B から見れば**新規**で、
   // 製品全体で数えると改訂に見えてしまう。
-  const where = { productId, customerBpId };
+  const where = { itemId, customerBpId };
   const [versionCount, latest] = await Promise.all([
     prisma.designFile.count({ where }),
     prisma.designFile.findFirst({
@@ -268,13 +278,13 @@ async function notifySafe(input: {
  */
 
 export async function fetchKindContextAction(
-  productId: string,
+  itemId: string,
   customerBpId: string | null = null,
 ) {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return null;
   const { fetchDesignKindContext } = await import("./data");
-  return fetchDesignKindContext(productId, customerBpId);
+  return fetchDesignKindContext(itemId, customerBpId);
 }
 
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
@@ -301,11 +311,21 @@ export async function createDesignRequest(
   if (quoteNumber && !quoteKey) {
     return actionError(tr("sales.designRequestActions.invalidQuoteNumber"));
   }
+  // 見積書の行（design_requests.quote_id が指す uuid）。
+  const quoteRow = quoteKey
+    ? await prisma.quote.findUnique({
+        where: { docRef: quoteKey.docRef },
+        select: { id: true },
+      })
+    : null;
+  if (quoteKey && !quoteRow) {
+    return actionError(tr("sales.designRequestActions.invalidQuoteNumber"));
+  }
   const orderLineId =
     v.trigger === "SALES_ORDER" ? trimOrNull(v.orderLineId) : null;
 
-  const productId = Number(v.productId);
-  if (!Number.isInteger(productId))
+  const itemId = Number(v.itemId);
+  if (!Number.isInteger(itemId))
     return actionError(tr("sales.designRequestActions.invalidProduct"));
 
   try {
@@ -313,20 +333,20 @@ export async function createDesignRequest(
     // 依頼区分は「その系列（製品 × 受注元）に過去の設計書があるか」で決める
     // （入力があれば上書き）。
     const customerBpId = trimOrNull(v.customerBpId);
-    const detected = await detectDesignKind(productId, customerBpId);
+    const detected = await detectDesignKind(itemId, customerBpId);
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
+    // まだ残っている旧 product_id 列も橋渡しで埋める。
 
-    const requestNumber = await nextDocumentNumber("DESIGN");
-    await prisma.designRequest.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.designRequest.create({
       data: {
-        requestNumber,
+        ...(await companyForDesign({ quoteKey, orderLineId })),
         trigger: v.trigger,
-        quoteYearMonth: quoteKey?.yearMonth ?? null,
-        quoteSeq: quoteKey?.seq ?? null,
+        quoteId: quoteRow?.id ?? null,
         orderLineId,
         customerBpId,
-        productId,
+        itemId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -339,16 +359,18 @@ export async function createDesignRequest(
         createdBy: actor,
         history: toHistoryJson([entry("CREATE", actor)]),
       },
+      select: { docRef: true },
     });
+    const requestNumber = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "design_requests",
       recordId: requestNumber,
       after: {
         trigger: v.trigger,
-        quoteNumber,
+        quoteNumber: docNo(quoteNumber),
         orderLineId,
-        productId,
+        itemId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -363,7 +385,7 @@ export async function createDesignRequest(
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.assignedNotificationTitle", {
-        number: requestNumber,
+        number: docNo(requestNumber),
       }),
       message: tr("sales.designRequestActions.stillDraftMessage"),
       number: requestNumber,
@@ -392,15 +414,15 @@ export async function updateDesignRequest(
     );
   }
   const v = parsed.data;
-  const productId = Number(v.productId);
-  if (!Number.isInteger(productId))
+  const itemId = Number(v.itemId);
+  if (!Number.isInteger(itemId))
     return actionError(tr("sales.designRequestActions.invalidProduct"));
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
       select: {
-        productId: true,
+        itemId: true,
         assigneeId: true,
         createdBy: true,
         description: true,
@@ -415,17 +437,18 @@ export async function updateDesignRequest(
     // 製品や受注元が変われば区分を判定し直す。編集できるのは承認に出す前だけ
     // なので、ここで動いても承認済みのルートと食い違わない。
     const customerBpId = trimOrNull(v.customerBpId);
-    const detected = await detectDesignKind(productId, customerBpId);
+    const detected = await detectDesignKind(itemId, customerBpId);
     const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
+    // まだ残っている旧 product_id 列も橋渡しで埋める。
     // status を where に含めた updateMany で原子的にガードする。
     const updated = await prisma.designRequest.updateMany({
       where: {
-        requestNumber: number,
+        ...byNumber(number),
         status: { in: ["DRAFT", "REJECTED"] },
       },
       data: {
-        productId,
+        itemId,
         customerBpId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
@@ -456,13 +479,13 @@ export async function updateDesignRequest(
       tableName: "design_requests",
       recordId: number,
       before: {
-        productId: prior.productId,
+        itemId: prior.itemId,
         assigneeId: prior.assigneeId,
         description: prior.description,
         kind: prior.kind,
       },
       after: {
-        productId,
+        itemId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -476,7 +499,7 @@ export async function updateDesignRequest(
         actor,
         type: "DESIGN",
         title: tr("sales.designRequestActions.assignedNotificationTitle", {
-          number,
+          number: docNo(number),
         }),
         number,
       });
@@ -508,7 +531,7 @@ export async function setDesignAssignee(
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
       select: { assigneeId: true, createdBy: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
@@ -517,7 +540,7 @@ export async function setDesignAssignee(
       return actionError(tr("common.scopeDenied"));
     const updated = await prisma.designRequest.updateMany({
       where: {
-        requestNumber: number,
+        ...byNumber(number),
         status: { in: ["PENDING", "IN_PROGRESS"] },
       },
       data: {
@@ -546,7 +569,7 @@ export async function setDesignAssignee(
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.assignedNotificationTitle", {
-        number,
+        number: docNo(number),
       }),
       number,
     });
@@ -568,13 +591,13 @@ export async function setDesignAssignee(
 /** 承認依頼 — DRAFT / REJECTED → REQUESTED。 */
 export async function requestDesignApproval(
   number: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     // 行スコープ（読み側 data.ts と同じ規則）— 番号は連番で推測できる
@@ -587,8 +610,35 @@ export async function requestDesignApproval(
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("design_requests");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("design_requests");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 依頼を作らず、最終承認と同じ状態（PENDING = 承認済・
+      // 着手待ち）へ直接進める。承認者は依頼した本人として記録し、履歴には
+      // 「承認なし」と残す。依頼の判定後に状態が動いていたら当てない。
+      const now = new Date();
+      const applied = await applyFinalApproval({
+        prior,
+        actor,
+        number,
+        tr,
+        from: prior.status,
+        extraData: { requestedAt: now, requestedBy: actor },
+        historyEntries: [
+          entry("REQUEST_APPROVAL", actor),
+          entry("APPROVE", actor, tr("approvals.policy.skippedNote")),
+        ],
+        auditNote: tr("approvals.policy.skippedNote"),
+      });
+      if (!applied) {
+        return actionError(
+          tr(
+            "sales.designRequestActions.onlyDraftOrRejectedCanRequestApproval",
+          ),
+        );
+      }
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 1 段目の承認依頼を作る（CM01 横断表示・承認記録の紐付け先 +
     // その段の承認グループへの自動通知）。
     // **状態より先に依頼を作る** — 逆順だと依頼の作成が失敗したとき、書類だけが
@@ -642,7 +692,7 @@ export async function approveDesign(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status !== "REQUESTED") {
@@ -675,41 +725,82 @@ export async function approveDesign(number: string): Promise<ActionResult> {
       revalidate(number);
       return actionOk();
     }
-    await prisma.designRequest.update({
-      where: { id: prior.id },
-      data: {
-        status: "PENDING",
-        approvedAt: new Date(),
-        approvedBy: actor,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("APPROVE", actor)),
-        ),
-      },
-    });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "design_requests",
-      recordId: number,
-      before: { status: "REQUESTED" },
-      after: { status: "PENDING" },
-    });
-    // §10「依頼通知を製造担当へ」— 承認が通ってはじめて着手できるので、
-    // 起票時ではなくここが実際の合図になる。
-    await notifySafe({
-      userIds: [prior.assigneeId],
+    await applyFinalApproval({
+      prior,
       actor,
-      type: "DESIGN",
-      title: tr("sales.designRequestActions.approvedNotificationTitle", {
-        number,
-      }),
-      message: tr("sales.designRequestActions.pleaseStartMessage"),
       number,
+      tr,
+      from: "REQUESTED",
+      historyEntries: [entry("APPROVE", actor)],
     });
-    revalidate(number);
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
+}
+
+/**
+ * 最終承認で書類が行き着く状態（PENDING = 承認済・着手待ち）を当てる。
+ * 承認フローの最終段と、承認設定で OFF のときの依頼（承認なし）の両方が
+ * ここを通る。
+ *
+ * - from = "REQUESTED"（最終承認）: 従来どおり無条件に更新する。
+ * - それ以外（承認なし）: 依頼の判定後に状態が動いていないことを条件に
+ *   更新し、動いていれば false を返す（二重押しで履歴を重ねない）。
+ */
+async function applyFinalApproval(args: {
+  prior: { id: string; history: unknown; assigneeId: string | null };
+  actor: string | null;
+  number: string;
+  tr: Awaited<ReturnType<typeof getTranslations>>;
+  from: "REQUESTED" | "DRAFT" | "REJECTED";
+  extraData?: { requestedAt: Date; requestedBy: string | null };
+  historyEntries: HistoryEntry[];
+  auditNote?: string;
+}): Promise<boolean> {
+  const { prior, actor, number, tr, from } = args;
+  let history = prior.history;
+  for (const e of args.historyEntries) history = appendHistory(history, e);
+  const data = {
+    ...(args.extraData ?? {}),
+    status: "PENDING" as const,
+    approvedAt: new Date(),
+    approvedBy: actor,
+    history: toHistoryJson(history as HistoryEntry[]),
+  };
+  if (from === "REQUESTED") {
+    await prisma.designRequest.update({ where: { id: prior.id }, data });
+  } else {
+    const res = await prisma.designRequest.updateMany({
+      where: { id: prior.id, status: from },
+      data,
+    });
+    if (res.count === 0) return false;
+  }
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "design_requests",
+    recordId: number,
+    before: { status: from },
+    after: {
+      status: "PENDING",
+      ...(args.auditNote ? { note: args.auditNote } : {}),
+    },
+  });
+  // §10「依頼通知を製造担当へ」— 承認が通ってはじめて着手できるので、
+  // 起票時ではなくここが実際の合図になる。
+  await notifySafe({
+    userIds: [prior.assigneeId],
+    actor,
+    type: "DESIGN",
+    title: tr("sales.designRequestActions.approvedNotificationTitle", {
+      number: docNo(number),
+    }),
+    message: tr("sales.designRequestActions.pleaseStartMessage"),
+    number,
+  });
+  revalidate(number);
+  return true;
 }
 
 /** 差し戻し — REQUESTED → REJECTED（理由必須）。承認グループのメンバーのみ。 */
@@ -724,7 +815,7 @@ export async function rejectDesign(
   if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status !== "REQUESTED") {
@@ -779,7 +870,7 @@ export async function cancelDesign(
   if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     // 行スコープ（読み側 data.ts と同じ規則）— 番号は連番で推測できる
@@ -791,6 +882,7 @@ export async function cancelDesign(
       );
     }
     const actor = await getCurrentActorId();
+    const targetRef = await requireDocRef("design_requests", number);
     await prisma.$transaction([
       prisma.designRequest.update({
         where: { id: prior.id },
@@ -809,7 +901,7 @@ export async function cancelDesign(
       prisma.approvalRequest.deleteMany({
         where: {
           targetType: "design_requests",
-          targetId: number,
+          targetId: targetRef,
           status: "PENDING",
         },
       }),
@@ -826,7 +918,7 @@ export async function cancelDesign(
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.cancelledNotificationTitle", {
-        number,
+        number: docNo(number),
       }),
       message: trimmed,
       number,
@@ -850,7 +942,7 @@ export async function startDesign(number: string): Promise<ActionResult> {
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
       select: { createdBy: true, assigneeId: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
@@ -858,7 +950,7 @@ export async function startDesign(number: string): Promise<ActionResult> {
     if (!designRequestInScope(authz.access, prior, authz.userId))
       return actionError(tr("common.scopeDenied"));
     const updated = await prisma.designRequest.updateMany({
-      where: { requestNumber: number, status: "PENDING" },
+      where: { ...byNumber(number), status: "PENDING" },
       data: {
         status: "IN_PROGRESS",
         startedAt: new Date(),
@@ -884,7 +976,7 @@ export async function startDesign(number: string): Promise<ActionResult> {
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.startedNotificationTitle", {
-        number,
+        number: docNo(number),
       }),
       number,
     });
@@ -916,7 +1008,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
   if (!authz.ok) return actionError(authz.error);
   try {
     const request = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
       select: {
         id: true,
         createdBy: true,
@@ -932,11 +1024,12 @@ export async function completeDesign(number: string): Promise<ActionResult> {
     if (!designRequestInScope(authz.access, request, authz.userId))
       return actionError(tr("common.scopeDenied"));
 
-    // 成果物（この依頼から出来た版）。1 版に複数ファイルが載るので、
-    // 版番号の種類数で「何版ぶんか」を数える。
-    const produced = await prisma.designFile.findMany({
+    // 成果物（この依頼から出来た版）。版は design_versions の行 — ファイルの
+    // 無い仕様だけの版もあるので、ファイルではなく版を数える。確定前の版でも
+    // 成果物として数える（確定・承認は設計図の側の手続きで、依頼の完了とは別）。
+    const produced = await prisma.designVersion.findMany({
       where: { designRequestId: request.id },
-      select: { version: true, role: true },
+      select: { version: true },
     });
     if (produced.length === 0) {
       return actionError(
@@ -959,7 +1052,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
 
     const actor = await getCurrentActorId();
     const updated = await prisma.designRequest.updateMany({
-      where: { requestNumber: number, status: "IN_PROGRESS" },
+      where: { ...byNumber(number), status: "IN_PROGRESS" },
       data: {
         status: "COMPLETED",
         completedAt: new Date(),
@@ -1009,7 +1102,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.completedNotificationTitle", {
-        number,
+        number: docNo(number),
       }),
       message: tr("sales.designRequestActions.completedNotificationMessage", {
         versions: versionsList,
@@ -1043,7 +1136,7 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
-      where: { requestNumber: number },
+      where: byNumber(number),
       select: { assigneeId: true, createdBy: true, history: true },
     });
     if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
@@ -1051,7 +1144,7 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
     if (!designRequestInScope(authz.access, prior, authz.userId))
       return actionError(tr("common.scopeDenied"));
     const updated = await prisma.designRequest.updateMany({
-      where: { requestNumber: number, status: "COMPLETED" },
+      where: { ...byNumber(number), status: "COMPLETED" },
       data: {
         status: "IN_PROGRESS",
         completedAt: null,
@@ -1078,7 +1171,7 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
       actor,
       type: "DESIGN",
       title: tr("sales.designRequestActions.reopenedNotificationTitle", {
-        number,
+        number: docNo(number),
       }),
       message: tr("sales.designRequestActions.pleaseReviseMessage"),
       number,

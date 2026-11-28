@@ -5,6 +5,9 @@
  *   - マニュアル（frontmatter screenshots / 本文の画像参照）が manifest に
  *     ない id を参照している
  *   - 参照されている id の PNG がディスクにない
+ *   - 本文の ```video フェンスが、動画の登録簿（walkthroughs/index.ts）に無い id を
+ *     指している / その動画の載せ先（docPage）ではないページに置かれている
+ *     （動画そのものは git に無いので、ファイルの有無は見ない）
  * 警告のみ:
  *   - manifest にあるのにどのページからも参照されていない id
  *
@@ -15,6 +18,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { shots } from "../manifest";
+import { walkthroughs } from "../walkthroughs";
 
 const HERE = join(fileURLToPath(import.meta.url), "../..");
 const MANUAL_DIR = resolve(HERE, "../../coolify/apps/nextjs-web/content/manual");
@@ -66,6 +70,13 @@ function imageRefs(md: string): { id: string; file: string }[] {
   ].map((m) => ({ id: m[1], file: `${m[1]}${m[2] ?? ""}.png` }));
 }
 
+/** 本文の ```video フェンス（中身 = 動画の id）。 */
+function videoRefs(md: string): string[] {
+  return [...md.matchAll(/^```video\n([^\n]*)\n```/gm)].map((m) => m[1].trim());
+}
+
+const videoPages = new Map(walkthroughs.map((w) => [w.id, w.docPage]));
+
 let errors = 0;
 const referenced = new Set<string>();
 
@@ -97,6 +108,19 @@ for (const file of walk(MANUAL_DIR)) {
         `✖ ${rel}: screenshot "${pngFile}" referenced but PNG missing — run docs:shots:one -- --only ${id}` +
           (pngFile !== `${id}.png` ? ` --locale ${pngFile.split(".").at(-2)}` : ""),
       );
+      errors++;
+    }
+  }
+  // 動画: id が登録簿にあり、その動画の載せ先のページに置かれていること。
+  // rel は `process/sales.en.md` の形 — ロケールの接尾辞と拡張子を落として比べる。
+  const page = rel.replace(/(\.en|\.zh)?\.md$/, "");
+  for (const id of videoRefs(md)) {
+    const docPage = videoPages.get(id);
+    if (!docPage) {
+      console.error(`✖ ${rel}: unknown video id "${id}" (not in walkthroughs/index.ts)`);
+      errors++;
+    } else if (docPage !== page) {
+      console.error(`✖ ${rel}: video "${id}" belongs to ${docPage} (walkthrough docPage)`);
       errors++;
     }
   }

@@ -54,6 +54,10 @@ describe("proxy matcher — 内部ページは守られる", () => {
   const internal = [
     "/",
     "/sales/quotes",
+    // 書類の URL は id（法人コード~番号）。番号だけ・旧番号の URL も来る
+    // （詳細ページが正規の URL へ送る）ので、3 つとも守られていること。
+    "/sales/quotes/CKK~QOT-2026-00001",
+    "/sales/quotes/QOT-2026-00001",
     "/sales/quotes/QOT-202609-00001",
     "/billing/invoices",
     "/settings/users",
@@ -98,6 +102,8 @@ describe("proxy matcher — 公開パスは除外される", () => {
     "/manual",
     "/manual/ja/operations",
     "/llms-manual",
+    "/manual-media/manifest.json",
+    "/manual-media/process-sales.webm",
     "/icon.svg",
     "/favicon.ico",
     "/manifest.webmanifest",
@@ -110,6 +116,13 @@ describe("proxy matcher — 公開パスは除外される", () => {
   }
 });
 
+describe("proxy matcher — マニュアルの動画", () => {
+  it("**`/manual-mediaXxx` は守られる**（素の `manual-media` と書いていない証拠）", () => {
+    expect(guarded("/manual-media-admin")).toBe(true);
+    expect(guarded("/manual-mediax/secret")).toBe(true);
+  });
+});
+
 describe("proxy matcher — 取引先ポータル（社外向け）", () => {
   it("ポータルのページは Auth.js の認証を要求しない", () => {
     // ポータルは別の認証系（portal_session Cookie）。ここを守ると
@@ -118,6 +131,7 @@ describe("proxy matcher — 取引先ポータル（社外向け）", () => {
       "/portal",
       "/portal/login",
       "/portal/documents",
+      "/portal/documents/invoices/CKK~INV-2026-00001",
       "/portal/documents/invoices/INV-202609-00001",
       "/portal/d/sometoken",
       "/portal/api/otp",

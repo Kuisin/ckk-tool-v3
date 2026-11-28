@@ -15,7 +15,11 @@ import type { UnplannedOrderLineRow } from "@/components/production/pending-work
 import type { WorkOrderRow } from "@/components/production/work-orders/model";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatOrderLineNumber, formatProductNumber } from "@/lib/doc-number";
+import {
+  formatProductNumber,
+  orderLineIdOf,
+  orderLineNumberOf,
+} from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { orderLineScopeWhere } from "../../sales/order-lines/data";
@@ -46,10 +50,11 @@ const OPEN_WORK_ORDER_STATUSES = [
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
 }
@@ -82,7 +87,9 @@ export async function fetchUnplannedOrderLines(): Promise<
     },
     include: {
       acceptance: { include: { customerBp: true } },
-      product: true,
+      // 品目統合 第 2 段 C — 表示名は品目側から読む（この画面は製品名しか
+      // 使わないので、id 空間には触れていない）。
+      item: true,
       // 件数バッジ用（手配済みの実効値は下で effectiveAllocatedByLine が計算）。
       workOrderLinks: {
         where: { workOrder: { status: { not: "CANCELLED" } } },
@@ -95,8 +102,9 @@ export async function fetchUnplannedOrderLines(): Promise<
       },
     },
     orderBy: [
-      { acceptanceYearMonth: "desc" },
-      { acceptanceSeq: "desc" },
+      { acceptance: { fiscalYear: "desc" } },
+      { acceptance: { docSeq: "desc" } },
+      { acceptanceId: "desc" },
       { branch: "asc" },
     ],
   });
@@ -107,25 +115,24 @@ export async function fetchUnplannedOrderLines(): Promise<
 
   const out: UnplannedOrderLineRow[] = [];
   for (const r of rows) {
-    if (r.branch == null) continue;
+    // 確定済みの明細は番号（line_ref）を持つ。無い行は出さない。
+    const id = orderLineIdOf(r);
+    const number = orderLineNumberOf(r);
+    if (id == null || number == null) continue;
     const plannedQuantity = allocated.get(r.id) ?? 0;
     const unplannedQuantity = r.quantity - plannedQuantity;
     // 手配済み（あるいは超過手配）の明細はキューに出さない。
     if (unplannedQuantity <= 0) continue;
-    const number = formatOrderLineNumber({
-      yearMonth: r.acceptanceYearMonth,
-      seq: r.acceptanceSeq,
-      branch: r.branch,
-    });
     out.push({
-      id: number,
+      id,
       orderLineNumber: number,
       uuid: r.id,
       customerName: localized(
         r.acceptance.customerBp?.name as LocalizedText | null,
       ),
-      productName: r.product ? productLabel(r.product) : (r.productText ?? "—"),
+      productName: r.item ? productLabel(r.item) : (r.productText ?? "—"),
       quantity: r.quantity,
+      orderType: r.orderType,
       plannedQuantity,
       unplannedQuantity,
       reservedStockQuantity: r.reservations.reduce(

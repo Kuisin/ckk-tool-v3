@@ -19,8 +19,15 @@ import type { CatalogStep, CompositionIssue } from "@/lib/workflow-core";
 
 export interface WorkOrderRow {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN（一覧・リンクの表示identity）。 */
+  /**
+   * 書類番号 WOR-FFFF-NNNNN（**表示専用** — 番号だけ）。同じ番号が別の法人にも
+   * あり得るので、リンクと操作は workOrderNumber（ロット番号）で指す。
+   */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。番号の隣のバッジ・検索用。 */
+  companyCode: string | null;
+  /** 旧番号（WOR-YYYYMM-NNNNN）。検索用。 */
+  legacyNumber: string | null;
   createdAt: string;
   /**
    * 割当明細の表示ラベル（複数は「ORD-… ほか n 件」）。
@@ -32,6 +39,11 @@ export interface WorkOrderRow {
   plannedQuantity: number;
   approvalStatus: string; // WORK_ORDER_APPROVAL_STATUS
   status: string; // WORK_ORDER_STATUS
+  /**
+   * 打ち切り済み（work_orders.aborted_at あり）。status は CANCELLED のままなので、
+   * これが無いと一覧で普通のキャンセルと見分けられない。
+   */
+  aborted: boolean;
   /** 承認依頼日（承認管理 PD03 の列）。 */
   requestedAt: string | null;
   updatedAt: string;
@@ -77,6 +89,8 @@ export interface WorkOrderStepView {
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** 工程納期（YYYY-MM-DD・JST の暦日）— 任意。 */
+  dueDate: string | null;
   /** ロット入力の上書き（null = 工程マスタの既定を継承）— ビルダー編集用。 */
   lotInputMode: "REQUIRED" | "OPTIONAL" | "NONE" | null;
   /** 開始時に記録したロット/伝票コード。 */
@@ -87,6 +101,8 @@ export interface WorkOrderStepView {
   outputDefectSemiFinished: number | null;
   outputDefectScrap: number | null;
   outputDefectRework: number | null;
+  /** 外注依頼の番号（`OUT-2026-00001`）。未依頼の工程は null。 */
+  outsourceOrderNumber: string | null;
   outsourceRequestedAt: string | null;
   outsourceExpectedAt: string | null;
   completedAt: string | null;
@@ -119,7 +135,7 @@ export interface WorkOrderHistoryView {
 
 export interface WorkOrderCopyRef {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   docNumber: string;
   status: string;
   createdAt: string;
@@ -146,13 +162,21 @@ export interface WorkOrderLineAllocView {
   customerName: string | null;
   status: string;
   lotNumber: number | null;
+  /** 印字番号の基数（A{base}-NNN）。注文確定時に採番 — 旧明細は null。 */
+  markingBase: number | null;
+  /**
+   * 印字番号の分割番号（work_order_order_lines.marking_split）。1.. = この
+   * 割当は明細の一部（分割）で、接頭辞 A{base}{split}・枝番は割当数量ぶん。
+   * 0 / null = 分割でない（明細の基数・受注数量ぶん）。lib/marking-number.ts。
+   */
+  markingSplit: number | null;
   /** 明細の納期（ISO 日付）。工程ワークフローの見出しに「予定納期」として出す。 */
   deliveryDate: string | null;
 }
 
 /** この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。 */
 export interface WorkOrderShipmentView {
-  /** 書類番号 DOR-YYYYMM-NNNNN。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001` — リンク用。表示は docNo）。 */
   number: string;
   type: string; // DELIVERY_ORDER_TYPE
   status: string; // DELIVERY_ORDER_STATUS
@@ -187,11 +211,49 @@ export interface WorkOrderFinalInspectionView {
   shipDefectNotes: string | null;
 }
 
+/**
+ * 開始状態 — 在庫の仕掛品から始めた指示書の、投入した仕掛品の加工状態
+ * （work_orders.start_wip_state_id）。
+ */
+export interface WorkOrderStartWipView {
+  wipStateId: number;
+  /** 呼び名（任意）。無ければ工程名を並べる。 */
+  stateName: string | null;
+  /** 済んでいた工程（カタログ id・工程順）。 */
+  stepIds: number[];
+  stepNames: string[];
+  /** そのうち、この指示書の工程に載っていない（= 飛ばした）工程の名前。 */
+  skippedStepNames: string[];
+  /** 加工状態が製品の工程の先頭部分になっていない仕掛品を使った理由。 */
+  overrideReason: string | null;
+}
+
+/** 投入する仕掛品 1 本（work_order_wip_draws）。 */
+export interface WorkOrderWipDrawView {
+  inventoryId: string;
+  /** 投入する数量（選んだ数）。 */
+  quantity: number;
+  /** 仕掛ブランクの名乗り（材種 φ径 × 長）。 */
+  blankLabel: string;
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+  lotNumber: number | null;
+  /** 目標製品（この指示書の製品と違ってよい）。 */
+  aimedProductName: string | null;
+  plantName: string | null;
+  /** この指示書がいま予約している数（承認前は 0、完了後は 0）。 */
+  reservedQuantity: number;
+}
+
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN（ヘッダ・リンクの表示identity）。 */
+  /** 書類番号 WOR-FFFF-NNNNN（**表示専用** — リンクと操作は workOrderNumber）。 */
   docNumber: string;
+  /** 発行会社（自社法人）のコード。見出しのバッジ用。 */
+  companyCode: string | null;
+  /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
+  legacyNumber: string | null;
   status: string;
   approvalStatus: string;
   /** 手続き状況（作成 → 承認 → 製造 → 完了）の日時。 */
@@ -227,7 +289,8 @@ export interface WorkOrderView {
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
   productName: string;
-  materialId: number | null;
+  /** 使用素材の品目 id（items.id。品目統合 第 2 段 B — 旧 materialId）。 */
+  materialItemId: number | null;
   materialCode: string | null;
   materialName: string | null;
   /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */
@@ -240,11 +303,16 @@ export interface WorkOrderView {
   /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
   designFileId: string | null;
   storageLocationName: string | null;
-  /** 注文明細の対象製品（工程ルートのリンク先）。 */
-  productId: number;
+  /**
+   * この指示書が作る製品の品目 id（items.id）。製品ピッカー・工程リストの
+   * 解決・製品マスタ (MS04) へのリンクがすべてこの 1 つの id 空間を見る。
+   */
+  productItemId: number | null;
   /** 工程ルート出所（未使用 = null）。 */
   routeVersionId: string | null;
   routeId: number | null;
+  /** 出所リストの種別（MANUFACTURING / REGRIND）。再研磨は共通リストを指す。 */
+  routeKind: string | null;
   routeName: string | null;
   routeVersion: number | null;
   /** 製造工程リストの最新版番号 — 使っている版が古ければ画面で示す。 */
@@ -260,6 +328,12 @@ export interface WorkOrderView {
    * あるか（lib/work-plan-core.ts）。承認カードが「何が足りないか」を出す。
    */
   planReadiness: PlanReadiness;
+  /** 再研磨の 3 つの本数（受入 / 返却 / 完成）。再研磨以外は null。 */
+  regrind: {
+    received: number | null;
+    returnedAsIs: number;
+    finished: number;
+  } | null;
   /** ロット番号 = 指示書番号（注文明細側の lot_number）。 */
   lotNumber: number | null;
   sourceWorkOrderNumber: number | null;
@@ -271,6 +345,10 @@ export interface WorkOrderView {
   woLinksOutgoing: WoLinkView[];
   steps: WorkOrderStepView[];
   stepLinks: StepLinkView[];
+  /** 開始状態（在庫の仕掛品から始めた指示書）。素材から作る指示書は null。 */
+  startWip: WorkOrderStartWipView | null;
+  /** 投入する仕掛品（選んだ順）。 */
+  wipDraws: WorkOrderWipDrawView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
   createdAt: string;

@@ -64,6 +64,51 @@ consumed as TS source via `transpilePackages`).
 
 - **ドキュメント基盤** — `fumadocs-ui` / `fumadocs-core` / `fumadocs-mdx` /
   `@orama/tokenizers`（+ `@types/mdx`）。`/manual` + `/admin-manual`。
+- **API / Webhook リファレンスの自動生成** — `fumadocs-openapi`（MIT, `11.1.0` 完全固定）。
+  `content/manual/integration/reference/` を OpenAPI 3.1 文書から生成し、
+  `/manual` で描く（`components/docs/OpenAPIPage.tsx`）。自前案は「文書→MDX」を
+  書き起こすことだが、パラメータ表・スキーマ展開・`webhooks`（受信側が読む
+  リクエスト例）の描画まで持つ価値が高く、既存の fumadocs 一式に素直に載る。
+  **11.1.0 に固定した理由**: 11.4 以降は `fumadocs-ui` / `fumadocs-core` ^16.15 を
+  要求するが、こちらは 16.14.4 に固定している（11.1.0 は ^16.10）。
+  **責務の境界**: 文書の中身（口・権限・イベント）は `lib/api-resources.ts` /
+  `lib/webhook-core.ts` → `lib/api-openapi.ts` が持ち、ライブラリは**描画と MDX
+  の生成だけ**。生成物のズレは `api-docs-sync.test.ts` が CI で止める
+  （`UPDATE_API_DOCS=1` で書き出し直す）。「試す」（プレイグラウンド）は出さない
+  ので `@scalar/api-client-react`（任意の peer）は入れていない — 公開マニュアルに
+  トークンの入力欄を置かないため。キオスクには入れない。
+- **URL に載せる画面状態** — `nuqs`（MIT, `2.10.3` 完全固定）。検索・フィルタ・
+  ページ・ソート・タブを search params に保持する `hooks/useUrlState.ts` の中身。
+  自前案は実際に動いていた（`lib/url-state-core.ts` — 「自分が書いた値に URL が
+  追いつくまで URL 側を無視する」写しの state、約 250 行 + 試験）。それでも
+  入れたのは、`useSearchParams()` が非同期で届く問題（＝日本語入力の変換が
+  壊れる）を**ライブラリ側が解いている**ことと、複数キーを 1 回の URL 更新で
+  書ける（フィルタ変更 + ページのリセット）こと、パーサを型付きで持てることの
+  3 つ（利用者判断）。**責務の境界**: 画面は nuqs を**直接呼ばない** —
+  `useUrlStringState` / `useUrlSelectState` / `useTabParam` / `useUrlTableState`
+  だけを使う。「フィルタを変えたら 1 ページ目へ」「既定値は URL から落とす」
+  「履歴は replace」という約束と、共有リンクに残っている書式
+  （`lib/url-state-params.ts` — `?sort=列.向き` など。試験あり）は自前のまま。
+  `NuqsAdapter` は `app/providers.tsx`。**IME は単体試験では見えない** —
+  このフックや nuqs の版を触ったら `tools/docs-screenshots/e2e-url-state.ts`
+  （CDP で実際の変換を起こす）を流すこと。キオスクには入れない。
+- **クライアントが取りに行く読み取り** — `@tanstack/react-query`（MIT, `5.108.2`
+  完全固定）。**使う場所は狭い**: 入力に合わせた検索（`ui/SearchSelect.tsx` —
+  32 画面が使う / `ui/F4SearchModal.tsx`）、開いてから読む一覧
+  （`admin/FileManager.tsx`）、定期的な確認（`layout/VersionSkewBanner.tsx`）。
+  自前案は今までの形（`useEffect` + タイマー + 通し番号で追い越しを捨てる）で、
+  動いてはいた。入れて得たのは、一度引いた入力をキャッシュから即座に出すこと・
+  同じ検索を使う欄どうしで結果を共有すること・追い越しの処理を書かずに済むこと
+  （利用者判断）。**責務の境界**: **ページのデータは Server Component、書き込みは
+  Server Action + `router.refresh()` のまま** — 一覧・詳細のデータを Query へ
+  移さない（同じデータの取り方が 2 通りになる）。`router.refresh()` で回している
+  定期更新（取込中の一覧など）もそのまま。既定は `lib/query-client.ts`
+  （`staleTime: 0` = キャッシュは出すが必ず取り直す / タブ復帰での取り直しは切る）。
+  **関数を鍵にそのまま入れない** — JSON 化で黙って落ち、別の検索のキャッシュを
+  引く。`fnKey()` を通す（試験あり）。Server Action は 1 本ずつ直列に走り中断も
+  できないので、検索を Route Handler へ移すまでは「速い打鍵を並列に引く」ことは
+  できない。通し確認は `tools/docs-screenshots/e2e-client-reads.ts`。
+  キオスクには入れない。
 - **画像の拡大表示** — `react-zoom-pan-pinch`（MIT, 完全固定）。docs 画像の
   全画面ビュー（`components/docs/ZoomableImage.tsx`）でホイール/ピンチ/
   ダブルクリックの実ズーム + ドラッグ移動に使う。fumadocs-ui 同梱の
@@ -73,6 +118,23 @@ consumed as TS source via `transpilePackages`).
   フォーカストラップは既存の `ModalShell`（Mantine Modal）に任せ、
   react-zoom-pan-pinch は transform（拡大率・位置）の計算だけを持つ — 2 つの
   ライブラリでホイール/タッチのイベントを取り合わせない構成。
+- **マニュアルの小さな図** — `mermaid`（MIT, 完全固定）。操作ページの中に置く
+  状態の移り変わり・承認の流れを、本文と同じ `.md` に ```mermaid フェンスで書く
+  （`components/docs/Mermaid.tsx`。`source.config.ts` の `remarkMdxMermaid` が
+  フェンスを `<Mermaid chart>` に置き換える — fumadocs-core 同梱で追加依存なし）。
+  自前案は 2 つあった: (a) `tools/swimlane` の DSL で描く — 段ごとの説明つきの
+  レーン図専用で、3〜6 状態の図には重く、本文と別ファイルになる。(b) mermaid-cli で
+  ビルド時に SVG 化 — 実行時コストは無いが、Docker ビルドと CI の両方に headless
+  Chromium が要る。**ブラウザ側で描く**ことにした（利用者判断）。
+  本体は数百 KB あるので**動的 import** — 図のあるページを開いたときだけ読み、
+  図の無いページとアプリ本体には載らない（本番ビルドで確認済み）。
+  **責務の境界**: 図の中身は `content/` の Markdown、配色と状態色
+  （`:::gray` などは StatusBadge と同じ色名）は `lib/docs-mermaid.ts` が持ち、
+  mermaid は**レイアウトと描画だけ**。`securityLevel: "strict"` のまま使う。
+  図はブラウザで描くので**書き間違えてもビルドは通る** — 代わりに
+  `lib/docs-mermaid.test.ts` が全フェンスを mermaid のパーサに通し、ja/en/zh で
+  図の形（ノードと矢印）が揃っていることも見る。**プロセス編のスイムレーン図は
+  置き換えていない**（`tools/swimlane` → ビルド時 SVG のまま）。キオスクには入れない。
 - **リッチテキスト** — `@mantine/tiptap`（`@mantine/core` と**完全に同一バージョン**に
   固定）+ `@tiptap/react` / `@tiptap/pm` / `@tiptap/starter-kit` /
   `@tiptap/extension-link`。文書メモ / コメント（`ui/MemoPanel.tsx`）。
@@ -103,6 +165,18 @@ consumed as TS source via `transpilePackages`).
     `lib/form-schema.ts` が `order` の正規化と検証を持つので、ドラッグを使わずに
     （キーボード、将来の API）組んでも結果は同じ。
   - キオスクには入れない（どちらのアプリも無い）。
+- **文字コード変換（Shift_JIS）** — `iconv-lite` (MIT, 完全固定)。会計連携の
+  仕訳 CSV（`lib/accounting-encode.ts`）。会計ソフトの受入は **Shift_JIS 指定の
+  ことが多い**のに、Node は UTF-8 しか**書けない**（`TextDecoder("shift_jis")` は
+  読む側だけ）。自前案も検討した — プラットフォームの TextDecoder を逆引きして
+  符号化表を起こす方法で 50 行ほど、実際に動くことも確認した（日→93FA /
+  髙→FBFC）が、WHATWG の符号化表は復号と符号化で**非対称**（`0xED`/`0xEE` の
+  重複領域を符号化側は使わない）で、そこを外すと「読めるのに違うバイトを書く」
+  という気づきにくい壊れ方をする。会計へ渡す数字でそれを引き受ける価値は無い
+  と判断した（利用者判断）。**責務の境界**: 列の並び・日付・金額・エスケープは
+  `lib/accounting-export-core.ts` が持ち、iconv-lite は**文字列 → バイト列の
+  1 段だけ**。変換できない文字は代替して**呼び出し側へ返す**（黙って化けさせない）。
+  キオスクには入れない（CSV を書く画面が無い）。
 - **3D プレビュー** — `online-3d-viewer` (MIT, 完全固定)。設計依頼で受け取った
   3D モデル（STL / OBJ / PLY / GLB / 3MF …）を製品マスタ・指示書・設計依頼の
   画面で見るため。自前だと WebGL のカメラ・ライト・当たり判定まで書くことに
@@ -128,7 +202,7 @@ consumed as TS source via `transpilePackages`).
 - `src/components/{ui,<domain>}/` — `ui/` = the shared design system (see
   `design.md`); domain folders (sales, production, master, settings, …).
 - `src/lib/` — server + isomorphic logic. `src/hooks/` — client hooks
-  (`useViewport`/`useIsMobile`, `useUrlState`). `src/content/docs/` — in-app
+  (`useViewport`/`useIsMobile`, `useUrlState` — URL search params の state。nuqs の包み). `src/content/docs/` — in-app
   manuals (Markdown). `src/types/`, `messages/` (next-intl).
 
 ## Server Actions (the write path)
@@ -244,9 +318,32 @@ keeps internal content out of the public search index / llms endpoints).
 Search: `/manual/search` (public) + `/admin-manual/search` (session-checked),
 Orama with ja/zh tokenizers. LLM: `/manual/llms.txt` + raw markdown at
 `/manual/<lang>/<slug>.md` (rewrite → `/llms-manual`); no internal equivalents.
-Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
+Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). **Diagrams, two
+kinds**: process swimlanes are `tools/swimlane` DSL → build-time SVG under
+`assets/diagrams/`; small in-page diagrams (status lifecycles, approval flow) are
+```mermaid fences in the page itself, drawn in the browser — use `flowchart TD`
+(LR overflows the ~680px column), colour states with `:::gray|blue|yellow|…`
+(same names as StatusBadge; classDefs are injected), keep the three languages'
+diagrams structurally identical (the test enforces it), and in en/zh keep the
+on-screen Japanese label with the glossary term under it (`"下書き<br/>Draft"`).
+Screenshots:
 `content/manual/assets/screenshots/<id>.png`, captured/linted by
 `tools/docs-screenshots` (see its README).
+
+**Videos** — a ```` ```video ```` fence whose body is a walkthrough id
+(`process-sales`) becomes `<ManualVideo id>` (`lib/remark-manual-video.ts` →
+`components/docs/ManualVideo.tsx`). **The video is not in the build or the repo**:
+it is recorded on deploy into a host directory that this app mounts read-only
+(`MANUAL_VIDEO_DIR`) and serves at the public `/manual-media/<file>`
+(`lib/manual-videos.ts`; allow-list + `Range` in `lib/manual-videos-core.ts`).
+Because manual pages are SSG, the component decides at view time (it fetches
+`/manual-media/manifest.json`) and **renders nothing when there is no video** —
+so never put a heading or a sentence that only makes sense with the video next
+to the fence. `manual-videos-content.test.ts` ties every fence to the registry in
+`tools/docs-screenshots/walkthroughs/` (a wrong id would otherwise fail silently)
+and requires each video on all three language pages. UI strings for the player
+are keyed by the **docs language (URL)**, not next-intl — the public pages'
+provider is fixed to ja.
 
 **Field help (the "?" next to inputs)** — summaries and manual anchors live in
 ONE place, `lib/field-help.ts` (31 apps / 212 fields); call sites just spread it:

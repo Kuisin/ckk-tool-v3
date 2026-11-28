@@ -11,6 +11,10 @@
 enum WorkOrderType {
   FROM_STOCK // 在庫分（§4 → §8 直行）
   MANUFACTURE // 製造分（§5→§6→§7）
+  /// 再研磨 — 顧客の工具を預かって研ぎ直す。作るものは無い: 完了しても自社在庫は
+  /// 動かず、受け入れた本数は顧客所有バケット（item_inventory.owner_bp_id）に載る。
+  /// 工程は共通の再研磨工程リスト（product_process_routes.kind = REGRIND）から。
+  REGRIND
 
   @@map("WORK_ORDER_TYPE")
   @@schema("app")
@@ -76,15 +80,36 @@ enum BranchStockDisposition {
 // （明細配下は明細の製品から複写、独立指示書は直接指定）。
 model WorkOrder {
   id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
   // ロット番号 = 通し連番（在庫・QR・業務キーはこちら。不変）
   workOrderNumber Int     @unique @map("work_order_number")
-  // 書類番号 WO-YYYYMM-NNNNN（月次リセット — 他書類と同形式。表示用の識別子）
-  yearMonth       String  @map("year_month") @db.Char(6)
-  seq             Int
-  productId       Int     @map("product_id")
+  // 書類番号 WOR-FFFF-NNNNN（他書類と同形式。表示用の識別子）
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
+  /// **指示書が作る製品**の品目（app.items）。使う素材は materialItemId —
+  /// 同じ表が品目を 2 つ指すので、どちらも裸の item_id にはしない。
+  productItemId   Int     @map("product_item_id")
   type            WorkOrderType
   plannedQuantity Int     @map("planned_quantity")
-  materialId      Int?    @map("material_id")
+  /// **指示書が消費する素材**の品目（app.items）。
+  /// 指示書は品目を 2 つ指す — 作るもの（productItemId）と使うもの（ここ）。
+  /// 裸の item_id にすると、どちらか分からなくなる。
+  materialItemId  Int?    @map("material_item_id")
   // 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）
   storageLocationId Int? @map("storage_location_id")
 
@@ -120,6 +145,25 @@ model WorkOrder {
   // あとから書き換えさせない）。
   designFileId   String? @map("design_file_id") @db.Uuid
 
+  /// **開始状態** — 在庫の仕掛品から始める指示書の、投入する仕掛品の加工状態
+  /// （app.wip_states）。null = 素材から作る（従来どおり）。
+  ///
+  /// 入っていれば、その状態で済んでいる工程は指示書の工程に**載っていない**
+  /// （作成時に落とす — lib/wip-state-core.ts planWipStart が唯一の規則）。
+  /// 開始工程は半製品出し。この指示書から出る仕掛品の加工状態は、この並びを
+  /// 頭に付けて数える（付けないと「続きから作った品」が浅い状態で在庫に戻る）。
+  startWipStateId Int? @map("start_wip_state_id")
+  /// 加工状態が製品の工程の先頭部分になっていない仕掛品を、人の判断で使った理由。
+  /// それ以外は null（DB の CHECK で空文字を拒む）。監査ログにも同じ文を残す。
+  wipOverrideReason String? @map("wip_override_reason")
+
+  /// 打ち切り（進行中のまま止めて、品を仕掛品として在庫へ戻した）日時。
+  /// 打ち切った指示書の status は CANCELLED — 終わった指示書としての扱い
+  /// （再計画・割当の解放・現場の一覧から外す）はキャンセルと同じで、
+  /// 「着手前に取り消した」と「途中で止めた」の違いはこの列だけが持つ。
+  /// 何をどこへ戻したかは work_order_aborts（status = APPLIED）の行にある。
+  abortedAt DateTime? @map("aborted_at") @db.Timestamptz(6)
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
   // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
   requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -138,20 +182,23 @@ model WorkOrder {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  product         Product     @relation(fields: [productId], references: [id])
+  productItem     Item        @relation("WorkOrderProductItem", fields: [productItemId], references: [id], onDelete: Restrict)
   designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
-  material        Material?   @relation(fields: [materialId], references: [id])
+  materialItem    Item?       @relation("WorkOrderMaterialItem", fields: [materialItemId], references: [id], onDelete: Restrict)
   storageLocation StorageLocation? @relation("WorkOrderStorageLocation", fields: [storageLocationId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])
   copies          WorkOrder[] @relation("WorkOrderCopySource")
   routeVersion    ProductProcessRouteVersion? @relation(fields: [routeVersionId], references: [id], onDelete: SetNull)
   prepRouteVersion ProductProcessRouteVersion? @relation("WorkOrderPrepRoute", fields: [prepRouteVersionId], references: [id], onDelete: SetNull)
   createdByUser   User?      @relation("WorkOrderCreatedBy", fields: [createdBy], references: [id])
+  startWipState   WipState?  @relation("WorkOrderStartWipState", fields: [startWipStateId], references: [id], onDelete: Restrict)
 
   orderLineLinks      WorkOrderOrderLine[]
+  wipDraws            WorkOrderWipDraw[]
   steps               WorkOrderStep[]
   stepLinks           WorkOrderStepLink[]
   flowChanges         WorkOrderFlowChange[]
+  aborts              WorkOrderAbort[]
   deliveryOrders      DeliveryOrder[]
   reservations        InventoryReservation[]
 
@@ -160,8 +207,15 @@ model WorkOrder {
 
   finalInspection WorkOrderFinalInspection?
 
-  @@unique([yearMonth, seq])
-  @@index([productId])
+  charges               WorkOrderCharge[]
+  deliveryOrderCharges  DeliveryOrderCharge[] @relation("DeliveryOrderChargeSourceWo")
+
+  ownCompany OwnCompany @relation("WorkOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([status])
   @@index([approvalStatus])
   @@index([routeVersionId])
@@ -169,7 +223,38 @@ model WorkOrder {
   @@index([storageLocationId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
+  @@index([materialItemId])
+  @@index([productItemId])
+  @@index([ownCompanyId])
+  @@index([startWipStateId])
   @@map("work_orders")
+  @@schema("app")
+}
+
+// 指示書が投入する仕掛品（在庫バケット × 数量）。
+//
+// 作成時に人が選ぶ（指示書ビルダーの「使える仕掛品」）。**予約ではない** —
+// 予約は承認のときに inventory_reservations へ取り（素材と同じ）、完了のときに
+// ここに並ぶバケットから落とす（lib/inventory.ts consumeWipDraws）。選んだ
+// バケットを別に持つのは、承認前（予約がまだ無い）にも「どれを使うつもりか」を
+// 残し、完了のときに推測（古い順）へ落ちないようにするため。
+//
+// 1 指示書の中のバケットはすべて同じ加工状態（= work_orders.start_wip_state_id）。
+// 目標製品（item_inventory.aimed_item_id）は指示書の製品と違ってよい —
+// 別の製品のために作りかけた品を使い回すのが、この表の目的。
+model WorkOrderWipDraw {
+  workOrderId String   @map("work_order_id") @db.Uuid
+  inventoryId String   @map("inventory_id") @db.Uuid
+  quantity    Int
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workOrder WorkOrder     @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  inventory ItemInventory @relation("WorkOrderWipDrawInventory", fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@id([workOrderId, inventoryId])
+  @@index([inventoryId])
+  @@map("work_order_wip_draws")
   @@schema("app")
 }
 
@@ -214,6 +299,24 @@ model WorkOrderOrderLine {
   orderLineId String @map("order_line_id") @db.Uuid
   quantity    Int
   sortOrder   Int    @default(0) @map("sort_order")
+  /// 印字番号の分割番号（A{base}{split}-NNN の split）。**作成時に 1 度だけ
+  /// DB が決めて凍結する**（BEFORE INSERT トリガー
+  /// work_order_order_lines_marking_split）:
+  ///   0   … 作成時に明細の受注数量ぶん全部を割り当てた（分割でない）。
+  ///         印字番号は明細の基数のまま A{base}-001..
+  ///   1.. … 作成時に一部だけ（割当数量 < 受注数量）= 分割。明細ごとの
+  ///         通し番号（order_lines.marking_split_issued を +1）で、
+  ///         A{base}{split}-001..{割当数量}
+  /// あとで割当数量を直して全量/一部が入れ替わっても**番号は変えない**
+  /// （刻んだ・刷った番号が後から動かないこと優先。変更はトリガーが拒否）。
+  /// 割当を消した番号は再利用しない。アプリはこの列を書かない —
+  /// 下書きの保存も割当を消して作り直さず、同じ明細の行は更新で残す。
+  /// null は残らない（トリガーが必ず埋め、移行前の行も移行で埋めた）。
+  /// Prisma 上は省略可能にしてある — 値を渡すとトリガーの判定を奪うため。
+  /// (order_line_id, split)
+  /// は split > 0 のとき一意（部分 unique index — マイグレーションに直書き）。
+  /// 整形は lib/marking-number.ts。
+  markingSplit Int?  @map("marking_split")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
@@ -266,6 +369,62 @@ model WorkOrderFlowChange {
   @@schema("app")
 }
 
+// 打ち切りの申請（§7）— 進行中の指示書を止め、流れの途中にある良品を
+// 仕掛品として在庫へ戻す。work_order_flow_changes と同じ形（保留 → 承認 → 適用）:
+// 承認設定（MS0B）の「指示書の打ち切り」に段が 1 つでもあれば承認を通し、
+// 1 段も無ければ申請と同時に適用する（未設定 = 素通し）。
+//
+// 適用は承認後に**いまの工程の状態で計算し直して**突き合わせる — 申請してから
+// 工程が進んでいれば適用せず FAILED + error に残す（古い前提のまま戻さない）。
+// 位置ごとの数・加工状態・仕上がり寸法の規則は lib/wip-abort-core.ts。
+model WorkOrderAbort {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String   @map("work_order_id") @db.Uuid
+  /// 打ち切る理由（必須。空白は DB の CHECK で拒む）。
+  reason      String
+  /// 位置ごとの戻す数・廃棄数・加工状態・仕上がり寸法（lib/wip-abort-core.ts
+  /// WorkOrderAbortPayload）。申請時点の各位置の数も持つ — 適用時の突き合わせ用。
+  payload     Json
+  /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
+  status      String   @default("PENDING")
+  /// 承認後に適用できなかった理由（工程が進んだ等）。
+  error       String?
+  appliedAt   DateTime? @map("applied_at") @db.Timestamptz(6)
+  requestedBy String?  @map("requested_by") @db.Uuid
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedBy  String?  @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  requestedByUser User?     @relation("WorkOrderAbortRequestedBy", fields: [requestedBy], references: [id])
+  resolvedByUser  User?     @relation("WorkOrderAbortResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([workOrderId, status])
+  @@map("work_order_aborts")
+  @@schema("app")
+}
+
+// 工程を開始したときに出ていた加工プログラムの版（1 工程 × N 版）。
+//
+// 「使用済み」の唯一の根拠 — 行が 1 つでもある版はその場で書き換えない
+// （新しい版を作る）。開始済みの工程の実行画面はいまの現行版ではなく、ここに
+// 記録された版を出す（後から版が上がっても、その工程が何を見て始めたかは
+// 変わらない）。Web と共有端末の両方の開始処理が書く。
+// 版の側は RESTRICT — 使った版の行を消させない。
+model WorkOrderStepProgram {
+  stepId     String   @map("step_id") @db.Uuid
+  programId  String   @map("program_id") @db.Uuid
+  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  step    WorkOrderStep @relation("WorkOrderStepPrograms", fields: [stepId], references: [id], onDelete: Cascade)
+  program DesignProgram @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@id([stepId, programId])
+  @@index([programId])
+  @@map("work_order_step_programs")
+  @@schema("app")
+}
+
 // 検査工程ステップに紐付く検査表テンプレート（複数可）。
 // 旧: 指示書単位（work_order_inspection_templates）— 検査工程が複数ある
 // 指示書でどの検査表がどの工程のものか曖昧だったため、工程単位へ移行した。
@@ -293,10 +452,25 @@ model WorkOrderStep {
   plannedWorkHours Decimal?   @map("planned_work_hours") @db.Decimal(6, 2) // 予定作業時間 (h) — 任意
   lotInputMode  LotInputMode? @map("lot_input_mode") // 実行時のロット入力（null = 工程マスタの既定を継承）
   lotText       String?       @map("lot_text") // 素材ロット・伝票コード等（開始時に記録）
+  /// 工程納期 — この工程をいつまでに終えるか（JST の暦日・任意）。
+  /// 指示書全体の予定納期（割当明細の最早納期）とは別に、工程ごとの締切を持つ。
+  /// 過ぎて未完了（COMPLETED / CANCELLED 以外）なら画面で赤くするだけで、
+  /// 実行可否の判定には使わない。
+  dueDate       DateTime?     @map("due_date") @db.Date
 
   outsourceRequestedAt DateTime? @map("outsource_requested_at") @db.Date
   outsourceExpectedAt  DateTime? @map("outsource_expected_at") @db.Date
   outsourceReceivedAt  DateTime? @map("outsource_received_at") @db.Date
+  /// 外注へ出した／戻ったときに起こした入出庫伝票。
+  ///
+  /// **二度書かないための印を兼ねる** — 日付は後から直せるので、日付の有無で
+  /// 判断すると直すたびに預け在庫が増える。入っていれば「もう計上した」。
+  /// 画面からはここを辿って伝票を開く。
+  outsourceIssueMovementId  String? @map("outsource_issue_movement_id") @db.Uuid
+  outsourceReturnMovementId String? @map("outsource_return_movement_id") @db.Uuid
+  /// 製品受入（再研磨）の完了で顧客の工具を預り品として入庫した伝票。
+  /// outsource_*_movement_id と同じ規約 — 入っていれば「もう計上した」（二度書かない印）。
+  regrindReceiptMovementId  String? @map("regrind_receipt_movement_id") @db.Uuid
   // 外注コスト（監査 P2-6 — 円。試算実績・原価分析の入力）
   outsourceCost        Decimal?  @map("outsource_cost") @db.Decimal(12, 2)
 
@@ -319,6 +493,19 @@ model WorkOrderStep {
   // 良品数が指定の在庫へ入る（onWorkOrderCompleted が入庫する）。
   branchStockDisposition BranchStockDisposition? @map("branch_stock_disposition")
 
+  // ── 仕掛品として在庫に置く分の記録（20261126220000_wip_posting）──────────────
+  // 品物が工程を離れて在庫に入るとき（半製品の数を記録した / 「半製品在庫へ」で
+  // 終わる分岐の終端）だけ入る。指示書の完了で、この値が仕掛品バケットの鍵
+  // （item_inventory.finished_* / wip_state_id）へ運ばれる。
+  //   finished_*          研削後の仕上がり寸法。
+  //   wip_path_step_ids   手前に合流があって加工状態が一通りに決まらないとき、
+  //                       記録した人が選んだ並び（カタログ id の JSON 配列・この工程自身は
+  //                       含めない形）。null = 推奨（本流）のまま。
+  // 規則は lib/wip-state-core.ts（wipRecordingFor / validateWipRecording）が唯一の定義。
+  finishedDiameterMm Decimal? @map("finished_diameter_mm") @db.Decimal(8, 3)
+  finishedLengthMm   Decimal? @map("finished_length_mm") @db.Decimal(10, 3)
+  wipPathStepIds     Json?    @map("wip_path_step_ids")
+
   sessionLockedBy String?   @map("session_locked_by") @db.Uuid
   sessionLockedAt DateTime? @map("session_locked_at") @db.Timestamptz(6)
 
@@ -335,6 +522,10 @@ model WorkOrderStep {
   processStep ProcessStepCatalog @relation(fields: [processStepId], references: [id])
   plant     Plant?           @relation(fields: [plantId], references: [id])
   supplierBp  BusinessPartner?   @relation("StepSupplier", fields: [supplierBpId], references: [id])
+  outsourceIssueMovement  InventoryMovement? @relation("StepOutsourceIssue", fields: [outsourceIssueMovementId], references: [id], onDelete: SetNull)
+  outsourceReturnMovement InventoryMovement? @relation("StepOutsourceReturn", fields: [outsourceReturnMovementId], references: [id], onDelete: SetNull)
+  outsourceOrder OutsourceOrder?
+  regrindReceiptMovement  InventoryMovement? @relation("StepRegrindReceipt", fields: [regrindReceiptMovementId], references: [id], onDelete: SetNull)
 
   outgoingLinks WorkOrderStepLink[] @relation("LinkSource")
   incomingLinks WorkOrderStepLink[] @relation("LinkTarget")
@@ -344,6 +535,7 @@ model WorkOrderStep {
   plans               WorkOrderStepPlan[]
   actuals             WorkOrderStepActual[]
   inspectionTemplates WorkOrderStepInspectionTemplate[]
+  programUses         WorkOrderStepProgram[] @relation("WorkOrderStepPrograms")
 
   @@index([workOrderId, sortOrder])
   @@index([status])
@@ -360,7 +552,11 @@ model WorkOrderStepPlan {
   plannedDate    DateTime  @map("planned_date") @db.Date
   plannedStartAt DateTime? @map("planned_start_at") @db.Timestamptz(6)
   plannedEndAt   DateTime? @map("planned_end_at") @db.Timestamptz(6)
-  quantity       Int? // 分割時の割当数量（任意）
+  /// @deprecated 2026-09-17 — 計画の数量は画面から外した。書き込まれるだけで
+  /// どこからも読まれず、実績の数量（work_order_step_actuals.quantity）とも
+  /// 突き合わせていなかったため。**既存の行は残す**（過去に入力された数字を
+  /// 消さない）。実際に何本流したかは工程の受入数・良品数と実績が持つ。
+  quantity       Int?
   workLocationId Int?      @map("work_location_id") // 作業場所（機械/エリア — 任意）
   notes          String?
   createdBy      String?   @map("created_by") @db.Uuid
@@ -542,5 +738,80 @@ model WorkOrderFinalInspection {
   workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
   @@map("work_order_final_inspections")
+  @@schema("app")
+}
+
+// 指示書の追加料金（送料など。§8 出荷・§9 請求）。
+//
+// ここは **予定** — 「このロットは送料が要る」と生産側が先に書いておく置き場で、
+// 請求されるのは出荷書側の行（delivery_order_charges）。作業計画と実績を分けて
+// いるのと同じ理由で、出荷のときにしか決まらないことがあるため:
+// 実費がいくらだったか、何箱になったか、そもそも同梱で送料が要らなくなったか。
+//
+// 出荷書を作るとき、載せたロットの指示書からこの行を**複写**する（複写後は
+// 出荷書側だけを直す — 出荷書を直しても指示書の予定は動かない）。
+//
+// 金額は行に焼き込む（unit_price / amount）。マスタの金額を後から直しても、
+// すでに書いた行は動かない — 見積・受注の単価と同じ考え方。
+model WorkOrderCharge {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId  String @map("work_order_id") @db.Uuid
+  chargeItemId Int    @map("charge_item_id")
+
+  /// 但し書き（「○○運輸 着払い」など）。null = 料金マスタの名称だけを出す。
+  description String?
+  quantity    Int     @default(1)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+  /// quantity × unit_price（円へ丸めた値）。読み側が掛け算を繰り返さないため。
+  amount      Decimal @db.Decimal(12, 2)
+  notes       String?
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  workOrder     WorkOrder  @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  chargeItem    ChargeItem @relation(fields: [chargeItemId], references: [id], onDelete: Restrict)
+  createdByUser User?      @relation("WorkOrderChargeCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([workOrderId, sortOrder])
+  @@index([chargeItemId])
+  @@map("work_order_charges")
+  @@schema("app")
+}
+
+// 外注依頼の書類番号（PU04。番号設計 PR-C）。
+//
+// 外注依頼は今も「指示書の外注工程の読み取りビュー」で、依頼日・入荷予定日・
+// 入荷日は工程（work_order_steps）が持つ。**この表が持つのは番号だけ** —
+// 番号は「自社法人 × 会計年度」の連番で、いったん払い出したら工程が消えても
+// 欠番にしない（再利用しない）ので、工程の列ではなく独立した行にした
+// （工程を消すと work_order_step_id が NULL になるだけで、行と番号は残る）。
+//
+// 行は **DB が作る**: 外注工程に依頼日（outsource_requested_at）が入った時点で
+// トリガー app.work_order_steps_outsource_order が 1 行足す。Web と共有端末の
+// どちらが依頼日を入れても同じ経路になる。
+model OutsourceOrder {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  workOrderStepId String? @unique @map("work_order_step_id") @db.Uuid
+
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  docRef       String  @unique @default("") @map("doc_ref")
+  legacyNumber String? @map("legacy_number")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  step       WorkOrderStep? @relation(fields: [workOrderStepId], references: [id], onDelete: SetNull)
+  ownCompany OwnCompany     @relation("OutsourceOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
+  @@index([ownCompanyId])
+  @@map("outsource_orders")
   @@schema("app")
 }

@@ -2,8 +2,11 @@
  * audit-links.ts — 操作履歴 (SY07) から関連ドキュメント/アプリへのリンク解決。
  * pure / client-safe。
  *
- * audit_logs の recordId は業務識別子（文書番号 QOT-… / 通し番号 / マスタ id）
- * で、各詳細ページの URL id と同じ規約（例: /sales/quotes/QOT-…）。
+ * audit_logs の recordId は業務識別子（文書番号 QOT-… / 通し番号 / マスタ id）。
+ * マスタ・ロット番号はそのまま各詳細ページの URL id になる。**番号を持つ書類は
+ * 番号だけでは URL にならない**（同じ番号が 2 つの自社法人にあり得る）ので、
+ * 法人コード付きの `recordKey`（`CKK/QOT-2026-00001` — audit_logs.record_key）を
+ * 渡してもらい、URL の id（`CKK~QOT-2026-00001`）へ直す。
  * 確実に詳細 URL を組めるテーブルは kind "detail"、それ以外は一覧 + 検索
  * （?q=recordId）の kind "list" で返す。未知のテーブルは null。
  *
@@ -17,6 +20,7 @@
  */
 
 import { appLabelForKey, appList } from "./app-list";
+import { docUrlId, isDocNumber, parseDocId } from "./doc-ref-core";
 import type { Locale } from "./i18n";
 import { label } from "./messages";
 
@@ -85,13 +89,13 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   product_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixProduct",
-    listPath: "/production/inventory/products",
+    listPath: "/inventory/products",
     directDetail: true,
   },
   material_inventory: {
     appListKey: "inventory",
     suffixKey: "suffixMaterial",
-    listPath: "/production/inventory/materials",
+    listPath: "/inventory/materials",
     directDetail: true,
   },
   // 一般
@@ -134,6 +138,16 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/shipping/delivery-orders",
     directDetail: true,
   },
+  inventory_movements: {
+    appListKey: "inventory-movements",
+    listPath: "/inventory/movements",
+    directDetail: true,
+  },
+  stock_takes: {
+    appListKey: "stock-takes",
+    listPath: "/inventory/stock-takes",
+    directDetail: true,
+  },
   delivery_notes: {
     appListKey: "delivery-notes",
     listPath: "/shipping/delivery-notes",
@@ -149,6 +163,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/billing/closings",
   },
   // マスタ
+  // 製品・素材は app.items（品目統合 第 3 段）。`table_name` は
+  // `products` / `materials` のまま — あれは「そのとき何を書いたか」の事実で、
+  // 行き先の話ではない。`record_id` は移行 20261102090000 が品目 id へ
+  // 読み替えたので、URL はそのまま繋がる（読み替えられなかった行は
+  // `legacy:<旧 id>` になっていて、数値でないので詳細は開かない）。
   products: {
     appListKey: "master-products",
     listPath: "/master/products",
@@ -158,6 +177,12 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     appListKey: "master-materials",
     listPath: "/master/materials",
     directDetail: true,
+  },
+  // 再研磨品目 (MS0H)。詳細ページを持たない（編集は一覧のモーダル）ので
+  // 一覧まで。`items` を書くのはこの画面だけ — 製品・素材は旧名のまま。
+  items: {
+    appListKey: "master-regrind-items",
+    listPath: "/master/regrind-items",
   },
   material_types: {
     appListKey: "master-material-types",
@@ -171,6 +196,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   plants: {
     appListKey: "master-plants",
     listPath: "/master/plants",
+    directDetail: true,
+  },
+  own_companies: {
+    appListKey: "master-own-companies",
+    listPath: "/master/own-companies",
     directDetail: true,
   },
   storage_locations: {
@@ -211,6 +241,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/master/work-locations",
   },
   work_locations: {
+    appListKey: "master-work-locations",
+    listPath: "/master/work-locations",
+  },
+  // 機種 — 作業場所マスタの「機種」タブ。
+  machine_models: {
     appListKey: "master-work-locations",
     listPath: "/master/work-locations",
   },
@@ -282,11 +317,35 @@ function resolveAppLabel(route: TableRoute, locale: Locale): string {
   return `${base}${suffix}`;
 }
 
-/** 対象テーブル + recordId から関連ページへのリンクを解決する。 */
+/**
+ * 詳細 URL の id。法人コード付きの書類の参照（`recordKey` か、`recordId` 自体が
+ * 参照 / id の姿のとき）は URL の id（`CKK~QOT-2026-00001`）へ直す。
+ * それ以外（マスタ id・ロット番号・法人コードの無い番号）は recordId のまま。
+ */
+function detailId(recordId: string, recordKey?: string | null): string {
+  for (const candidate of [recordKey, recordId]) {
+    if (!candidate) continue;
+    const { companyCode, number } = parseDocId(candidate);
+    if (companyCode && isDocNumber(number)) {
+      return docUrlId(companyCode, number);
+    }
+  }
+  return recordId;
+}
+
+/**
+ * 対象テーブル + recordId から関連ページへのリンクを解決する。
+ *
+ * `recordKey` は audit_logs.record_key（任意）。番号を持つ書類ではこれが法人
+ * コード付きの参照なので、渡すとリンクが正しい法人の書類を開く。渡さないと
+ * 番号だけの URL になり、詳細ページ側が番号から書類を引く（同じ番号が複数の
+ * 法人にあれば選択画面になる）。
+ */
 export function auditRecordLink(
   tableName: string,
   recordId: string | null,
   locale: Locale = "ja",
+  recordKey?: string | null,
 ): AuditLink | null {
   const route = TABLE_ROUTES[tableName];
   if (!route) return null;
@@ -294,7 +353,7 @@ export function auditRecordLink(
   if (route.directDetail && recordId) {
     return {
       appLabel,
-      href: `${route.listPath}/${encodeURIComponent(recordId)}`,
+      href: `${route.listPath}/${encodeURIComponent(detailId(recordId, recordKey))}`,
       kind: "detail",
     };
   }

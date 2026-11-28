@@ -110,6 +110,11 @@ export interface Criterion {
   id: string;
   /** 表示名 e.g. "材料原価". */
   name: string;
+  /**
+   * この基準が何を数えているかの説明（管理者が書く）。価格試算の画面で内訳の各行に
+   * 付くヒントボタンに出る。未設定 = ヒントボタンなし。
+   */
+  description?: string;
   role: CriterionRole;
   /** JS expression body returning a number. */
   expression: string;
@@ -117,6 +122,69 @@ export interface Criterion {
   enabled: boolean;
   /** 適用する工具種（未設定/空 = 全工具種）。指定時はその工具種の価格試算にのみ効く。 */
   toolTypes?: ToolType[];
+  /**
+   * 原価に数えるか。価格試算の結果に「原価合計」として残り、あとで原価を分析する
+   * ための印で、**見積単価の計算には効かない**（subtotal に足すかは role が決める）。
+   * 未設定（旧データ）は role から決める — `isCostCriterion` が唯一の判定。
+   */
+  isCost?: boolean;
+  /**
+   * 原価**のみ**に含める（売価には入れない）。`isCost` が立っている `component`
+   * にだけ意味がある — 原価合計には数えるが、小計（最低単価）にも見積単価にも
+   * 足さない。社内の間接費のように「原価としては把握したいが、価格には転嫁しない」
+   * 項目のための印。値は従来どおり `r.<id>` として後続の基準から読める。
+   * 判定は `criterionCostMode` / `addsToSubtotal` が唯一の定義。
+   */
+  costOnly?: boolean;
+}
+
+/**
+ * 基準の原価の扱い（3 状態）。
+ * - `none`         … 原価に数えない
+ * - `costAndPrice` … 原価に数え、`component` なら売価（小計）にも足す（従来の「原価」）
+ * - `costOnly`     … 原価にだけ数え、売価には足さない
+ *
+ * `costOnly` は `component` でしか成り立たない（`intermediate` は元から小計に
+ * 足さないので、印を立てても `costAndPrice` と同じ — 区別しない）。
+ */
+export type CriterionCostMode = "none" | "costAndPrice" | "costOnly";
+
+export function criterionCostMode(
+  c: Pick<Criterion, "role" | "isCost" | "costOnly">,
+): CriterionCostMode {
+  if (!isCostCriterion(c)) return "none";
+  return c.role === "component" && c.costOnly ? "costOnly" : "costAndPrice";
+}
+
+/** 3 状態を保存形（isCost / costOnly）へ戻す。 */
+export function costModeFlags(
+  mode: CriterionCostMode,
+): Pick<Criterion, "isCost" | "costOnly"> {
+  if (mode === "none") return { isCost: false, costOnly: undefined };
+  if (mode === "costOnly") return { isCost: true, costOnly: true };
+  return { isCost: true, costOnly: undefined };
+}
+
+/**
+ * 基準の値を小計（最低単価 → 見積単価）へ足すか。`component` だけが足し、
+ * そのうち「原価のみに含める」ものは足さない。
+ */
+export function addsToSubtotal(
+  c: Pick<Criterion, "role" | "isCost" | "costOnly">,
+): boolean {
+  return c.role === "component" && criterionCostMode(c) !== "costOnly";
+}
+
+/**
+ * 基準が原価に数えられるか。`final` は価格そのものなので常に false。未設定は
+ * `component`（小計に足す項目）だけを原価とみなす — 印を付ける前の保存済み
+ * 基準でも、従来の「原価内訳」と同じ集合になる。
+ */
+export function isCostCriterion(
+  c: Pick<Criterion, "role" | "isCost">,
+): boolean {
+  if (c.role === "final") return false;
+  return c.isCost ?? c.role === "component";
 }
 
 export type CustomInputType = "number" | "boolean" | "text" | "select";
@@ -162,12 +230,15 @@ export function criterionSchema(tr: Tr) {
     name: z
       .string()
       .min(1, tr("settings.trialPricingCriteria.enterACriterionName")),
+    description: z.string().max(1000).optional(),
     role: z.enum(["component", "intermediate", "final"]),
     expression: z.string().max(4000),
     order: z.number(),
     enabled: z.boolean(),
     // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
     toolTypes: z.array(z.string()).optional(),
+    isCost: z.boolean().optional(),
+    costOnly: z.boolean().optional(),
   });
 }
 
@@ -216,9 +287,8 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "ldOuterDiameter",
   "ldBladeLength",
   "machiningMinutes",
-  "lotQuantities",
-  "lotMarkups",
-  // per-lot / running state
+  // running state（discountRate / autoRate / lotMarkup は廃止したロット割引率の
+  // 名前。保存済みの式との互換で中立値のまま束縛してあるので、予約語のままにする）
   "quantity",
   "subtotal",
   "r",
@@ -236,7 +306,6 @@ export const RESERVED_KEYS: ReadonlySet<string> = new Set([
   "matchDesc",
   "coatingRawCost",
   "ldMinutes",
-  "lotDiscountRate",
   "stepTypeRate",
   "neckTypeRate",
   "cylinderTypeRate",
@@ -337,6 +406,11 @@ export const DEFAULT_CRITERIA: Criterion[] = BASE_CRITERIA.map((c) => ({
   ...c,
   toolTypes: [...TRIAL_TOOL_TYPES],
 }));
+
+/** 形状出しを按分する本数（scope:"global" のカスタム値のキー）。 */
+export const SHAPE_OUT_BASE_QUANTITY_KEY = "shapeOutBaseQuantity";
+/** 旧「基準数量」の既定値と同じ。 */
+export const DEFAULT_SHAPE_OUT_BASE_QUANTITY = 100;
 
 /** scope:"global" の既定カスタム入力（常に存在させる固定係数）。 */
 export const GLOBAL_CUSTOM_INPUTS: CustomInputDef[] =

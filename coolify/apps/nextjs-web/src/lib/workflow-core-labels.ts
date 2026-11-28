@@ -8,7 +8,7 @@
 
 import type { useTranslations } from "next-intl";
 import type { QuantityTrackingMode, WorkflowCoreT } from "./workflow-core";
-import { QUANTITY_LABELS } from "./workflow-core";
+import { QUANTITY_LABELS, quantityLabelKeysFor } from "./workflow-core";
 
 type Tr = ReturnType<typeof useTranslations>;
 
@@ -23,6 +23,8 @@ export function workflowCoreT(tr: Tr): WorkflowCoreT {
 export function localizedQuantityLabels(
   tr: Tr,
   mode: QuantityTrackingMode,
+  /** 工程 code。製品受入（再研磨）は欄の読み方が違う（quantityLabelKeysFor）。 */
+  stepCode?: string | null,
 ): {
   input: string;
   success: string;
@@ -31,7 +33,9 @@ export function localizedQuantityLabels(
   rework: string;
 } {
   const t = workflowCoreT(tr);
-  const labels = QUANTITY_LABELS[mode];
+  const labels = stepCode
+    ? quantityLabelKeysFor({ code: stepCode, quantityTracking: mode })
+    : QUANTITY_LABELS[mode];
   return {
     input: t(labels.input, labels.input),
     success: t(labels.success, labels.success),

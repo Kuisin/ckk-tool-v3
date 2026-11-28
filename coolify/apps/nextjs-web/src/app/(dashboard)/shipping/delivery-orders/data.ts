@@ -1,8 +1,9 @@
 /**
  * data.ts — 出荷書 (SH01) ページのサーバーサイド取得・マッピング。
  *
- * app.delivery_orders は (year_month, seq) の複合キー — 表示番号
- * DOR-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
+ * 出荷書番号 DOR-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。行は
+ * 参照 doc_ref（`CKK/DOR-…`）で引き、画面の DTO は id（`CKK~DOR-…`）で持つ
+ * — URL id を兼ねる（lib/doc-number.ts）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
@@ -19,9 +20,9 @@ import { type Prisma, prisma } from "@/lib/db";
 import { evaluateDeliveryOrderVariance } from "@/lib/delivery-variance";
 import {
   type DocKey,
-  formatDocNumber,
+  docIdOf,
   formatProductNumber,
-  orderLineNumberOf,
+  orderLineIdOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -39,25 +40,21 @@ const DELIVERY_ORDER_INCLUDE = {
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
-      product: true,
+      // 品目統合 第 2 段 C — 表示は品目側から読む。
+      item: true,
       orderLine: {
         select: {
-          acceptanceYearMonth: true,
-          acceptanceSeq: true,
-          branch: true,
+          lineRef: true,
           // 確定前の単価表示のフォールバック（確定後は明細側に凍る）。
           unitPrice: true,
-          // 実効エンドユーザー = 明細の指定 ?? 注文請書ヘッダの既定。
+          // 配送（§8）— 明細ごと（確定時の納品書自動作成の入力）。
+          deliveryMethod: true,
           endUserBpId: true,
           endUserBp: { select: { name: true } },
           // 営業担当は書類に保存せず、注文請書ヘッダから導出する。
-          // 配送方法・エンドユーザーも同じくヘッダが持つ（確定時の納品書自動作成の入力）。
           acceptance: {
             select: {
               salesRep: { select: { id: true, displayName: true } },
-              deliveryMethod: true,
-              endUserBpId: true,
-              endUserBp: { select: { name: true } },
             },
           },
         },
@@ -65,7 +62,11 @@ const DELIVERY_ORDER_INCLUDE = {
     },
   },
   deliveryNotes: {
-    orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
+    orderBy: [
+      { fiscalYear: "asc" as const },
+      { docSeq: "asc" as const },
+      { id: "asc" as const },
+    ],
     include: { recipientBp: true },
   },
 };
@@ -74,17 +75,20 @@ type DeliveryOrderRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
 function findRow(key: DocKey) {
   return prisma.deliveryOrder.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: DELIVERY_ORDER_INCLUDE,
   });
 }
 
 /** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
-function productLabel(p: {
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
+function productLabel(
+  p: {
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  } | null,
+): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
@@ -102,13 +106,13 @@ function autoDeliveryNotePreview(r: DeliveryOrderRow) {
   const first = r.items[0]?.orderLine;
   if (r.type !== "DISPATCH" || !first)
     return { notes: [], endUserMissing: false };
-  const endUserBpId = first.endUserBpId ?? first.acceptance.endUserBpId ?? null;
-  const endUserBp = first.endUserBp ?? first.acceptance.endUserBp ?? null;
+  const endUserBpId = first.endUserBpId ?? null;
+  const endUserBp = first.endUserBp ?? null;
   return previewAutoDeliveryNotes(
     {
       customerBpId: r.customerBpId,
       customerBranchBpId: r.customerBranchBpId,
-      deliveryMethod: first.acceptance.deliveryMethod,
+      deliveryMethod: first.deliveryMethod,
       endUserBpId,
     },
     {
@@ -138,7 +142,7 @@ async function varianceRows(
       quantity: it.quantity,
     })),
     closesOrderLines: r.closesOrderLines,
-    excludeKey: { yearMonth: r.yearMonth, seq: r.seq },
+    excludeKey: { docRef: r.docRef },
   });
   return summary.lines.map((l) => ({
     orderLineNumber: l.orderLineNumber,
@@ -157,13 +161,12 @@ function mapDeliveryOrder(
   r: DeliveryOrderRow,
   variance: DeliveryOrderVarianceRow[] = [],
 ): DeliveryOrder {
-  const number = formatDocNumber("DOR", {
-    yearMonth: r.yearMonth,
-    seq: r.seq,
-  });
+  // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+  const number = docIdOf(r);
   return {
     id: number,
     deliveryOrderNumber: number,
+    legacyNumber: r.legacyNumber,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     customerBranchName: r.customerBranchBp
@@ -181,7 +184,7 @@ function mapDeliveryOrder(
     orderLineNumbers: [
       ...new Set(
         r.items
-          .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
+          .map((it) => (it.orderLine ? orderLineIdOf(it.orderLine) : null))
           .filter((n): n is string => Boolean(n)),
       ),
     ],
@@ -202,11 +205,12 @@ function mapDeliveryOrder(
     items: r.items.map((it) => ({
       id: it.id,
       orderLineId: it.orderLineId,
-      orderLineNumber: it.orderLine ? orderLineNumberOf(it.orderLine) : null,
-      productId: String(it.productId),
-      productName: productLabel(it.product),
+      orderLineNumber: it.orderLine ? orderLineIdOf(it.orderLine) : null,
+      itemId: String(it.itemId ?? ""),
+      productName: productLabel(it.item),
       lotNumber: it.lotNumber,
       quantity: it.quantity,
+      returnedQuantity: it.returnedQuantity,
       // 確定前は焼き込み前なので注文明細の単価を見せる（確定すると凍る）。
       unitPrice:
         it.unitPrice != null
@@ -218,10 +222,7 @@ function mapDeliveryOrder(
     })),
     totalQuantity: r.items.reduce((sum, it) => sum + it.quantity, 0),
     deliveryNotes: r.deliveryNotes.map((dn) => ({
-      deliveryNumber: formatDocNumber("DRN", {
-        yearMonth: dn.yearMonth,
-        seq: dn.seq,
-      }),
+      deliveryNumber: docIdOf(dn),
       deliveryMethod: dn.deliveryMethod,
       recipientName: localized(dn.recipientBp.name as LocalizedText | null),
       status: dn.status,
@@ -253,7 +254,7 @@ export async function fetchDeliveryOrders(
     take: LIST_FETCH_CAP,
     where: extraWhere ? { AND: [scope, extraWhere] } : scope,
     include: DELIVERY_ORDER_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   // 一覧では過不足を計算しない（明細ごとに問い合わせが要る）— 詳細だけ。
   return rows.map((r) => mapDeliveryOrder(r));
@@ -293,7 +294,7 @@ export async function fetchWorkOrderDeliverySeed(
   workOrderNumber: number;
   /** この指示書が充当している注文明細（確定済み = 枝番ありのみ）。 */
   orderLineIds: string[];
-  /** 上の明細が属する注文請書の番号（重複なし・昇順）。 */
+  /** 上の明細が属する注文請書の id（法人コード + 番号。重複なし・昇順）。 */
   acceptanceNumbers: string[];
 } | null> {
   const authz = await checkPermission("delivery_order", "READ");
@@ -308,8 +309,7 @@ export async function fetchWorkOrderDeliverySeed(
             select: {
               id: true,
               branch: true,
-              acceptanceYearMonth: true,
-              acceptanceSeq: true,
+              acceptance: { select: { docRef: true } },
             },
           },
         },
@@ -325,14 +325,7 @@ export async function fetchWorkOrderDeliverySeed(
     workOrderNumber,
     orderLineIds: lines.map((l) => l.id),
     acceptanceNumbers: [
-      ...new Set(
-        lines.map((l) =>
-          formatDocNumber("ORD", {
-            yearMonth: l.acceptanceYearMonth,
-            seq: l.acceptanceSeq,
-          }),
-        ),
-      ),
+      ...new Set(lines.map((l) => docIdOf(l.acceptance))),
     ].sort(),
   };
 }

@@ -15,6 +15,7 @@ import {
   Alert,
   Badge,
   Box,
+  Divider,
   Group,
   Menu,
   NumberInput,
@@ -79,6 +80,10 @@ export interface TaxCategoryRow {
   sortOrder: number;
   isActive: boolean;
   notes: string;
+  // 会計連携（仕訳 CSV）の科目コード。空文字 = 未設定 = SY0J の既定に従う。
+  taxCode: string;
+  salesAccountCode: string;
+  taxAccountCode: string;
   /** 削除可否の目安（FK は RESTRICT なので DB でも止まる）。 */
   productCount: number;
   customerCount: number;
@@ -131,6 +136,9 @@ function CategoryModal({
   const [sortOrder, setSortOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
+  const [taxCode, setTaxCode] = useState("");
+  const [salesAccountCode, setSalesAccountCode] = useState("");
+  const [taxAccountCode, setTaxAccountCode] = useState("");
 
   useEffect(() => {
     if (!opened) return;
@@ -143,6 +151,9 @@ function CategoryModal({
     setSortOrder(category?.sortOrder ?? 0);
     setIsActive(category?.isActive ?? true);
     setNotes(category?.notes ?? "");
+    setTaxCode(category?.taxCode ?? "");
+    setSalesAccountCode(category?.salesAccountCode ?? "");
+    setTaxAccountCode(category?.taxAccountCode ?? "");
   }, [opened, category]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -158,6 +169,9 @@ function CategoryModal({
         sortOrder,
         isActive,
         notes,
+        taxCode,
+        salesAccountCode,
+        taxAccountCode,
       };
       const result = isEdit
         ? await updateTaxCategory(category.id, input)
@@ -236,9 +250,43 @@ function CategoryModal({
           onChange={(e) => setNotes(e.currentTarget.value)}
           value={notes}
         />
+        <Divider
+          label={tr("master.taxCategories.accountingSection")}
+          labelPosition="left"
+        />
+        <Text c="dimmed" size="xs">
+          {tr("master.taxCategories.accountingSectionHint")}
+        </Text>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <TextInput
+            description={tr("master.taxCategories.accountCodeHint")}
+            label={tr("master.taxCategories.taxCode")}
+            onChange={(e) => setTaxCode(e.currentTarget.value)}
+            value={taxCode}
+          />
+          <TextInput
+            description={tr("master.taxCategories.accountCodeHint")}
+            label={tr("master.taxCategories.salesAccountCode")}
+            onChange={(e) => setSalesAccountCode(e.currentTarget.value)}
+            value={salesAccountCode}
+          />
+          <TextInput
+            description={tr("master.taxCategories.accountCodeHint")}
+            label={tr("master.taxCategories.taxAccountCode")}
+            onChange={(e) => setTaxAccountCode(e.currentTarget.value)}
+            value={taxAccountCode}
+          />
+        </SimpleGrid>
         <Switch
           checked={isDefault}
-          description={tr("master.taxCategories.isDefaultHint")}
+          description={
+            category?.isDefault
+              ? tr("master.taxCategories.cannotUnsetDefault")
+              : tr("master.taxCategories.isDefaultHint")
+          }
+          // 既定の区分からは外せない（既定が 1 つも無くなる）。既定を移すのは
+          // 別の区分を既定にする側の操作で、サーバーも同じ規則で止める。
+          disabled={category?.isDefault === true}
           label={tr("master.taxCategories.isDefault")}
           onChange={(e) => setIsDefault(e.currentTarget.checked)}
         />

@@ -26,6 +26,8 @@ import {
 import type { Locale } from "./i18n";
 import { missingInspectionSheets } from "./inspection-core";
 import { type PlanAssignee, stepOperability } from "./location-board-core";
+import { allocationMarkingRange } from "./marking-number";
+import { isStepOverdue } from "./step-due-date-core";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
 import {
   accumulatedWorkMs,
@@ -35,12 +37,14 @@ import {
   type StepSessionState,
   stepSessionState,
 } from "./steps-core";
+import { wipStartSkippedStepIds } from "./wip-state-core";
 import {
   canStartStep,
   effectiveLotInputMode,
   expectedInput,
   type LotInputMode,
   type QuantityTrackingMode,
+  START_STEP_CODES,
   type StepLinkState,
   type StepState,
   type WorkflowCtx,
@@ -74,6 +78,8 @@ export interface MyStepView {
   plannedQuantityForMe: number | null;
   /** 指示書の予定数量 */
   workOrderPlannedQuantity: number;
+  /** WORK_ORDER_TYPE。再研磨では半製品の区分を出さない・受入本数は端末の入力が権威。 */
+  workOrderType: string;
   /** 社内 / 外注（INTERNAL | OUTSOURCE）。 */
   executionLocation: string;
   /** 記録済みの受入数（開始済みのみ） */
@@ -87,6 +93,10 @@ export interface MyStepView {
   defectRework: number | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** 工程納期（YYYY-MM-DD・JST の暦日）— 任意。 */
+  dueDate: string | null;
+  /** 工程納期を過ぎて未完了か（サーバーが JST の今日で判定済み）。 */
+  dueOverdue: boolean;
   /** ロット/伝票コード入力の実効モード（上書き → カタログ既定）。 */
   lotInputMode: LotInputMode;
   /** 開始時に記録したロット/伝票コード。 */
@@ -142,38 +152,46 @@ async function buildContexts(
   workOrderIds: string[],
 ): Promise<Map<string, WorkflowCtx>> {
   if (workOrderIds.length === 0) return new Map();
-  const [workOrders, siblings, links, execDeps] = await Promise.all([
-    prisma.workOrder.findMany({
-      where: { id: { in: workOrderIds } },
-      select: { id: true, plannedQuantity: true },
-    }),
-    prisma.workOrderStep.findMany({
-      where: { workOrderId: { in: workOrderIds } },
-      select: {
-        id: true,
-        workOrderId: true,
-        processStepId: true,
-        status: true,
-        sortOrder: true,
-        inputQuantity: true,
-        outputSuccessQuantity: true,
-        outputDefectSemiFinished: true,
-        outputDefectScrap: true,
-        outputDefectRework: true,
-        sessionLockedBy: true,
-      },
-    }),
-    prisma.workOrderStepLink.findMany({
-      where: { workOrderId: { in: workOrderIds } },
-      select: {
-        workOrderId: true,
-        sourceStepId: true,
-        targetStepId: true,
-        routedQuantity: true,
-      },
-    }),
-    prisma.processStepExecDependency.findMany(),
-  ]);
+  const [workOrders, siblings, links, execDeps, startSteps] = await Promise.all(
+    [
+      prisma.workOrder.findMany({
+        where: { id: { in: workOrderIds } },
+        select: { id: true, plannedQuantity: true },
+      }),
+      prisma.workOrderStep.findMany({
+        where: { workOrderId: { in: workOrderIds } },
+        select: {
+          id: true,
+          workOrderId: true,
+          processStepId: true,
+          status: true,
+          sortOrder: true,
+          inputQuantity: true,
+          outputSuccessQuantity: true,
+          outputDefectSemiFinished: true,
+          outputDefectScrap: true,
+          outputDefectRework: true,
+          sessionLockedBy: true,
+        },
+      }),
+      prisma.workOrderStepLink.findMany({
+        where: { workOrderId: { in: workOrderIds } },
+        select: {
+          workOrderId: true,
+          sourceStepId: true,
+          targetStepId: true,
+          routedQuantity: true,
+        },
+      }),
+      prisma.processStepExecDependency.findMany(),
+      // 開始工程（出し・受渡し）— 終わるまで他の工程を開始させない（canStartStep）。
+      prisma.processStepCatalog.findMany({
+        where: { code: { in: [...START_STEP_CODES] } },
+        select: { id: true },
+      }),
+    ],
+  );
+  const startStepIds = startSteps.map((c) => c.id);
 
   const deps = execDeps.map((d) => ({
     stepId: d.stepId,
@@ -216,6 +234,7 @@ async function buildContexts(
       steps: stepsByWo.get(wo.id) ?? [],
       links: linksByWo.get(wo.id) ?? [],
       execDeps: deps,
+      startStepIds,
     });
   }
   return result;
@@ -248,7 +267,8 @@ async function hydrateSteps(
           id: true,
           workOrderNumber: true,
           plannedQuantity: true,
-          product: { select: { name: true } },
+          type: true,
+          productItem: { select: { name: true } },
         },
       },
       actuals: {
@@ -304,7 +324,7 @@ async function hydrateSteps(
     views.push({
       stepId: r.id,
       workOrderNumber: r.workOrder.workOrderNumber,
-      productName: localized(asText(r.workOrder.product.name), locale),
+      productName: localized(asText(r.workOrder.productItem.name), locale),
       stepName: localized(asText(r.processStep.name), locale),
       stepCode: r.processStep.code,
       processStepId: r.processStepId,
@@ -331,6 +351,7 @@ async function hydrateSteps(
       plannedEndAt: plan ? formatTime(plan.plannedEndAt) : null,
       plannedQuantityForMe: plan?.quantity ?? null,
       workOrderPlannedQuantity: r.workOrder.plannedQuantity,
+      workOrderType: r.workOrder.type,
       inputQuantity: r.inputQuantity,
       expectedInputQuantity: expectedInput(r.id, ctx),
       outputSuccessQuantity: r.outputSuccessQuantity,
@@ -339,6 +360,12 @@ async function hydrateSteps(
       defectRework: r.outputDefectRework,
       plannedWorkHours:
         r.plannedWorkHours == null ? null : Number(r.plannedWorkHours),
+      dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+      dueOverdue: isStepOverdue(
+        r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+        r.status,
+        todayJst,
+      ),
       lotInputMode: effectiveLotInputMode(
         r.lotInputMode,
         r.processStep.lotInputMode,
@@ -625,7 +652,104 @@ export interface WorkOrderOverview {
   /** 使用素材（未指定は null）。 */
   materialName: string | null;
   plannedQuantity: number;
+  /** 印字番号（割当の注文明細ごと。採番済みのものだけ）。 */
+  markings: MarkingView[];
+  /** 開始状態（在庫の仕掛品から始めた指示書）。素材から作る指示書は null。 */
+  startWip: StartWipOverview | null;
+  /**
+   * 打ち切り（Web の指示書詳細で申請する — 共有端末からは申請しない）。
+   * ABORTED = 打ち切り済み（status は CANCELLED）/ PENDING = 承認依頼中
+   * （承認されると流れの途中の品が在庫へ戻り、工程は閉じる）/ null = なし。
+   */
+  abort: "ABORTED" | "PENDING" | null;
   steps: WorkOrderStepItem[];
+}
+
+/**
+ * 印字番号 1 割当ぶん（lib/marking-number.ts の allocationMarkingRange）。
+ * split = 分割番号（0 = 分割でない。fillMessage に渡すので null にしない）。
+ */
+export type MarkingView = {
+  first: string;
+  last: string;
+  perLine: string;
+  split: number;
+};
+
+/**
+ * 指示書に割り当てられた注文明細の印字番号（割当順・採番済みのみ）。
+ * 明細の一部だけを割り当てた指示書（分割）は、分割の接頭辞 A{base}{分割番号}
+ * で割当数量ぶん（A2000001-001 〜 -055）。明細全部なら明細の基数で受注数量ぶん。
+ * 分割番号は割当の作成時に DB が振って凍結する（Web の指示書詳細と同じ規則）。
+ */
+export async function getWorkOrderMarkings(
+  workOrderNumber: number,
+): Promise<MarkingView[]> {
+  const links = await prisma.workOrderOrderLine.findMany({
+    where: { workOrder: { workOrderNumber } },
+    select: {
+      quantity: true,
+      markingSplit: true,
+      orderLine: { select: { quantity: true, markingBase: true } },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+  return links.flatMap(({ quantity, markingSplit, orderLine }) => {
+    if (orderLine.markingBase == null) return [];
+    const r = allocationMarkingRange({
+      base: orderLine.markingBase,
+      split: markingSplit,
+      lineQuantity: orderLine.quantity,
+      allocatedQuantity: quantity,
+    });
+    return [{ ...r, split: r.split ?? 0 }];
+  });
+}
+
+/** 指示書の開始状態（在庫の仕掛品から始めた指示書）。 */
+export type StartWipOverview = {
+  /** 加工状態の呼び名（任意）。 */
+  stateName: string | null;
+  /** 済んでいた工程の名前（工程順）。空 = 未加工の仕掛品。 */
+  stepNames: string[];
+  /** そのうち、この指示書では行わない（飛ばした）工程の名前。 */
+  skippedStepNames: string[];
+};
+
+/**
+ * 開始状態を画面の形へ。済んでいた工程は指示書の工程に載っていない（作成時に
+ * 落としてある）ので、名前は工程マスタから引く。飛ばした工程の決め方は
+ * wip-state-core wipStartSkippedStepIds（Web の指示書詳細と同じ関数）。
+ */
+async function startWipOverview(
+  state: { name: unknown; stepIds: number[] } | null,
+  workOrderProcessStepIds: readonly number[],
+  locale: Locale,
+): Promise<StartWipOverview | null> {
+  if (!state) return null;
+  const catalog =
+    state.stepIds.length > 0
+      ? await prisma.processStepCatalog.findMany({
+          where: { id: { in: state.stepIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const names = new Map(
+    catalog.map((c) => [c.id, localized(asText(c.name), locale)]),
+  );
+  const nameOf = (id: number) => names.get(id) ?? `#${id}`;
+  const stateName =
+    state.name && typeof state.name === "object"
+      ? localized(asText(state.name), locale) || null
+      : null;
+  return {
+    stateName,
+    stepNames: state.stepIds.map(nameOf),
+    skippedStepNames: wipStartSkippedStepIds(
+      state.stepIds,
+      workOrderProcessStepIds,
+    ).map(nameOf),
+  };
 }
 
 /**
@@ -647,9 +771,17 @@ export async function getWorkOrderOverview(
       workOrderNumber: true,
       status: true,
       plannedQuantity: true,
-      product: { select: { name: true } },
-      material: { select: { name: true } },
-      steps: { select: { id: true } },
+      productItem: { select: { name: true } },
+      materialItem: { select: { name: true } },
+      steps: { select: { id: true, processStepId: true } },
+      // 開始状態 — 在庫の仕掛品から始めた指示書の、投入した仕掛品の加工状態。
+      startWipState: { select: { name: true, stepIds: true } },
+      abortedAt: true,
+      aborts: {
+        where: { status: "PENDING" },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
   if (!wo) return null;
@@ -709,11 +841,23 @@ export async function getWorkOrderOverview(
   return {
     workOrderNumber: wo.workOrderNumber,
     status: wo.status,
-    productName: localized(asText(wo.product.name), locale),
-    materialName: wo.material
-      ? localized(asText(wo.material.name), locale)
+    productName: localized(asText(wo.productItem.name), locale),
+    materialName: wo.materialItem
+      ? localized(asText(wo.materialItem.name), locale)
       : null,
     plannedQuantity: wo.plannedQuantity,
+    markings: await getWorkOrderMarkings(wo.workOrderNumber),
+    startWip: await startWipOverview(
+      wo.startWipState,
+      wo.steps.map((s) => s.processStepId),
+      locale,
+    ),
+    abort:
+      wo.abortedAt != null
+        ? "ABORTED"
+        : wo.aborts.length > 0
+          ? "PENDING"
+          : null,
     steps: items,
   };
 }

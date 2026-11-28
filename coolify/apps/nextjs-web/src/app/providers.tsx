@@ -15,10 +15,14 @@ import { MantineProvider } from "@mantine/core";
 import { DatesProvider } from "@mantine/dates";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
+import { QueryClientProvider } from "@tanstack/react-query";
 import "dayjs/locale/ja";
 import { NextIntlClientProvider } from "next-intl";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
 import { PullToRefresh } from "@/components/layout/PullToRefresh";
+import { ToastHygiene } from "@/components/layout/ToastHygiene";
+import { getQueryClient } from "@/lib/query-client";
 import ja from "../../messages/ja.json";
 import { theme } from "./theme";
 
@@ -44,17 +48,27 @@ import { theme } from "./theme";
  * 同じ JST 固定（`documentFormatters`）に揃える。
  */
 export function Providers({ children }: { children: ReactNode }) {
+  // クライアントが自分で取りに行く読み取り（検索欄など）のキャッシュ。
+  // 何を載せてよいかは lib/query-client.ts の冒頭。
+  const queryClient = getQueryClient();
   return (
     <NextIntlClientProvider locale="ja" messages={ja} timeZone="Asia/Tokyo">
-      <MantineProvider defaultColorScheme="light" theme={theme}>
-        <DatesProvider settings={{ locale: "ja", firstDayOfWeek: 0 }}>
-          <ModalsProvider>
-            <Notifications position="top-right" />
-            <PullToRefresh />
-            {children}
-          </ModalsProvider>
-        </DatesProvider>
-      </MantineProvider>
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider defaultColorScheme="light" theme={theme}>
+          <DatesProvider settings={{ locale: "ja", firstDayOfWeek: 0 }}>
+            <ModalsProvider>
+              <Notifications position="top-right" />
+              {/* 成功の通知が出たら前のエラーの通知を消す（全画面共通の規則 —
+                  lib/toast-hygiene-core.ts）。 */}
+              <ToastHygiene />
+              <PullToRefresh />
+              {/* URL search params の state（hooks/useUrlState.ts）。画面は nuqs を
+                  直接呼ばず、あのフックだけを通す。 */}
+              <NuqsAdapter>{children}</NuqsAdapter>
+            </ModalsProvider>
+          </DatesProvider>
+        </MantineProvider>
+      </QueryClientProvider>
     </NextIntlClientProvider>
   );
 }

@@ -11,14 +11,17 @@
 import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
 import { quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import { issuerForQuote, ownCompanyLogo } from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
   pdfAttnLine,
+  quoteLineNoteHtml,
+  quoteLineToolHtml,
   quotePdfLabels,
   taxBaseSuffixLocalized,
   taxRowLabelLocalized,
@@ -26,26 +29,19 @@ import {
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
 
-// 発行元（CKK 本社）— design-preview の issuer ブロックに対応。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
-
 /** Build the response headers for serving a quote PDF (inline vs attachment). */
 function pdfHeaders(quoteNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${quoteNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(quoteNumber)}.pdf"`,
   };
 }
 
@@ -60,14 +56,17 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "QOT");
+  const key = await docKeyFromRequest("quotes", "QOT", id);
   const quote = key ? await fetchQuote(key) : null;
-  if (!quote) {
+  if (!key || !quote) {
     return new Response(`Quote not found: ${id}`, { status: 404 });
   }
   // 閲覧は発行後のみ（下書きの見積書は PDF を出さない）。
   if (!isIssued(quote.status)) return notIssuedResponse("見積書"); // i18n-ignore
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.quote(quote.quoteNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
@@ -98,10 +97,17 @@ export async function GET(request: Request): Promise<Response> {
     tax: yen(b.taxAmount),
   }));
 
+  // 発行元（自社法人 MS0I）= 見積書が持つ法人。見積書は拠点を持たないので、
+  // 法人は作成時の「発行会社」で決まり、以後は変わらない（own_company_id）。
+  const { issuer, company } = await issuerForQuote(key, lang);
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, lang);
+
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
+    brand_logo: logo.html,
     recipient: {
       name: quote.customerName,
       contact: pdfAttnLine(lang, quote.customerBranchName),
@@ -110,21 +116,38 @@ export async function GET(request: Request): Promise<Response> {
     // 書類 QR（CKK:QOT:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.QUOTE, quote.quoteNumber),
     doc: {
-      number: quote.quoteNumber,
+      number: docNo(quote.quoteNumber),
       issued_date: documentFormatters.date(quote.createdAt),
       valid_until: validUntilStr,
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
       sales_rep: quote.salesRepName ?? quote.createdBy,
     },
-    items: quote.items.map((it) => ({
-      name: it.productName,
-      code: it.productId,
-      order_type: orderTypeLabelLocalized(it.orderType, lang),
-      quantity: yen(it.quantity),
-      unit_price: yen(it.unitPrice),
-      amount: yen(it.amount),
-      delivery_date: documentFormatters.date(it.deliveryDate),
-    })),
+    items: quote.items.map((it) => {
+      // 値引きの注意書き + 明細の備考（受取先の言語）。空なら行を足さない。
+      const note = quoteLineNoteHtml(it, yen(it.discountAmount), lang);
+      return {
+        row_class: note ? "has-line-note" : "",
+        line_note_row: note
+          ? `<tr class="line-note"><td colspan="6">${note}</td></tr>`
+          : "",
+        // 画面用の品名は「名称 コード」。帳票はコードを名称の下に別の行で刷るので、
+        // そのまま渡すとコードが 2 回出る — 末尾のコードを落として名称だけにする。
+        name:
+          it.productCode && it.productName.endsWith(` ${it.productCode}`)
+            ? it.productName.slice(0, -(it.productCode.length + 1))
+            : it.productName,
+        // 製品コード（PRD-YYYYMM-NNNN）。**採番前のレガシー品目は空欄で刷る** —
+        // 以前ここは内部の連番 id を刷っていた（品目統合で本来の製品コードへ）。
+        code: it.productCode ?? "",
+        // 再研磨の明細: 研ぎ直す工具（売っているのは役務、研ぐのはこの工具）。
+        tool_html: quoteLineToolHtml(it.toolLabel, lang),
+        order_type: orderTypeLabelLocalized(it.orderType, lang),
+        quantity: yen(it.quantity),
+        unit_price: yen(it.unitPrice),
+        amount: yen(it.amount),
+        delivery_date: documentFormatters.date(it.deliveryDate),
+      };
+    }),
     tax_rows: taxRows,
     totals: {
       subtotal: yen(totals.subtotal),
@@ -136,7 +159,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("quote.html", data);
+    pdf = await renderPdf("quote.html", data, { assets: logo.assets });
   } catch (err) {
     console.error("[pdf/quote]", err);
     return new Response("PDF generation failed", { status: 502 });

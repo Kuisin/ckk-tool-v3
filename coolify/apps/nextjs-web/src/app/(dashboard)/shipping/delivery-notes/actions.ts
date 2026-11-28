@@ -22,6 +22,7 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { isoDateJst } from "@/components/sales/price-lists/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -37,6 +38,8 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
@@ -51,7 +54,7 @@ async function deliveryNoteInScope(
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.deliveryNote.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       createdBy: true,
       deliveryOrder: { select: { fromPlantId: true } },
@@ -67,7 +70,8 @@ async function deliveryNoteInScope(
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    productId: z.string().min(1, tr("common.selectAProduct")),
+    /** 納品する製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
     quantity: z
       .number()
       .int()
@@ -112,23 +116,109 @@ const trimOrNull = (v: string | null | undefined) => {
 };
 
 interface ItemInputValue {
-  productId: string;
+  /** 品目 id（items.id）。 */
+  itemId: string;
   quantity: number;
   unitPrice: number | null;
   notes: string | null;
 }
 
-/** 明細行 → DB 値。価格記載なしのときは単価・金額を保存しない。 */
-function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
+/** 明細行 → DB 値。価格記載なしのときは単価・金額・税を保存しない。 */
+function toItemData(
+  it: ItemInputValue,
+  i: number,
+  includePrice: boolean,
+  lineTax: { categoryId: number | null; rate: number } | null,
+) {
   const unitPrice = includePrice ? (it.unitPrice ?? 0) : null;
   return {
-    productId: Number(it.productId),
+    itemId: Number(it.itemId),
     quantity: it.quantity,
     unitPrice,
     // 金額はサーバー側で計算（クライアント表示値は信用しない）。
     amount: unitPrice != null ? unitPrice * it.quantity : null,
+    // 税も同じ — 価格を載せない納品書は税も出さないので持たせない。
+    taxCategoryId: includePrice ? (lineTax?.categoryId ?? null) : null,
+    taxRate: includePrice ? (lineTax?.rate ?? null) : null,
     notes: trimOrNull(it.notes),
     sortOrder: i,
+  };
+}
+
+/**
+ * 下書きの納品書を保存するときの税解決。
+ *
+ * 自動生成の納品書は**出荷書の確定時**に税を焼き込む（delivery-orders/actions.ts）。
+ * こちらは人が下書きを直して保存する経路で、同じ規則で解決し直す — 基準日も
+ * 注文日 → 出荷日 → 今日 と、請求書とまったく同じ落ち方にする。
+ */
+async function resolveNoteLineTax(
+  deliveryOrderId: string | null,
+): Promise<(itemId: number) => { categoryId: number | null; rate: number }> {
+  const catalog = await loadTaxCatalog();
+  if (deliveryOrderId == null) {
+    // 出荷書が辿れない納品書（本来は作られない）。製品も注文日も引けないので、
+    // 既定の区分・今日の率に落ちる。
+    const fallback = resolveLineTax(catalog, {
+      customerTaxCategoryId: null,
+      productTaxCategoryId: null,
+      basisDate: isoDateJst(new Date()),
+    });
+    return () => fallback;
+  }
+  const order = await prisma.deliveryOrder.findUnique({
+    where: { id: deliveryOrderId },
+    select: {
+      shippedAt: true,
+      customerBp: {
+        select: { customerAttrs: { select: { taxCategoryId: true } } },
+      },
+      items: {
+        select: {
+          itemId: true,
+          item: { select: { taxCategoryId: true } },
+          orderLine: {
+            select: { acceptance: { select: { orderDate: true } } },
+          },
+        },
+      },
+    },
+  });
+  const customerTaxCategoryId =
+    order?.customerBp.customerAttrs?.taxCategoryId ?? null;
+  const shippedAt = order?.shippedAt ? isoDateJst(order.shippedAt) : null;
+  // 製品（品目）→ (課税区分, 注文日)。同じ製品が複数行にあるときは**最も早い
+  // 注文日**に揃える（どの行から引くかで率が変わらないように）。
+  const byProduct = new Map<
+    number,
+    { categoryId: number | null; orderDate: string | null }
+  >();
+  for (const it of order?.items ?? []) {
+    if (it.itemId == null) continue;
+    const orderDate = it.orderLine?.acceptance.orderDate
+      ? isoDateJst(it.orderLine.acceptance.orderDate)
+      : null;
+    const prev = byProduct.get(it.itemId);
+    if (prev == null) {
+      byProduct.set(it.itemId, {
+        categoryId: it.item?.taxCategoryId ?? null,
+        orderDate,
+      });
+    } else if (
+      orderDate != null &&
+      (prev.orderDate == null || orderDate < prev.orderDate)
+    ) {
+      prev.orderDate = orderDate;
+    }
+  }
+  const today = isoDateJst(new Date());
+  return (itemId) => {
+    const hit = byProduct.get(itemId);
+    return resolveLineTax(catalog, {
+      customerTaxCategoryId,
+      productTaxCategoryId: hit?.categoryId ?? null,
+      basisDate: billingBasisDate(hit?.orderDate ?? null, shippedAt, today),
+    });
   };
 }
 
@@ -168,31 +258,30 @@ export async function searchEndUserOptions(
  * 製品別 Σ数量 ≦ 出荷数量。違反行は製品名入りのエラー文字列を返す。
  */
 async function validateItemsAgainstShipment(
-  shpKey: { yearMonth: string; seq: number },
-  items: { productId: string | number; quantity: number }[],
+  deliveryOrderId: string,
+  items: { itemId: string | number; quantity: number }[],
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const shipItems = await prisma.deliveryOrderItem.findMany({
-    where: {
-      deliveryOrderYearMonth: shpKey.yearMonth,
-      deliveryOrderSeq: shpKey.seq,
-    },
-    select: { productId: true, quantity: true },
+    where: { deliveryOrderId },
+    select: { itemId: true, quantity: true },
   });
-  const shippedByProduct = new Map<number, number>();
+  // 鍵は**品目 id**（items.id）— 出荷明細も納品明細も品目で製品を指す。
+  const shippedByItem = new Map<number, number>();
   for (const it of shipItems) {
-    shippedByProduct.set(
-      it.productId,
-      (shippedByProduct.get(it.productId) ?? 0) + it.quantity,
+    if (it.itemId == null) continue;
+    shippedByItem.set(
+      it.itemId,
+      (shippedByItem.get(it.itemId) ?? 0) + it.quantity,
     );
   }
   const requested = new Map<number, number>();
   for (const it of items) {
-    const pid = Number(it.productId);
+    const pid = Number(it.itemId);
     requested.set(pid, (requested.get(pid) ?? 0) + it.quantity);
   }
   // エラー文には内部 ID ではなく画面と同じ表記（製品名 + 製品コード）を出す。
-  const products = await prisma.product.findMany({
+  const products = await prisma.item.findMany({
     where: { id: { in: [...requested.keys()] } },
     select: { id: true, name: true, yearMonth: true, seq: true },
   });
@@ -207,16 +296,16 @@ async function validateItemsAgainstShipment(
     labelById.get(id) ??
     tr("shipping.deliveryNoteActions.productFallbackLabel", { id });
 
-  for (const [productId, qty] of requested) {
-    const shipped = shippedByProduct.get(productId);
+  for (const [itemId, qty] of requested) {
+    const shipped = shippedByItem.get(itemId);
     if (shipped == null) {
       return tr("shipping.deliveryNoteActions.productNotInShipment", {
-        label: labelOf(productId),
+        label: labelOf(itemId),
       });
     }
     if (qty > shipped) {
       return tr("shipping.deliveryNoteActions.exceedsShippedQuantity", {
-        label: labelOf(productId),
+        label: labelOf(itemId),
         quantity: qty,
         shipped,
       });
@@ -255,36 +344,36 @@ export async function updateDeliveryNote(
   }
   try {
     const prior = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: {
+        id: true,
         deliveryMethod: true,
         salesRepId: true,
         endUserBpId: true,
         includePrice: true,
         notes: true,
-        deliveryOrderYearMonth: true,
-        deliveryOrderSeq: true,
+        deliveryOrderId: true,
         items: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, quantity: true, notes: true },
+          select: { itemId: true, quantity: true, notes: true },
         },
       },
     });
-    if (prior?.deliveryOrderYearMonth && prior.deliveryOrderSeq != null) {
+    if (prior) {
       const itemsError = await validateItemsAgainstShipment(
-        {
-          yearMonth: prior.deliveryOrderYearMonth,
-          seq: prior.deliveryOrderSeq,
-        },
+        prior.deliveryOrderId,
         v.items,
         tr,
       );
       if (itemsError) return actionError(itemsError);
     }
+    // 税はトランザクションの外で解決しておく（読むだけ・時間のかかる I/O を
+    // トランザクションに入れない）。
+    const lineTaxOf = await resolveNoteLineTax(prior?.deliveryOrderId ?? null);
     await prisma.$transaction(async (tx) => {
       // status を where に含めた updateMany で原子的にガードする。
       const updated = await tx.deliveryNote.updateMany({
-        where: { ...key, status: "DRAFT" },
+        where: { docRef: key.docRef, status: "DRAFT" },
         data: {
           deliveryMethod: v.deliveryMethod,
           salesRepId: v.salesRepId?.trim() || null,
@@ -300,17 +389,14 @@ export async function updateDeliveryNote(
         );
       }
       // 明細は全置換（DRAFT のみのため参照はまだ無い）。
+      if (!prior) throw new Error("delivery note not found");
       await tx.deliveryNoteItem.deleteMany({
-        where: {
-          deliveryNoteYearMonth: key.yearMonth,
-          deliveryNoteSeq: key.seq,
-        },
+        where: { deliveryNoteId: prior.id },
       });
       await tx.deliveryNoteItem.createMany({
         data: v.items.map((it, i) => ({
-          deliveryNoteYearMonth: key.yearMonth,
-          deliveryNoteSeq: key.seq,
-          ...toItemData(it, i, v.includePrice),
+          deliveryNoteId: prior.id,
+          ...toItemData(it, i, v.includePrice, lineTaxOf(Number(it.itemId))),
         })),
       });
     });
@@ -363,7 +449,7 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
     // 出荷書（SHIPPED にならなかった側）の納品書が発行済みになると、取り消す
     // 経路が無い。納品済みにするときと同じ条件（下の markDelivered）。
     const note = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { deliveryOrder: { select: { status: true } } },
     });
     if (note && note.deliveryOrder.status !== "SHIPPED") {
@@ -372,7 +458,7 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
       );
     }
     const updated = await prisma.deliveryNote.updateMany({
-      where: { ...key, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: { status: "ISSUED" },
     });
     if (updated.count === 0) {
@@ -410,7 +496,7 @@ export async function markDelivered(number: string): Promise<ActionResult> {
   try {
     // 出荷書がまだ出ていない納品書を納品済みにはできない（出荷 → 納品の順）。
     const note = await prisma.deliveryNote.findUnique({
-      where: { yearMonth_seq: key },
+      where: { docRef: key.docRef },
       select: { deliveryOrder: { select: { status: true } } },
     });
     if (note && note.deliveryOrder.status !== "SHIPPED") {
@@ -419,7 +505,7 @@ export async function markDelivered(number: string): Promise<ActionResult> {
       );
     }
     const updated = await prisma.deliveryNote.updateMany({
-      where: { ...key, status: "ISSUED" },
+      where: { docRef: key.docRef, status: "ISSUED" },
       data: { status: "DELIVERED", deliveredAt: new Date() },
     });
     if (updated.count === 0) {

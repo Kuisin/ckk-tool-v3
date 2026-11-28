@@ -1,0 +1,271 @@
+/title/
+请款 — 从结算处理到收款与会计对接
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_admin>
+label: 管理员;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_acct>
+label: 财务;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: 客户;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SY0J>
+label: SY0J;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL02>
+label: BL02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL11>
+label: BL11;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL01>
+label: BL01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<CL>
+label: 结算处理;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<INV>
+label: 请款单;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<CSV>
+label: 分录 CSV;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<ACC>
+label: 会计凭证;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_admin: 设置会计对接] <block_neutral>
+label: 事先设置;
+props: APP_SY0J;
+desc: 事先确定分录 CSV 的列顺序、字符编码和默认科目代码（最初设置一次）。;
+if (起点) is (定期结算) than #blue
+  if (执行) is (自动) than #blue
+    [role_system: 每天 6 点结算] <block_system>
+    label: 自动执行;
+    desc: 启用自动执行的环境中，每天 JST 6 点时段对截至当天的结算日统一结算一次。;
+  elseif (手动) than #purple
+    [role_acct: 先试算确认] <block_neutral>
+    label: 试算;
+    props: APP_BL02;
+    desc: 可选。查看在指定日期结算会产生哪些请款及金额，不写入任何数据。也可选择未来日期。;
+    [role_acct: 执行结算处理] <block_apply>
+    label: 执行;
+    props: APP_BL02;
+    desc: 选择对象日期（最晚为今天）后执行。同一日期重复执行也不会重复请款。;
+  endif
+  [role_system: 按客户汇总] <block_system>
+  label: 汇总;
+  props: CL;
+  desc: 按客户的结算日（未设置时为月末），汇总上次结算日次日至本次结算日之间“已出货”的发货出货单，生成“未处理”的结算行。库存保管不计入。;
+  [role_system: 生成请款单草稿] <block_system>
+  label: 草稿;
+  props: INV;
+  desc: 已过结算日的行直接生成请款单（草稿），结算行变为“已处理”。收件方为请款对象，付款期限和税额自动填入。;
+  if (生成) is (成功) than #blue
+  elseif (失败) than #orange
+    [role_system: 保持未处理] <block_wait>
+    label: 未处理;
+    desc: 因无可请款出货等原因未能生成请款单的行，以“未处理”状态留在列表中。;
+    [role_acct: 生成请款单] <block_apply>
+    label: 重新生成;
+    props: APP_BL02,INV;
+    desc: 打开结算行（或在列表中批量选择）重新生成。;
+  endif
+elseif (临时请款) than #purple
+  [role_acct: 选出货请款] <block_apply>
+  label: 手动请款;
+  props: APP_BL11,INV;
+  desc: 不等结算日，选择客户未请款的出货生成请款单（草稿）。结算行以“手动”“已处理”保留。;
+endif
+[role_acct: 确认草稿] <block_neutral>
+label: 确认;
+props: APP_BL01;
+desc: 确认明细、按税率的税额和付款期限。金额来自出货单，不能在此直接修改。;
+if (追加费用) is (无) than #blue
+elseif (有) than #orange
+  [role_acct: 添加追加费用] <block_apply>
+  label: 追加费用;
+  props: APP_BL01,INV;
+  desc: 从费用主数据的费目中添加追加费用。合计重新计算，审批状态回到未审批。;
+  if (发行前审批) is (退回) than #red
+    [role_acct: 修改后重新申请] <block_reject>
+    label: 退回;
+    props: APP_BL01;
+    [loop]
+  elseif (批准) than #blue
+    [role_appr: 批准发行] <block_approve>
+    label: 发行审批;
+    props: APP_CM01;
+    desc: 点击“发行”即提出审批申请。批准后才能发行（不会自动发行）。未设置审批级时直接通过。;
+  endif
+endif
+[role_acct: 发行请款单] <block_apply>
+label: 发行;
+props: APP_BL01,INV;
+desc: 变为“已发行”并记录发行日。内容确定，可查看 PDF，并显示在客户门户中。;
+[role_acct: 寄送 PDF] <block_neutral>
+label: 寄送;
+props: APP_BL01;
+desc: 输出 PDF（收件方语言），通过邮件、传真或邮寄发送。应用本身不发送邮件。;
+[role_acct: 标记为已寄送] <block_apply>
+label: 已寄送;
+props: APP_BL01,INV;
+desc: 变为“已寄送”并记录寄送时间。;
+[role_cust: 支付货款] <block_neutral>
+label: 付款;
+desc: 在付款期限前到账。;
+[role_acct: 标记为已收款] <block_apply>
+label: 收款;
+props: APP_BL01;
+desc: 确认到账后点击。未设置收款前审批级时立即变为“已付款”。;
+if (收款前审批) is (无审批级) than #blue
+elseif (批准) than #blue
+  [role_appr: 批准收款] <block_approve>
+  label: 收款审批;
+  props: APP_CM01,INV;
+  desc: 最终批准后直接变为“已付款”。;
+elseif (退回) than #red
+  [role_acct: 复核后重新申请] <block_reject>
+  label: 退回;
+  props: APP_BL01;
+  desc: 保持“已寄送”。重新确认到账后再次点击“标记为已收款”。;
+  [loop]
+endif
+[role_acct: 导出分录 CSV] <block_apply>
+label: 会计对接;
+props: APP_BL01,CSV;
+desc: 发行后随时可导出。首次导出时过账并固定会计凭证，之后多次导出得到相同 CSV。记录会计对接时间。;
+[role_system: 结算改为已导出] <block_system>
+label: 结算更新;
+props: ACC,CL;
+desc: 首次过账的同时，来源结算行由“已处理”变为“已导出”。;
+if (更正) is (不需要) than #blue
+elseif (需要) than #orange
+  [role_acct: 生成冲销分录] <block_reject>
+  label: 冲销分录;
+  props: APP_BL01,ACC;
+  desc: 填写理由，用借贷相反的凭证冲销已过账的会计凭证。原凭证不会被改写。;
+  [role_acct: 修改后重新导出] <block_apply>
+  label: 重新过账;
+  props: APP_BL01,CSV;
+  desc: 修改科目代码等后再导出 CSV，即过账新的会计凭证。;
+endif

@@ -63,6 +63,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { formatMoney } from "@/lib/format";
 import { CUSTOMERS, ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
@@ -75,6 +76,7 @@ import {
 
 interface DemoQuote {
   id: string;
+  /** id の姿（`CKK~QOT-2026-00012`）。表示は <DocNumber> / docNo で番号だけ。 */
   quoteNumber: string;
   customer: string;
   orderType: string;
@@ -86,7 +88,7 @@ interface DemoQuote {
 const DEMO_QUOTES: DemoQuote[] = [
   {
     id: "q1",
-    quoteNumber: "QOT-202606-00012",
+    quoteNumber: "CKK~QOT-2026-00012",
     customer: "株式会社ABC製作所",
     orderType: "PRODUCTION",
     status: "ISSUED",
@@ -95,7 +97,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q2",
-    quoteNumber: "QOT-202606-00011",
+    quoteNumber: "CKK~QOT-2026-00011",
     customer: "合同会社XYZ工業",
     orderType: "TEST",
     status: "DRAFT",
@@ -104,7 +106,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q3",
-    quoteNumber: "QOT-202606-00010",
+    quoteNumber: "CKK~QOT-2026-00010",
     customer: "株式会社DEFエンジニアリング",
     orderType: "PRODUCTION",
     status: "ISSUED",
@@ -113,7 +115,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q4",
-    quoteNumber: "QOT-202605-00033",
+    quoteNumber: "CKK~QOT-2026-00033",
     customer: "東邦精密株式会社",
     orderType: "SAMPLE",
     status: "EXPIRED",
@@ -122,7 +124,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q5",
-    quoteNumber: "QOT-202605-00032",
+    quoteNumber: "CKK~QOT-2026-00032",
     customer: "株式会社ABC製作所",
     orderType: "PRODUCTION",
     status: "DRAFT",
@@ -131,7 +133,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q6",
-    quoteNumber: "QOT-202605-00031",
+    quoteNumber: "CKK~QOT-2026-00031",
     customer: "合同会社XYZ工業",
     orderType: "PRODUCTION",
     status: "ISSUED",
@@ -140,7 +142,7 @@ const DEMO_QUOTES: DemoQuote[] = [
   },
   {
     id: "q7",
-    quoteNumber: "QOT-202605-00030",
+    quoteNumber: "CKK~QOT-2026-00030",
     customer: "東邦精密株式会社",
     orderType: "OTHER",
     status: "ISSUED",
@@ -320,7 +322,7 @@ export function ComponentCatalog() {
         <SummaryGrid>
           <FieldValue
             label="見積番号"
-            value={<DocNumber>QOT-202606-00012</DocNumber>}
+            value={<DocNumber>QOT-2026-00012</DocNumber>}
           />
           <FieldValue label="顧客" value="株式会社ABC製作所" />
           <FieldValue
@@ -360,10 +362,10 @@ export function ComponentCatalog() {
                 <Code>DocNumber</Code>
               </Table.Td>
               <Table.Td>
-                <DocNumber>ORD-202606-00045-01</DocNumber>
+                <DocNumber>ORD-2026-00045-01</DocNumber>
               </Table.Td>
               <Table.Td>
-                <DocNumber c="dimmed">INV-202605-00021</DocNumber>
+                <DocNumber c="dimmed">INV-2026-00021</DocNumber>
               </Table.Td>
             </Table.Tr>
             <Table.Tr>
@@ -373,7 +375,10 @@ export function ComponentCatalog() {
               <Table.Td>{fmt.date("2026-06-04")}</Table.Td>
               <Table.Td>
                 <Code>formatDateTime</Code> →{" "}
-                {fmt.dateTime("2026-06-04T14:30:00")}
+                {/* 時刻はオフセット付きで渡す — 無しだと Date がローカル時刻と
+                    解釈し、サーバー（コンテナの TZ）とブラウザで別の瞬間になって
+                    hydration が割れる（実際に #418 が出た） */}
+                {fmt.dateTime("2026-06-04T14:30:00+09:00")}
               </Table.Td>
             </Table.Tr>
           </Table.Tbody>
@@ -464,9 +469,9 @@ export function ComponentCatalog() {
             />
           }
           align="flex-start"
-          breadcrumbs={["販売", "見積書", "QOT-202606-00012"]}
+          breadcrumbs={["販売", "見積書", "QOT-2026-00012"]}
           status={<StatusBadge entity="Quote" status="ISSUED" />}
-          title="QOT-202606-00012"
+          title="QOT-2026-00012"
         />
       </DemoSection>
 
@@ -527,7 +532,7 @@ export function ComponentCatalog() {
             onRowClick={(row) =>
               notifications.show({
                 title: "行クリック",
-                message: `デモ: ${row.quoteNumber} の詳細へ`,
+                message: `デモ: ${docNo(row.quoteNumber)} の詳細へ`,
                 color: "blue",
               })
             }
@@ -540,7 +545,7 @@ export function ComponentCatalog() {
                 onAction: () =>
                   openConfirm({
                     title: "削除の確認",
-                    message: `${row.quoteNumber} を削除します。`,
+                    message: `${docNo(row.quoteNumber)} を削除します。`,
                     onConfirm: () =>
                       notifications.show({
                         title: "削除しました",
@@ -666,7 +671,7 @@ export function ComponentCatalog() {
         </ModalShell>
 
         <ConfirmModal
-          message="QOT-202606-00012 を削除します。この操作は取り消せません。"
+          message="QOT-2026-00012 を削除します。この操作は取り消せません。"
           onClose={() => setConfirmOpen(false)}
           onConfirm={() =>
             notifications.show({

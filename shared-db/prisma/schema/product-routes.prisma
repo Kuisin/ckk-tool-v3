@@ -10,8 +10,14 @@
 //                  同じ並びを何百回も持たせない。
 //   MANUFACTURING  製造工程リスト — 加工・コーティング・検査・承認。製品 ×
 //                  受注元ごと（従来の工程リストそのもの）。
-// どの工程がどちらに属するかは nextjs-web lib/workflow-core.ts の isPrepStep が
-// 唯一の定義（カタログの category = MATERIAL_PREP）。
+//   REGRIND        再研磨工程リスト — 製品受入 → 研磨工程 → [コーティング] →
+//                  [検査] → [出荷前検査] の 1 本。PREP と同じく**製品にも顧客にも
+//                  紐づかない**（共通）。再研磨指示書はこれ 1 本だけを使い、
+//                  準備・製造のリストは持たない。指示書側で足し引きしたら
+//                  出所リンクは外れる（共通リストの版を 1 枚の指示書の都合で
+//                  増やさない — applyLatestCommonRoute）。
+// どの工程がどちらに属するかは nextjs-web lib/workflow-core.ts の isPrepStep /
+// isRegrindStep / stepAllowedForType が唯一の定義（カタログの category）。
 // kind ごとの列の必須/禁止は DB の CHECK が守る（Prisma には書けない）。
 //
 // 移行前のルートは MANUFACTURING で、バージョンの中に準備工程が混ざったまま
@@ -23,6 +29,7 @@
 enum ProcessRouteKind {
   PREP
   MANUFACTURING
+  REGRIND
 
   @@map("PROCESS_ROUTE_KIND")
   @@schema("app")
@@ -32,7 +39,8 @@ model ProductProcessRoute {
   id           Int      @id @default(autoincrement())
   kind         ProcessRouteKind @default(MANUFACTURING)
   // PREP は null（共通）。MANUFACTURING は必須 — CHECK product_process_routes_kind_columns。
-  productId    Int?     @map("product_id")
+  /// 統合品目（app.items）。この工程リストの対象品目。
+  itemId       Int?     @map("item_id")
   // 対象の受注元（取引先）。null = 汎用（どの顧客にも使える）。PREP は常に null。
   // 指示書ビルダーは顧客一致ルートを優先し、無ければ汎用へフォールバックする
   // （選択規則は nextjs-web lib/product-routes-core.ts pickDefaultRoute）。
@@ -47,13 +55,13 @@ model ProductProcessRoute {
   // 任意になっても製品は消させない — Prisma の任意リレーションの既定 SetNull だと、
   // 製品を消したとき製造工程リストが製品を失って CHECK（MANUFACTURING は product_id
   // 必須）に落ちる。従来どおり Restrict（DB 側もこのまま）。
-  product       Product?         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  item          Item?            @relation("ProductProcessRouteItem", fields: [itemId], references: [id], onDelete: Restrict)
   customerBp    BusinessPartner? @relation("RouteCustomerBp", fields: [customerBpId], references: [id])
   createdByUser User?            @relation("RouteCreatedBy", fields: [createdBy], references: [id])
 
   versions ProductProcessRouteVersion[]
 
-  @@index([productId, customerBpId])
+  @@index([itemId, customerBpId])
   @@index([kind])
   @@map("product_process_routes")
   @@schema("app")

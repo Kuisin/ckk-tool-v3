@@ -32,8 +32,11 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   inspection_template_groups: true,
   products: true,
   materials: true,
+  // 再研磨品目 (MS0H) — 実表名。products / materials と同じ app.items。
+  items: true,
   material_types: true,
   plants: true,
+  own_companies: true,
   regions: true,
   storage_shelves: true, // name は nullable — 無ければ code へ落ちる
   storage_locations: true,
@@ -41,7 +44,9 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   product_process_routes: true,
   defect_types: true,
   work_location_groups: true,
+  machine_models: true,
   tax_categories: true,
+  charge_items: true,
   // 率の行は「2026-10-01 から 10%」であって名前を持たない。推測で区分名を
   // 出すと、どの行が変わったのか却って分からなくなるので正直に「無い」。
   tax_category_rates: false,
@@ -57,6 +62,7 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   // ── 素の String 列 ───────────────────────────────────────────────────
   portal_accounts: true, // displayName
   api_clients: true, // name（外部システムの識別名）
+  webhook_endpoints: true, // name（送信先の名前）
   // トークンの身元は last4 で、label は任意入力。名前として出すと
   // 「label を書かなかったトークン」が全部無名で並ぶので、正直に「無い」にする。
   api_client_tokens: false,
@@ -74,6 +80,9 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   material_type_prices: false, // 材種×直径×黒皮研磨の価格行。単体の名前を持たない
   billing_closings: false, // 顧客×締日の処理行
   material_receipts: false, // 入荷イベント行
+  item_inventory: false, // 在庫バケット。単体の名前を持たない（品目 × 場所）
+  movement_types: true, // 移動タイプは名前を持つ
+  wip_states: false, // 加工状態。呼び名は任意で、無い行が普通（工程の並びで表す）
   privileged_access_requests: false, // 申請行（code は権限コード、対象者ではない）
   user_change_requests: false, // 変更依頼行（targetUserId はあるが自表の名前ではない）
   portal_grants: false, // 共有範囲の付与行
@@ -88,6 +97,8 @@ export const AUDIT_HAS_ENTITY_NAME: Record<string, boolean> = {
   feature_flags: false,
   approval_flows: false,
   system: false,
+  // 設計図の系列メモ — 系列（製品 × 受注元）は行を持たない。
+  design_series: false,
 };
 
 /** その表に名前を探しに行く価値があるか。 */

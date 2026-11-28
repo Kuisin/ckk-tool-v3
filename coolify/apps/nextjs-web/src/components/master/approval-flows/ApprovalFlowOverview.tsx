@@ -4,8 +4,11 @@
  * ApprovalFlowOverview — 書類種別ごとの承認フローの一覧（承認設定 MS0B）。
  *
  * 1 書類 = 1 枚のカード。段を「1 第一承認 · 工場長 · いずれか1名」の形で並べ、
- * 編集は種別ごとの編集ページへ。未設定の書類は赤いカードで出す — 未設定のまま
- * だと承認依頼そのものが出せないため、放置に気づける必要がある。
+ * 編集は種別ごとの編集ページへ。
+ *
+ * 各カードに「承認を使う」スイッチ（lib/approval-policy-core.ts）。OFF の種別は
+ * 段が残っていても承認なしで進む（段はグレーで残す）。ON で段が 1 つも無い種別は
+ * **依頼できない**ので赤いカードで出す — 放置に気づける必要がある。
  *
  * 各カードには「承認に必要な権限」（<code>:READ / UPDATE — 書類を閲覧・
  * 編集できること）を出し、段ごとに承認グループのメンバーがそれを持って
@@ -16,15 +19,20 @@
  * 横に並べたままだと段の列が数十 px まで潰れて読めなくなるため。
  */
 
-import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
+import { Badge, Group, Paper, Stack, Switch, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconArrowRight,
   IconShieldCheck,
 } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useTransition } from "react";
+import { setApprovalPolicy } from "@/app/(dashboard)/master/approval-settings/actions";
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
+import type { ApprovalNeed } from "@/lib/approval-policy-core";
 import {
   APPROVAL_TARGET,
   type ApprovalTargetType,
@@ -51,6 +59,10 @@ export interface FlowOverviewStep {
 
 export interface FlowOverviewRow {
   targetType: ApprovalTargetType;
+  /** いま依頼を出したらどうなるか: 承認を通す / 承認なし / 依頼できない。 */
+  need: ApprovalNeed;
+  /** スイッチが保存済みか（false = 未設定で従来の挙動）。 */
+  policySet: boolean;
   /** 承認に必要な権限コード（書類の READ / UPDATE を突き合わせる）。 */
   permissionCode: string;
   /** 権限コードの表示名（app.permissions.display_name）。 */
@@ -60,10 +72,31 @@ export interface FlowOverviewRow {
   steps: FlowOverviewStep[];
 }
 
-export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
+export function ApprovalFlowOverview({
+  rows,
+  canEditPolicy,
+}: {
+  rows: FlowOverviewRow[];
+  canEditPolicy: boolean;
+}) {
   const tr = useTranslations();
   const locale = useLocale();
   const isMobile = useIsMobile();
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const togglePolicy = (targetType: ApprovalTargetType, on: boolean) =>
+    startTransition(async () => {
+      const r = await setApprovalPolicy(targetType, on ? "on" : "off");
+      if (!r.ok) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: r.error,
+          color: "red",
+        });
+        return;
+      }
+      router.refresh();
+    });
   return (
     <Stack gap="sm">
       <Text c="dimmed" size="sm">
@@ -75,10 +108,13 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
       {rows.map((r) => {
         const meta = APPROVAL_TARGET[r.targetType];
         const empty = r.steps.length === 0;
-        // 段のどれかに「押せない人」がいれば、カードごと目立たせる
-        // （段のバッジは横に流れるので、一覧では見落とすため）。
+        const off = r.need === "skip";
+        // 依頼できない（ON で段なし）か、段のどれかに「押せない人」がいれば
+        // カードごと目立たせる（段のバッジは横に流れるので、一覧では見落とすため）。
+        // OFF の種別は段を使わないので、押せない人がいても赤くしない。
         const blocked =
-          empty || r.steps.some((s) => hasApproverGap(s.approvers));
+          r.need === "blocked" ||
+          (!off && r.steps.some((s) => hasApproverGap(s.approvers)));
         return (
           <Paper
             key={r.targetType}
@@ -103,10 +139,12 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                   </Badge>
                   {r.ruleCount > 0 && (
                     <Badge color="indigo" size="xs" variant="light">
-                      条件付き {r.ruleCount} 本
+                      {tr("master.approvalFlows.ruleCountBadge", {
+                        count: r.ruleCount,
+                      })}
                     </Badge>
                   )}
-                  {empty && (
+                  {r.need === "blocked" && (
                     <Group c="red" gap={4} wrap="nowrap">
                       <IconAlertTriangle size={14} />
                       <Text size="xs">
@@ -114,18 +152,50 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                       </Text>
                     </Group>
                   )}
+                  {off && (
+                    <Badge color="gray" size="sm" variant="filled">
+                      {tr("master.approvalFlows.policy.offBadge")}
+                    </Badge>
+                  )}
                 </Group>
                 <Group c="dimmed" gap={6} wrap="nowrap">
                   <IconShieldCheck size={14} />
                   <Text size="xs">
-                    承認に必要な権限: {r.permissionLabel} の閲覧または編集
+                    {tr("master.approvalFlows.requiredPermissionLine", {
+                      permission: r.permissionLabel,
+                    })}
                   </Text>
                   <Text ff="mono" size="xs">
                     {r.permissionCode}:READ / UPDATE
                   </Text>
                 </Group>
+                <Switch
+                  checked={!off}
+                  description={
+                    off
+                      ? tr("master.approvalFlows.policy.offHelp")
+                      : empty
+                        ? tr("master.approvalFlows.policy.onEmptyHelp")
+                        : tr("master.approvalFlows.policy.onHelp")
+                  }
+                  disabled={!canEditPolicy || pending}
+                  label={tr("master.approvalFlows.policy.label")}
+                  onChange={(e) =>
+                    togglePolicy(r.targetType, e.currentTarget.checked)
+                  }
+                  size="sm"
+                />
+                {!r.policySet && (
+                  <Text c="dimmed" size="xs">
+                    {tr("master.approvalFlows.policy.notSetYet")}
+                  </Text>
+                )}
                 {!empty && (
-                  <Group gap="xs" wrap="wrap">
+                  <Group
+                    gap="xs"
+                    style={off ? { opacity: 0.45 } : undefined}
+                    wrap="wrap"
+                  >
                     {r.steps.map((s, i) => (
                       <Group gap="xs" key={s.stepNo} wrap="nowrap">
                         {i > 0 && (
@@ -154,7 +224,7 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                 fullWidth={isMobile}
                 href={`${BASE_PATH}/flows/${r.targetType}`}
               >
-                {empty ? "設定" : tr("common.edit2")}
+                {empty ? tr("master.approvalFlows.setUp") : tr("common.edit2")}
               </EditButton>
             </Group>
           </Paper>

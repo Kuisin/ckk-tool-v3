@@ -2,7 +2,8 @@
   "apps": {
     "stepExecution": "工序执行",
     "woScan": "工单扫码",
-    "workLocation": "作业场所工序"
+    "workLocation": "作业场所工序",
+    "woList": "工单列表"
   },
   "userMenu": {
     "title": "用户",
@@ -34,6 +35,8 @@
     "workOrder": "工单 #{n}",
     "plannedQty": "计划数量 {n} 支",
     "material": "材料: {name}",
+    "marking": "打标编号 {first} 〜 {last}（按明细 {perLine}）",
+    "markingSplit": "打标编号 {first} 〜 {last}（分割 {split}・按分割 {perLine}）",
     "progress": "已完成 {done} / {total} 道工序",
     "stepsTitle": "工序",
     "noSteps": "该工单没有工序",
@@ -41,6 +44,10 @@
     "unplanned": "未分配",
     "plannedForOthers": "该工序已分配给其他人",
     "notExecutable": "该工单未处于已批准/进行中状态，无法操作工序",
+    "startState": "开始状态",
+    "startStateUnprocessed": "未加工",
+    "startStateSkipped": "在制品已完成、不再进行的工序: {names}",
+    "startStateNoSkip": "从库存的在制品开始（没有跳过的工序）",
     "backToWorkOrder": "返回工单",
     "status": {
       "DRAFT": "草稿",
@@ -49,7 +56,21 @@
       "IN_PROGRESS": "进行中",
       "COMPLETED": "已完成",
       "CANCELLED": "已取消"
-    }
+    },
+    "aborted": "已中止",
+    "abortPending": "中止审批中",
+    "abortPendingNote": "该工单的中止正在审批中。批准后工序关闭，流程中的品作为在制品退回库存。"
+  },
+  "woList": {
+    "title": "工单列表",
+    "backToList": "返回工单列表",
+    "scopePlant": "{plant} 的已批准・进行中工单",
+    "scopeAll": "已批准・进行中的工单",
+    "searchPlaceholder": "按工单编号・产品搜索",
+    "count": "{n} 条",
+    "truncated": "按新旧顺序显示至上限。请用搜索缩小范围",
+    "empty": "没有已批准或进行中的工单",
+    "noMatch": "没有匹配的工单"
   },
   "workLocationBoard": {
     "title": "作业场所工序",
@@ -95,7 +116,10 @@
       "elapsed": "作业 {t}",
       "elapsedLabel": "作业",
       "plannedHours": "计划 {h}h",
-      "lot": "批次 {t}"
+      "lot": "批次 {t}",
+      "marking": "打标编号 {first} 〜 {last}（按明细 {perLine}）",
+      "markingSplit": "打标编号 {first} 〜 {last}（分割 {split}・按分割 {perLine}）",
+      "dueDate": "工序交期 {d}"
     },
     "state": {
       "startable": "可开始",
@@ -137,6 +161,13 @@
         "success": "良品数",
         "semi": "半成品",
         "scrap": "报废",
+        "rework": "工序分支"
+      },
+      "REGRIND_RECEIPT": {
+        "input": "接收数",
+        "success": "再研磨数",
+        "semi": "半成品",
+        "scrap": "退回（无法再研磨）",
         "rework": "工序分支"
       },
       "INSPECTION": {
@@ -279,7 +310,13 @@
       "STAGE_OUT_OF_ORDER": "请先记录上一阶段",
       "INSPECTION_REQUIRED": "有检查表尚未填写记录。请先保存检查表再完成工序",
       "INSPECTION_NOT_PASS": "只有合格的检查记录才能批准",
-      "NOT_APPROVER": "您不是该检查表的批准人"
+      "NOT_APPROVER": "您不是该检查表的批准人",
+      "WIP_DIAMETER_REQUIRED": "请输入成品直径",
+      "WIP_LENGTH_REQUIRED": "请输入成品长度",
+      "WIP_DIAMETER_INVALID": "成品直径请输入大于 0 的数值",
+      "WIP_LENGTH_INVALID": "成品长度请输入大于 0 的数值",
+      "WIP_PATH_REQUIRED": "请选择物品经过的路径",
+      "WIP_PATH_INVALID": "所选路径不在此工序的候选中，请重新加载页面"
     },
     "finalInspection": {
       "title": "最终检查与出货前确认",
@@ -378,6 +415,34 @@
       "openOne": "打开",
       "empty": "该工序目前没有可归并的对象",
       "notFound": "未找到该工序"
+    },
+    "programs": {
+      "title": "加工程序",
+      "machineModels": "机型：{names}",
+      "anyModel": "不限机型",
+      "modelMatch": "本机型用",
+      "revision": "v{revision}",
+      "download": "下载",
+      "noFile": "无文件"
+    },
+    "seriesMemo": {
+      "title": "系列备忘",
+      "hint": "图纸（{series}）各版本共用的备忘",
+      "generic": "通用"
+    },
+    "wip": {
+      "title": "入库的在制品",
+      "description": "作为半成品入库的部分，按加工状态和成品尺寸分别入库。",
+      "state": "加工状态",
+      "stateUnprocessed": "未加工（无成形工序）",
+      "kindDefect": "转为半成品的部分",
+      "kindBranchTerminal": "分支末端（入半成品库存）",
+      "finishedDiameter": "成品直径 (mm)",
+      "finishedLength": "成品长度 (mm)",
+      "defaultsToBlank": "尚未完成成形工序，未填写时采用在制坯料的尺寸（φ{diameter} × {length}）。",
+      "path": "经过的路径",
+      "pathHint": "此工序之前有分支汇合，加工状态无法唯一确定。请确认物品经过的路径。",
+      "recommended": "推荐（主线）"
     }
   },
   "deviceError": {
@@ -405,7 +470,7 @@
     "pinMismatchTitle": "PIN 不一致",
     "pinMismatchMessage": "请重新输入。",
     "pinVerifyTitle": "输入 PIN",
-    "pinVerifySubtitle": "由于超过 3 天未使用，需要进行身份验证。",
+    "pinVerifySubtitle": "为确认身份，请输入 PIN。",
     "pinIncorrectTitle": "PIN 错误",
     "pinIncorrectMessage": "请重新输入。",
     "pinWeakTitle": "该 PIN 无法使用",
@@ -421,7 +486,9 @@
     "retry": "重试",
     "lockedMessage": "由于多次输入 PIN 错误，已被临时锁定。",
     "lockedUntil": " 预计解锁时间：{time}",
-    "backToScan": "返回扫描"
+    "backToScan": "返回扫描",
+    "pinVerifySubtitleDeviceIdle": "由于此卡在本终端上已超过 48 小时未使用（或首次在此使用），需要进行身份验证。",
+    "pinVerifySubtitlePeriodic": "由于距上次 PIN 确认已过两周，需要进行身份验证。"
   },
   "setup": {
     "couldNotIssueCode": "无法发放代码",
@@ -493,6 +560,7 @@
     "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
     "execDepOrIncomplete": "执行依赖（任一）均未完成",
     "branchSourceIncomplete": "分支来源工序尚未完成",
+    "startStepIncomplete": "起始工序（出库・交接）尚未完成",
     "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成"
   },
   "common": {

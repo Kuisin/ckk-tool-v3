@@ -1,0 +1,321 @@
+// 業務フロー「価格・見積」— 価格試算から見積書の発行まで。
+// en / zh は同じ構造。文言を直すときは 3 本とも直すこと。
+
+/title/
+価格・見積 — 価格試算から見積書の発行まで
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 手順;
+left-subtitle: 説明;
+
+/role/
+
+<role_sales>
+label: 営業;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: システム;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: 管理者;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_cust>
+label: 顧客;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA01>
+label: SA01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA02>
+label: SA02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0H>
+label: MS0H;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<EST>
+label: 価格試算;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<RGI>
+label: 再研磨品目;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<PL>
+label: 価格表;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<QOT>
+label: 見積書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DR>
+label: 設計依頼書;
+side: right;
+background-color: #e0e7ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<OA>
+label: 注文請書;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+if (売り物) is (製品) than #blue
+  [role_sales: 価格試算をつくる] <block_apply>
+  label: 価格試算;
+  props: APP_SA01;
+  desc: 工具種を選び、寸法・材料（材種・直径・黒皮/研磨）・加工条件を入れる。入力のたびに見積単価が計算し直される。;
+  if (材料単価) is (自動) than #blue
+    [role_system: 参照単価を出す] <block_system>
+    label: 参照単価;
+    desc: 同じ材種・直径・黒皮/研磨の仕入実績から、設定（最新・最高・平均と参照月数）に従って ¥/1000mm を出す。実績が無ければ材種の既定単価を使い「既定価格」バッジが付く。;
+  elseif (円筒) than #purple
+    [role_sales: 素材価格を手入力] <block_apply>
+    label: 手入力;
+    props: APP_SA01;
+    desc: 工具種が円筒のときは参照単価を使わず、素材価格（¥/本）を手で入れる。;
+  endif
+  if (単価を直す) is (直す) than #purple
+    [role_sales: 単価を編集する] <block_apply>
+    label: カスタム;
+    props: APP_SA01;
+    desc: 相場が違うときは「単価を編集」で参照単価を入れ直す。「カスタム」バッジが付き、「ポリシー値に戻す」で自動に戻せる。;
+  elseif (そのまま) than
+  endif
+  [role_sales: 下書きで保存する] <block_apply>
+  label: 保存;
+  props: APP_SA01,EST;
+  desc: 価格試算名は必須。EST- 番号が付き「下書き」になる。保存時点の計算結果が記録され、以後は内容を編集できない。;
+  if (内容) is (作り直す) than #purple
+    [role_sales: 複製して作り直す] <block_apply>
+    label: 複製;
+    props: APP_SA01;
+    desc: 同じ内容の入力画面が開き、名前に「（作り直し）」が付く。保存すると別番号の下書きになる。どの状態からでも複製できる。;
+    [loop]
+  elseif (固まった) than
+  endif
+  if (製品) is (未指定) than #orange
+    [role_sales: 製品にリンクする] <block_apply>
+    label: 製品リンク;
+    props: APP_SA01;
+    desc: 価格表で選べるのは製品が付いた価格試算だけ。下書き・確定のうちは付け替え・解除もできる。;
+  elseif (指定済み) than
+  endif
+  [role_sales: 確定する] <block_approve>
+  label: 確定;
+  props: APP_SA01,EST;
+  desc: 下書きだけが確定できる。確定時点の設定で計算し直して記録し、「確定」になる。;
+elseif (再研磨) than #purple
+  [role_admin: 標準価格を登録する] <block_apply>
+  label: 標準価格;
+  props: APP_MS0H,RGI;
+  desc: 研ぎ直しの役務は再研磨品目に標準価格（定価）を持つ。価格試算は使わない。標準価格は価格表の画面では直せない。;
+endif
+if (価格表) is (作る) than #blue
+  [role_sales: 価格表をつくる] <block_apply>
+  label: 価格表;
+  props: APP_SA02,PL;
+  desc: 顧客 × 品目で 1 件。注文種別ごとに基準単価・有効期間・数量段階を持つ。製品は本番/テスト/サンプル/その他、再研磨品目は再研磨だけ。テスト・サンプルは終了日が必須。;
+  if (組合せ) is (登録済み) than #orange
+    [role_sales: 既存の価格表を直す] <block_reject>
+    label: 重複;
+    props: APP_SA02;
+    desc: 同じ顧客 × 品目はもう 1 件あるので保存できない。既存の価格表を開き、編集で注文種別や値段を足す。;
+  elseif (新規) than
+  endif
+  if (基準単価) is (価格試算) than #blue
+    [role_system: 価格試算を登録済に] <block_system>
+    label: ロック;
+    props: EST;
+    desc: 同じ製品の確定済み価格試算の見積単価が基準単価に入る。初めて使われた価格試算は「価格表登録済」になり、製品リンクも変えられなくなる。;
+  elseif (手入力) than #purple
+    [role_sales: 単価を手入力する] <block_apply>
+    label: 手入力;
+    props: APP_SA02;
+    desc: 「カスタム単価を使用」で基準単価を手で入れる。価格試算元は「手動」になる。段階ごとのカスタム単価も置ける。;
+  endif
+  if (値引き) is (付ける) than #purple
+    [role_sales: 値引きルールを足す] <block_apply>
+    label: 値引き;
+    props: APP_SA02,PL;
+    desc: 率（%）か額（¥/本）と、本数・期間の条件を決める。条件に合うものが複数あれば値引き額の最も大きいものが使われる。;
+  elseif (付けない) than
+  endif
+elseif (再研磨は定価) than #gray
+endif
+[role_sales: 見積書をつくる] <block_apply>
+label: 見積書;
+props: APP_SA03,QOT;
+desc: 入口は新規作成・価格表の「見積書を作成」・既存の複製の 3 つ。顧客・品目・注文種別・数量を選ぶと単価・値引き・金額が自動で入る（手入力はできない）。;
+if (単価) is (引ける) than #blue
+  [role_system: 価格表から単価を引く] <block_system>
+  label: 単価;
+  desc: 有効な価格表の有効な注文種別で、今日が有効期間内、数量に合う段階の単価（基準単価 × 倍率かカスタム）と値引きが入る。当たる価格表が無い再研磨品目は標準価格になる。;
+elseif (引けない) than #red
+  [role_sales: 価格表を直す] <block_reject>
+  label: 価格表なし;
+  props: APP_SA02;
+  desc: 製品で当たる価格表が無い（未作成・無効・期間外）か、価格表はあるが数量に合う段階が無い行は保存できない。価格試算・価格表を用意するか段階を足す。;
+  [loop]
+endif
+[role_sales: 下書きで保存する] <block_apply>
+label: 保存;
+props: APP_SA03,QOT;
+desc: QOT- 番号が付き「下書き」になる。単価・値引き・税は保存時点で固まる。下書きのうちは編集でき、保存し直すとその時点の価格表で引き直す。;
+if (設計図) is (無い) than #purple
+  [role_sales: 設計依頼を起票する] <block_apply>
+  label: 設計依頼;
+  props: APP_SA06,DR;
+  desc: 見積書のメニューから起票すると見積書が引き継がれる。見積とは並行して進む（期限切れの見積書からは起票できない）。;
+elseif (ある) than
+endif
+[role_sales: 発行する] <block_approve>
+label: 発行;
+props: APP_SA03,QOT;
+desc: 有効期限は必須で、今日以降の日付。「発行済」になり、以後は編集も発行の取り消しもできない。;
+[role_system: PDF をつくる] <block_system>
+label: PDF;
+props: QOT;
+desc: 発行と同時に見積書の PDF を生成して保存する。PDF は発行済の見積書にだけある。;
+if (PDF) is (失敗) than #orange
+  [role_sales: PDF を再生成する] <block_reject>
+  label: 再生成;
+  props: APP_SA03;
+  desc: 発行は済んでいる。PDF タブから再生成する。;
+elseif (成功) than
+endif
+[role_sales: PDF を顧客へ送る] <block_apply>
+label: 提出;
+props: APP_SA03;
+desc: PDF タブからダウンロードし、メールや印刷で顧客へ出す。発行画面の「メール送付」チェックで自動送信はされない。;
+[role_cust: 見積書を受け取る] <block_neutral>
+label: 受領;
+desc: 見積の内容を検討する。返事を見積書に記録する操作は無い。;
+if (返事) is (注文) than #blue
+  [role_sales: 注文請書へ進む] <block_apply>
+  label: 受注へ;
+  props: APP_SA04,OA;
+  desc: 注文請書にこの見積書を指定すると、見積書の「次の書類へ」に並ぶ。ここから受注の流れ。;
+elseif (断り・返事なし) than #gray
+  [role_system: 期限切れと表示する] <block_end>
+  label: 期限切れ;
+  props: QOT;
+  desc: 有効期限を過ぎた発行済の見積書は自動で「期限切れ」と表示される（状態として保存はしない）。;
+elseif (直して再提出) than #purple
+  [role_sales: 複製して出し直す] <block_apply>
+  label: 複製;
+  props: APP_SA03,QOT;
+  desc: 発行済は直せないので複製して新しい下書きを作り、手順 15 からやり直す。;
+endif

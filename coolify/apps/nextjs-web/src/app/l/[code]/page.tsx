@@ -79,12 +79,15 @@ export default async function ShortLinkPage({
             <Alert color="red" variant="light">
               <Stack gap={4}>
                 <Text size="sm">
-                  {tr("l.page.anAdministrator")}{" "}
-                  <strong>{resolved.hostname}</strong>{" "}
-                  への移動を禁止しています。
+                  {tr.rich("l.page.blockedHostMessage", {
+                    hostname: resolved.hostname,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </Text>
                 {resolved.reason && (
-                  <Text size="sm">理由: {resolved.reason}</Text>
+                  <Text size="sm">
+                    {tr("l.page.reasonLabel", { reason: resolved.reason })}
+                  </Text>
                 )}
               </Stack>
             </Alert>

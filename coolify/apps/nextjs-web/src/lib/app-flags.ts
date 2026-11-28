@@ -1,7 +1,9 @@
 /**
  * app-flags.ts — アプリの環境別 ON/OFF（feature_flags）。server-only.
  *
- * dev / main は同一 DB を共有するため、フラグは環境をキーに含める:
+ * フラグは環境をキーに含める（dev / main はかつて同一 DB を共有していた名残。
+ * いまは環境ごとに DB が分かれているので、各環境は自分の DB の自分の env の
+ * 行だけを読む — 本番の表示は本番の画面で切り替える）:
  *   key = `app:<appKey>:<env>`（env = "dev" | "main"）
  * 実行環境は APP_ENV（Coolify で dev / main を設定。未設定＝ローカルは dev）。
  *

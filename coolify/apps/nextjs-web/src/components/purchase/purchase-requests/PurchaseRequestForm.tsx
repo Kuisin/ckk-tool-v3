@@ -26,10 +26,13 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useRef, useTransition } from "react";
 import { z } from "zod";
-import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  fetchMaterialItemUnit,
+  searchMaterialItemOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import {
   createPurchaseRequest,
   updatePurchaseRequest,
@@ -39,7 +42,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { unitOptions } from "@/lib/enum-labels";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { PurchaseRequestView } from "./model";
@@ -54,9 +57,7 @@ interface Option {
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z.object({
     rowId: z.string(),
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     materialLabel: z.string(),
     plantId: z.string().nullable(),
     quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
@@ -80,11 +81,12 @@ const newRowId = () => `row-${++rowSeq}-${Date.now()}`;
 
 const emptyItem = (): ItemForm => ({
   rowId: newRowId(),
-  materialId: "",
+  itemId: "",
   materialLabel: "",
   plantId: null,
   quantity: 1,
-  unit: "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
+  // 単位は素材を選んだときに素材マスタから入る（PU02 / PU03 と同じ）。
+  unit: "",
   desiredAt: null,
   notes: "",
 });
@@ -95,7 +97,7 @@ function toFormValues(request: PurchaseRequestView): FormValues {
     notes: request.notes ?? "",
     items: request.items.map((it) => ({
       rowId: newRowId(),
-      materialId: it.materialId,
+      itemId: it.itemId,
       materialLabel: `${it.materialCode}（${it.materialName}）`,
       plantId: it.plantId,
       quantity: it.quantity,
@@ -118,7 +120,6 @@ export function PurchaseRequestForm({
   plantOptions: Option[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const requestNumber =
@@ -137,13 +138,44 @@ export function PurchaseRequestForm({
           },
   });
 
+  /**
+   * 素材を選んだらその単位を素材マスタから引いて固定する（PU02 と同じ）。
+   * 依頼の単位がマスタと違うと「発注書へ変換」した発注書が保存できない
+   * （発注側は単位の不一致を拒む）ので、単位は依頼の時点で閉じる。
+   * 行ごとに世代を数え、選び直しが重なったら最後の選択だけを採用する。
+   */
+  const unitSeq = useRef<Record<string, number>>({});
+  const selectMaterial = (
+    ri: number,
+    rowId: string,
+    itemId: string | null,
+    label: string,
+  ) => {
+    form.setFieldValue(`items.${ri}.itemId`, itemId ?? "");
+    form.setFieldValue(`items.${ri}.materialLabel`, label);
+    form.setFieldValue(`items.${ri}.unit`, "");
+    const seq = (unitSeq.current[rowId] ?? 0) + 1;
+    unitSeq.current[rowId] = seq;
+    if (!itemId) return;
+    fetchMaterialItemUnit(itemId)
+      .then((unit) => {
+        const at = form.values.items.findIndex((it) => it.rowId === rowId);
+        if (at >= 0 && unitSeq.current[rowId] === seq) {
+          form.setFieldValue(`items.${at}.unit`, unit ?? "");
+        }
+      })
+      .catch(() => {
+        /* 単位が引けなければ空のまま — 送信時の必須検証で止まる */
+      });
+  };
+
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
       const payload = {
         purpose: values.purpose,
         notes: values.notes,
         items: values.items.map((it) => ({
-          materialId: it.materialId,
+          itemId: it.itemId,
           plantId: it.plantId,
           quantity: it.quantity,
           unit: it.unit,
@@ -161,10 +193,10 @@ export function PurchaseRequestForm({
           message:
             mode === "edit"
               ? tr("purchase.purchaseRequestForm.updatedWithNumber", {
-                  requestNumber: result.data.requestNumber,
+                  requestNumber: docNo(result.data.requestNumber),
                 })
               : tr("purchase.purchaseRequestForm.createdWithNumber", {
-                  requestNumber: result.data.requestNumber,
+                  requestNumber: docNo(result.data.requestNumber),
                 }),
           color: "green",
         });
@@ -203,7 +235,7 @@ export function PurchaseRequestForm({
       title={
         mode === "edit"
           ? tr("purchase.purchaseRequestForm.editWithNumber", {
-              requestNumber: requestNumber ?? "",
+              requestNumber: docNo(requestNumber ?? ""),
             })
           : tr("purchase.purchaseRequests.newPurchaseRequest")
       }
@@ -251,10 +283,10 @@ export function PurchaseRequestForm({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    error={form.errors[`items.${ri}.materialId`]}
+                    error={form.errors[`items.${ri}.itemId`]}
                     initialOption={
-                      item.materialId
-                        ? { value: item.materialId, label: item.materialLabel }
+                      item.itemId
+                        ? { value: item.itemId, label: item.materialLabel }
                         : null
                     }
                     label={
@@ -262,17 +294,13 @@ export function PurchaseRequestForm({
                         {...fieldHelp(tr, "purchaseRequest", "material")}
                       />
                     }
-                    onChange={(v, opt) => {
-                      form.setFieldValue(`items.${ri}.materialId`, v ?? "");
-                      form.setFieldValue(
-                        `items.${ri}.materialLabel`,
-                        opt?.label ?? "",
-                      );
-                    }}
-                    onSearch={searchMaterialOptions}
+                    onChange={(v, opt) =>
+                      selectMaterial(ri, item.rowId, v, opt?.label ?? "")
+                    }
+                    onSearch={searchMaterialItemOptions}
                     placeholder={tr("common.searchMaterials")}
-                    storageKey="material"
-                    value={item.materialId || null}
+                    storageKey="materialItem"
+                    value={item.itemId || null}
                     withAsterisk
                   />
                   <Select
@@ -296,10 +324,14 @@ export function PurchaseRequestForm({
                     {...form.getInputProps(`items.${ri}.quantity`)}
                     withAsterisk
                   />
-                  <Select
-                    data={unitOptions(locale)}
+                  <TextInput
+                    description={tr(
+                      "purchase.materialReceipts.unitFromMaterial",
+                    )}
+                    error={form.errors[`items.${ri}.unit`]}
                     label={tr("common.unit")}
-                    maw={90}
+                    maw={110}
+                    readOnly
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
                   />

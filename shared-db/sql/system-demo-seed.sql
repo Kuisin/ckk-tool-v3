@@ -161,8 +161,13 @@ WHERE assigned_at IS NOT NULL
 -- 新規 DB では audit-demo-seed が製品未投入の段階で走るためスキップされ、監査
 -- ログがほぼ空になる。SY07 の一覧・詳細撮影用に、既存デモ文書を指す代表的な
 -- CREATE/UPDATE 行を投入する（created_at は直後の正規化で固定時刻に再配置）。
-INSERT INTO app.audit_logs (user_id, action, table_name, record_id, before_data, after_data)
-SELECT * FROM (VALUES
+-- 書類は旧番号（シードが legacy_number に入れた値）で書類を引き、record_id には
+-- 人が読む番号（doc_number）、record_key には参照（doc_ref）を入れる — アプリの
+-- recordAudit と同じ形。指示書はロット番号で指すのでキーは持たない。
+INSERT INTO app.audit_logs (user_id, action, table_name, record_id, record_key, before_data, after_data)
+SELECT t.user_id, t.action, t.table_name,
+       COALESCE(split_part(r.ref, '/', 2), t.legacy), r.ref, t.before_data, t.after_data
+FROM (VALUES
   ('a0b1c2d3-0000-4000-8000-000000005107'::uuid, 'CREATE', 'estimates', 'EST-202607-00001',
    NULL::jsonb, '{"name": "エンドミル φ6×60 CX400", "status": "DRAFT"}'::jsonb),
   ('a0b1c2d3-0000-4000-8000-000000005107'::uuid, 'UPDATE', 'estimates', 'EST-202607-00001',
@@ -179,9 +184,16 @@ SELECT * FROM (VALUES
    '{"status": "APPROVED"}'::jsonb, '{"status": "IN_PROGRESS"}'::jsonb),
   ('00000000-0000-0000-0000-000000000000'::uuid, 'CREATE', 'delivery_orders', 'DOR-202607-00001',
    NULL::jsonb, '{"type": "DISPATCH", "status": "SHIPPED"}'::jsonb)
-) AS t(user_id, action, table_name, record_id, before_data, after_data)
+) AS t(user_id, action, table_name, legacy, before_data, after_data)
+CROSS JOIN LATERAL (SELECT CASE t.table_name
+    WHEN 'estimates' THEN (SELECT d.doc_ref FROM app.estimates d WHERE d.legacy_number = t.legacy)
+    WHEN 'price_list_entries' THEN (SELECT d.doc_ref FROM app.price_list_entries d WHERE d.legacy_number = t.legacy)
+    WHEN 'quotes' THEN (SELECT d.doc_ref FROM app.quotes d WHERE d.legacy_number = t.legacy)
+    WHEN 'delivery_orders' THEN (SELECT d.doc_ref FROM app.delivery_orders d WHERE d.legacy_number = t.legacy)
+  END AS ref) r
 WHERE NOT EXISTS (
-  SELECT 1 FROM app.audit_logs WHERE table_name = 'estimates' AND record_id = 'EST-202607-00001'
+  SELECT 1 FROM app.audit_logs a JOIN app.estimates e ON e.doc_ref = a.record_key
+   WHERE a.table_name = 'estimates' AND e.legacy_number = 'EST-202607-00001'
 );
 
 -- ── audit_logs タイムスタンプ正規化（SY07 操作履歴の決定化）─────────────────

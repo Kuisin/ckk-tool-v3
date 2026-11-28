@@ -27,6 +27,7 @@ import {
   processCategoryLabel,
 } from "@/lib/enum-labels";
 import { STEP_STATUS_ICON } from "./StepCard";
+import { StepDueDateBadge } from "./StepDueDateBadge";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 /** ノード幅（レイアウトの X ピッチと対で決める）。 */
@@ -115,6 +116,11 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
               {tr("common.outsourced")}
             </Badge>
           )}
+          <StepDueDateBadge
+            dueDate={step.dueDate}
+            size="xs"
+            status={step.status}
+          />
           {hasQuantities ? (
             <>
               <Badge color="gray" size="xs" variant="light">

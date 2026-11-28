@@ -22,6 +22,7 @@
 
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
+import { recordStepProgramsTx } from "./design-programs";
 import { jstDateOnly } from "./format";
 import { encodeInventoryNote } from "./inventory-note-core";
 import {
@@ -234,6 +235,8 @@ export async function startStepsBatch(
     }
     // 既存の open 行だけを 1 回で張り直す（新しい行は同時数が一致するので飛ばされる）
     if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
+    // 開始した工程に出ていた加工プログラムの版を記録（= 使用済み）。
+    for (const r of won) await recordStepProgramsTx(tx, r.stepId, null);
     return won;
   });
 

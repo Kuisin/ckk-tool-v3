@@ -60,6 +60,7 @@ export interface MaterialTypeDetailData {
   createdAt: string;
   updatedAt: string;
   materials: {
+    /** 素材の品目 id（items.id）— 素材マスタ MS26 の URL id と同じ空間。 */
     id: number;
     code: string;
     name: string;
@@ -72,12 +73,15 @@ export interface MaterialTypeDetailData {
 export function MaterialTypeDetail({
   record,
   auditEntries,
+  canEditPrices,
   diameterOptions,
   surfaceOptions,
   prices,
 }: {
   record: MaterialTypeDetailData;
   auditEntries: AuditEntry[];
+  /** 既定単価を編集できるか（master:UPDATE — 保存の Server Action と同じ）。 */
+  canEditPrices: boolean;
   /** 既定単価タブ用: 直径・黒皮/研磨 の選択肢 + 保存済み価格. */
   diameterOptions: Option[];
   surfaceOptions: Option[];
@@ -199,7 +203,7 @@ export function MaterialTypeDetail({
 
         <Tabs.Panel pt="md" value="prices">
           <EditablePanel
-            canEdit
+            canEdit={canEditPrices}
             edit={({ close }) => (
               <MaterialTypePriceGrid
                 diameterOptions={diameterOptions}

@@ -10,6 +10,7 @@
 
 import {
   Box,
+  Checkbox,
   Group,
   MultiSelect,
   NumberInput,
@@ -49,10 +50,17 @@ import {
   processCategoryOptions,
   processExecutionOptions,
   quantityTrackingOptions,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
-import { isPrepStep } from "@/lib/workflow-core";
+import { defaultAffectsWipState } from "@/lib/wip-state-core";
+import {
+  isPrepStep,
+  isRegrindStep,
+  pinnedWorkOrderType,
+} from "@/lib/workflow-core";
 
 const BASE_PATH = "/master/process-steps";
 
@@ -69,13 +77,21 @@ const depRowSchema = z.object({
 
 type DepRow = z.infer<typeof depRowSchema>;
 
-/** 依存先が選ばれている行だけを対象に、重複をエラーにする。 */
+/**
+ * 依存先が選ばれている行だけを対象に、重複をエラーにする。
+ *
+ * **`tr` は引数で受ける — ここで `useTranslations()` を呼ばない。** これは
+ * zod の superRefine から呼ばれる = React の描画の外なので、フックを呼ぶと
+ * React がその場で throw する。しかも投げる先は @mantine/form の検証の中で、
+ * 画面には通知も出ず「保存を押しても何も起きない」になる（工程マスタの
+ * 保存が実際にそうなっていた — 新規も編集も 1 件も保存できていない）。
+ */
 function refineDepRows(
   rows: DepRow[],
   field: "useDeps" | "execDeps",
   ctx: z.RefinementCtx,
+  tr: (key: string) => string,
 ) {
-  const tr = useTranslations();
   const seen = new Map<string, number>();
   rows.forEach((row, index) => {
     if (!row.dependsOnStepId) return;
@@ -107,9 +123,14 @@ const processStepSchema = (tr: (key: string) => string) =>
       isApprovalStep: z.boolean(),
       isFinalInspection: z.boolean(),
       workLocationRequired: z.boolean(),
+      // 値の範囲はサーバー側の zod（strict な enum）が見る。ここは画面の
+      // 入力規則だけ — フォームの値は Checkbox.Group の string[] のまま扱う。
+      allowedWorkOrderTypes: z
+        .array(z.string())
+        .min(1, tr("master.processSteps.pickAtLeastOneWorkOrderType")),
       planTimeRequired: z.boolean(),
       planAssigneeRequired: z.boolean(),
-      planQuantityRequired: z.boolean(),
+      affectsWipState: z.boolean(),
       approvalMinRank: z.string(),
       quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
       lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
@@ -127,8 +148,8 @@ const processStepSchema = (tr: (key: string) => string) =>
       allowedLocationIds: z.array(z.string()),
     })
     .superRefine((v, ctx) => {
-      refineDepRows(v.useDeps, "useDeps", ctx);
-      refineDepRows(v.execDeps, "execDeps", ctx);
+      refineDepRows(v.useDeps, "useDeps", ctx, tr);
+      refineDepRows(v.execDeps, "execDeps", ctx, tr);
     });
 
 type FormValues = z.infer<ReturnType<typeof processStepSchema>>;
@@ -154,9 +175,12 @@ export interface ProcessStepFormInitial {
   isFinalInspection: boolean;
   /** 作業計画に作業場所が要るか（承認前の揃い）。 */
   workLocationRequired: boolean;
+  /** この工程を載せてよい指示書種別（在庫分 / 製造分 / 再研磨）。 */
+  allowedWorkOrderTypes: string[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
+  /** 加工状態に数える工程か（仕掛品 — lib/wip-state-core.ts）。 */
+  affectsWipState: boolean;
   approvalMinRank: string;
   quantityTracking: string;
   lotInputMode: string;
@@ -212,6 +236,12 @@ export function ProcessStepForm({
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
+  /**
+   * 開始工程（製品出し（在庫）/ 製品受入（再研磨））は種別が固定で、工程マスタの
+   * 設定では動かせない — 在庫の消費と預り品の計上がその種別に依っているため
+   * （lib/workflow-core.ts pinnedWorkOrderType）。その 2 つは選ばせず理由を出す。
+   */
+  const pinnedType = pinnedWorkOrderType({ code: initial?.code ?? "" });
 
   const form = useForm<FormValues>({
     validate: zodResolver(processStepSchema(tr)),
@@ -226,9 +256,12 @@ export function ProcessStepForm({
       isApprovalStep: initial?.isApprovalStep ?? false,
       isFinalInspection: initial?.isFinalInspection ?? false,
       workLocationRequired: initial?.workLocationRequired ?? true,
+      // 既定は製造分だけ — 一番狭い側に倒す（広げるのは人が決めること）。
+      allowedWorkOrderTypes: initial?.allowedWorkOrderTypes ?? ["MANUFACTURE"],
       planTimeRequired: initial?.planTimeRequired ?? false,
       planAssigneeRequired: initial?.planAssigneeRequired ?? false,
-      planQuantityRequired: initial?.planQuantityRequired ?? false,
+      // 新規は工程種別の既定に倣う（材料準備・加工・コーティング）。
+      affectsWipState: initial?.affectsWipState ?? false,
       approvalMinRank: initial?.approvalMinRank ?? "",
       quantityTracking:
         initial?.quantityTracking === "NONE" ||
@@ -302,9 +335,14 @@ export function ProcessStepForm({
       isApprovalStep: values.isApprovalStep,
       isFinalInspection: values.isFinalInspection,
       workLocationRequired: values.workLocationRequired,
+      allowedWorkOrderTypes: values.allowedWorkOrderTypes as (
+        | "FROM_STOCK"
+        | "MANUFACTURE"
+        | "REGRIND"
+      )[],
       planTimeRequired: values.planTimeRequired,
       planAssigneeRequired: values.planAssigneeRequired,
-      planQuantityRequired: values.planQuantityRequired,
+      affectsWipState: values.affectsWipState,
       approvalMinRank: values.approvalMinRank,
       quantityTracking: values.quantityTracking,
       lotInputMode: values.lotInputMode,
@@ -497,17 +535,33 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={processCategoryOptions(locale)}
-            // カテゴリで所属する工程リストが決まる（準備 = 材料準備のみ）。
+            // カテゴリで所属する工程リストが決まる（準備 = 材料準備 / 再研磨カテゴリ = 再研磨だけ / それ以外 = 製造。再研磨は種別でも入る）。
             description={
               form.values.category
                 ? isPrepStep({ category: form.values.category })
                   ? tr("master.processSteps.routeKindPrepHelp")
-                  : tr("master.processSteps.routeKindManufacturingHelp")
+                  : isRegrindStep({ category: form.values.category })
+                    ? tr("master.processSteps.routeKindRegrindHelp")
+                    : `${tr("master.processSteps.routeKindManufacturingHelp")} ${tr("master.processSteps.routeKindAlsoRegrind")}`
                 : undefined
             }
             label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
+            onChange={(value) => {
+              form.setFieldValue("category", value ?? "");
+              // 新規だけ: 加工状態に数えるかを種別の既定に合わせる。編集では
+              // 人が決めた値を種別の付け替えで黙って書き換えない。
+              if (!initial) {
+                form.setFieldValue(
+                  "affectsWipState",
+                  defaultAffectsWipState({
+                    category: value ?? "",
+                    code: form.values.code,
+                  }),
+                );
+              }
+            }}
           />
           <Select
             data={processExecutionOptions(locale)}
@@ -546,6 +600,40 @@ export function ProcessStepForm({
             {...form.getInputProps("defaultWorkHours")}
           />
         </SimpleGrid>
+        {/*
+          この工程を載せてよい指示書種別。以前はカテゴリから推測していたので
+          「再研磨のついでに円筒を当て直す」のような例外を表せなかった。
+          開始工程（製品出し（在庫）/ 製品受入（再研磨））だけは台帳がその種別に
+          依っているので選ばせない — 触れる欄を出して無視するほうが不親切。
+        */}
+        <Stack gap={4} mt="md">
+          <Checkbox.Group
+            description={
+              pinnedType
+                ? tr("master.processSteps.workOrderTypesPinnedHelp", {
+                    type: workOrderTypeLabel(pinnedType, locale) ?? pinnedType,
+                  })
+                : tr("master.processSteps.workOrderTypesHelp")
+            }
+            label={tr("master.processSteps.workOrderTypes")}
+            withAsterisk
+            {...form.getInputProps("allowedWorkOrderTypes")}
+            value={
+              pinnedType ? [pinnedType] : form.values.allowedWorkOrderTypes
+            }
+          >
+            <Group gap="lg" mt="xs">
+              {workOrderTypeOptions(locale).map((o) => (
+                <Checkbox
+                  disabled={pinnedType != null}
+                  key={o.value}
+                  label={o.label}
+                  value={o.value}
+                />
+              ))}
+            </Group>
+          </Checkbox.Group>
+        </Stack>
         <Stack gap="xs" mt="sm">
           <Switch
             description={tr("master.processSteps.aStepThatCanRunAnd")}
@@ -617,6 +705,13 @@ export function ProcessStepForm({
             label={tr("master.processSteps.finalInspectionStep")}
             {...form.getInputProps("isFinalInspection", { type: "checkbox" })}
           />
+          {/* 仕掛品の加工状態（済んだ形を変える工程の並び）に入る工程か。
+              既定は種別から（材料準備・加工・コーティング）。 */}
+          <Switch
+            description={tr("master.processSteps.affectsWipStateHelp")}
+            label={tr("master.processSteps.affectsWipState")}
+            {...form.getInputProps("affectsWipState", { type: "checkbox" })}
+          />
           {/* 承認前の作業計画に何が要るか（§7）。担当者・計画日は常に必須
               （列が NOT NULL）。作業場所は在庫を動かすだけの工程（〇〇出し）の
               ように場所に意味の無い工程で外す。使える場所の範囲は下の
@@ -647,13 +742,6 @@ export function ProcessStepForm({
             description={tr("master.processSteps.planTimeRequiredHelp")}
             label={tr("master.processSteps.planTimeRequired")}
             {...form.getInputProps("planTimeRequired", { type: "checkbox" })}
-          />
-          <Switch
-            description={tr("master.processSteps.planQuantityRequiredHelp")}
-            label={tr("master.processSteps.planQuantityRequired")}
-            {...form.getInputProps("planQuantityRequired", {
-              type: "checkbox",
-            })}
           />
           <Switch
             label={

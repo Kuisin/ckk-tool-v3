@@ -4,7 +4,7 @@
  * Model (app.order_lines — 注文請書キー + 枝番):
  *   注文明細 = 注文請書の明細行そのもの。注文請書 1 行 = 注文明細 1 行で固定
  *   （分割も統合もしない）。確定時に sortOrder 順で branch = 1..N を採番し、
- *   表示番号 ORD-YYYYMM-NNNNN-NN をキーから導出する（保存しない）。
+ *   番号 ORD-FFFF-NNNNN-NN と参照 line_ref は DB が導出する（枝番が入った時点）。
  *   URL id も導出番号を使う。この画面が扱うのは確定済み行のみ。
  *
  * Decimal 列（unitPrice / amount）はサーバー境界で Number() 済み。
@@ -24,26 +24,38 @@ export type OrderLineStatus =
 export interface OrderLineWorkOrderRef {
   /** ロット番号（通し連番 int — 内部キー）。 */
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — URL・操作はロット番号）。 */
   docNumber: string;
   /** WORK_ORDER_TYPE（在庫分 / 製造分）。 */
   type: string;
   plannedQuantity: number;
   /** この明細への割当数量（統合ロットでは予定数量より小さくなり得る）。 */
   allocatedQuantity: number;
+  /**
+   * 印字番号の分割番号（1.. = この割当は明細の一部 = 分割。0 / null = 分割で
+   * ない）。割当の作成時に DB が決めて凍結する（lib/marking-number.ts）。
+   */
+  markingSplit: number | null;
   /** WORK_ORDER_APPROVAL_STATUS。 */
   approvalStatus: string;
   /** WORK_ORDER_STATUS。 */
   status: string;
+  /** 打ち切り済み（status は CANCELLED のまま — 普通のキャンセルと分ける）。 */
+  aborted: boolean;
 }
 
 export interface OrderLine {
-  /** 導出文書番号 ORD-YYYYMM-NNNNN-NN — URL id と同一。 */
+  /**
+   * 注文明細の id（法人コード + 番号 `CKK~ORD-2026-00001-01`）— URL id と同一。
+   * 表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   orderNumber: string;
+  /** 旧番号（ORD-YYYYMM-NNNNN-NN）。番号設計の切り替え前に採番された明細だけ。 */
+  legacyNumber?: string | null;
   /** DB uuid — 指示書作成リンク（?orderLine=…）等の内部参照用。 */
   uuid: string;
-  /** 親の注文請書番号 ORD-YYYYMM-NNNNN。 */
+  /** 親の注文請書の id（`CKK~ORD-2026-00001`）。 */
   acceptanceNumber: string;
   customerId: string | null;
   customerName: string;
@@ -54,14 +66,32 @@ export interface OrderLine {
    */
   salesRepName: string | null;
   createdByName: string | null;
+  // ── 配送（§8）— 明細ごとに持つ ──
+  shipToId: string | null;
+  shipToName: string | null;
+  /** 配送方法（通常配送 / ユーザー直送）。 */
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  endUserId: string | null;
   endUserName: string | null;
+  assignedPlantId: string | null;
+  assignedPlantName: string | null;
+  shippingWorkLocationId: string | null;
+  shippingWorkLocationName: string | null;
   /** 顧客注文書番号（FAX 等で受領した注文書の番号）。 */
   customerOrderRef: string | null;
   /** 見積書からの展開元（QOT-… 導出番号）。手動作成時は null。 */
   quoteNumber: string | null;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string | null;
+  /**
+   * 製品 — 値は品目 id（items.id）を文字列化したもの。品目統合 第 2 段 C。
+   * SearchSelect（`searchProductItemOptions`）の値と揃える。
+   */
+  itemId: string | null;
   productName: string;
+  /**
+   * 研ぎ直す工具（再研磨の明細だけ。null = それ以外）。**売り物とは別** —
+   * 売っているのは再研磨という役務で、預かって返すのがこの工具。
+   */
+  toolName: string | null;
   orderType: string;
   quantity: number;
   unitPrice: number | null;
@@ -69,6 +99,8 @@ export interface OrderLine {
   deliveryDate: string | null;
   /** ロット番号（指示書番号と共用）。指示書作成時に採番 — それまで null。 */
   lotNumber: number | null;
+  /** 印字番号の基数（A{base}-NNN）。確定時に採番 — 確定前・旧明細は null。 */
+  markingBase: number | null;
   status: OrderLineStatus;
   /** 承認依頼中ロック — true の間は編集不可。 */
   isLocked: boolean;
@@ -85,7 +117,7 @@ export interface OrderLine {
 
 /** 注文明細配下の出荷書（出荷タブ・進捗表示用）。 */
 export interface OrderLineShippingRef {
-  /** DOR-YYYYMM-NNNNN（URL id と同一）。 */
+  /** 出荷書の id（`CKK~DOR-2026-00001`。URL id と同一）。 */
   number: string;
   /** DELIVERY_ORDER_TYPE（DISPATCH / STOCK_STORAGE）。 */
   type: string;

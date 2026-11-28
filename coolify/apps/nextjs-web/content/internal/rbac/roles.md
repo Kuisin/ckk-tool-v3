@@ -31,6 +31,19 @@ description: "システムのロール（職務セット）と権限コードの
 同じコードに複数のロールから権限が来る場合は、**いちばん広いスコープ** が勝ちます
 （PLANT と ALL を両方持っていれば ALL）。
 
+ロールから実効権限が決まるまでを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  u["ユーザー"] --> r1["ロール A"]
+  u --> r2["ロール B"]
+  r1 --> g1["権限コード × アクション<br/>スコープ PLANT"]
+  r2 --> g2["同じコード × アクション<br/>スコープ ALL"]
+  g1 --> m["すべてのロールの<br/>権限を合わせる"]
+  g2 --> m
+  m --> e["ユーザーの権限<br/>いちばん広いスコープ（ALL）が勝つ"]
+```
+
 ## ロール一覧
 
 | ロール | rolename | 用途 |
@@ -49,7 +62,8 @@ description: "システムのロール（職務セット）と権限コードの
 | 出荷部長 | `shipping_manager` | 出荷データを全件フル操作 + 全業務閲覧 |
 | 出荷 | `shipping` | 出荷書・納品書の実務（出荷書と在庫は **所属拠点のみ**） |
 | 経理部長 | `accounting_manager` | 請求・締日を全件フル操作 + 全業務閲覧 |
-| 経理 | `accounting` | 請求書・締日処理・弥生 CSV |
+| 経理 | `accounting` | 請求書・締日処理・会計連携CSV |
+| マスタ管理 | `master_editor` | マスタの登録・編集だけ。業務書類は持たないので部門ロールと併せて割り当てる |
 | 閲覧 | `viewer` | 全業務の閲覧のみ（役員・監査向け） |
 | 一般 | `staff` | 移行期の暫定ロール。システム・キオスク以外を全部できるので、**本番では部門ロールへの置き換えを推奨** |
 
@@ -92,7 +106,7 @@ description: "システムのロール（職務セット）と権限コードの
 | `delivery_order` | 出荷書 | SH01 出荷書 / SH03 未処理出荷書 |
 | `delivery_note` | 納品書 | SH02 納品書 |
 | `invoice` | 請求書 | BL01 請求書 |
-| `billing_closing` | 締日処理 | BL02 締日処理（弥生 CSV の書き出しは E） |
+| `billing_closing` | 締日処理 | BL02 締日処理（会計連携CSV の書き出しは E） |
 | `master` | マスタ管理 | MS01・MS04〜MS0E のマスタ 12 アプリすべて |
 | `form` | フォーム | **入口は権限不要**（CM02 は誰でも開ける）。フォームを作る・直すのに C / U が要る |
 | `internal_page` | 社内文書 | CM03 社内文書 |
@@ -131,6 +145,7 @@ DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中�
 | **出荷**<br/>`shipping` | — | — | R | — | R | — | — | — |
 | **経理部長**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
 | **経理**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **マスタ管理**<br/>`master_editor` | — | — | — | — | — | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
@@ -153,6 +168,7 @@ DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中�
 | **出荷**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
 | **経理部長**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **経理**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
+| **マスタ管理**<br/>`master_editor` | — | — | — | — | — | — | — | RCUD | — | — | — |
 | **閲覧**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
 | **一般**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
 
@@ -202,6 +218,17 @@ DC01 マニュアル / SY06 ファイル管理 / SY0G 特権アクセス。中�
 - **管理者（`system` の ◎）は素通しします**（利用者の判断）。これが唯一の
   締め出し回避路でもあるため、自己承認の抜け道を作らずに済んでいます。素通しは
   監査行に `bypass:"admin"` として残り、承認を経た実行と区別できます。
+
+特権操作が実行できるまでを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  op["特権コードの操作をしたい"] --> q{"管理者<br/>（system の ◎）か"}
+  q -->|"はい"| by["素通しで実行<br/>監査行に bypass: admin"]
+  q -->|"いいえ"| rq["SY0G 特権アクセスで申請"]
+  rq --> ap["別の人が承認"]
+  ap --> use["承認された期間だけ実行できる<br/>時計は初回使用から"]
+```
 
 これらの業務ロールへの不配布は変わりません。`system` / `kiosk` と特権 5 コードは
 `roles-seed.sql` の一括付与から除外してあります。

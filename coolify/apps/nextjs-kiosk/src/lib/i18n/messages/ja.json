@@ -2,7 +2,8 @@
   "apps": {
     "stepExecution": "工程実行",
     "woScan": "指示書スキャン",
-    "workLocation": "作業場所の工程"
+    "workLocation": "作業場所の工程",
+    "woList": "指示書一覧"
   },
   "userMenu": {
     "title": "利用者",
@@ -34,6 +35,8 @@
     "workOrder": "指示書 #{n}",
     "plannedQty": "予定数量 {n} 本",
     "material": "素材: {name}",
+    "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）",
+    "markingSplit": "印字番号 {first} 〜 {last}（分割 {split}・分割ごと {perLine}）",
     "progress": "完了 {done} / {total} 工程",
     "stepsTitle": "工程",
     "noSteps": "この指示書に工程はありません",
@@ -41,6 +44,10 @@
     "unplanned": "担当未設定",
     "plannedForOthers": "他の担当者の工程です",
     "notExecutable": "この指示書は承認済み/進行中ではないため、工程は操作できません",
+    "startState": "開始状態",
+    "startStateUnprocessed": "未加工",
+    "startStateSkipped": "仕掛品で済んでいるので行わない工程: {names}",
+    "startStateNoSkip": "在庫の仕掛品から始めます（飛ばす工程はありません）",
     "backToWorkOrder": "指示書へ",
     "status": {
       "DRAFT": "下書き",
@@ -49,7 +56,21 @@
       "IN_PROGRESS": "進行中",
       "COMPLETED": "完了",
       "CANCELLED": "キャンセル"
-    }
+    },
+    "aborted": "打ち切り済",
+    "abortPending": "打ち切り承認依頼中",
+    "abortPendingNote": "この指示書は打ち切りの承認依頼中です。承認されると工程は閉じ、流れの途中の品は仕掛品として在庫へ戻ります。"
+  },
+  "woList": {
+    "title": "指示書一覧",
+    "backToList": "指示書一覧へ",
+    "scopePlant": "{plant} の承認済み・進行中の指示書",
+    "scopeAll": "承認済み・進行中の指示書",
+    "searchPlaceholder": "指示書番号・製品名で検索",
+    "count": "{n} 件",
+    "truncated": "新しい順に上限まで表示しています。検索で絞ってください",
+    "empty": "承認済み・進行中の指示書はありません",
+    "noMatch": "該当する指示書はありません"
   },
   "workLocationBoard": {
     "title": "作業場所の工程",
@@ -95,7 +116,10 @@
       "elapsed": "作業 {t}",
       "elapsedLabel": "作業",
       "plannedHours": "予定 {h}h",
-      "lot": "ロット {t}"
+      "lot": "ロット {t}",
+      "marking": "印字番号 {first} 〜 {last}（明細ごと {perLine}）",
+      "markingSplit": "印字番号 {first} 〜 {last}（分割 {split}・分割ごと {perLine}）",
+      "dueDate": "工程納期 {d}"
     },
     "state": {
       "startable": "開始可",
@@ -137,6 +161,13 @@
         "success": "良品数",
         "semi": "半製品",
         "scrap": "廃棄",
+        "rework": "工程分岐"
+      },
+      "REGRIND_RECEIPT": {
+        "input": "受入本数",
+        "success": "再研磨する本数",
+        "semi": "半製品",
+        "scrap": "返却（再研磨不可）",
         "rework": "工程分岐"
       },
       "INSPECTION": {
@@ -279,7 +310,13 @@
       "STAGE_OUT_OF_ORDER": "前の段を先に記録してください",
       "INSPECTION_REQUIRED": "検査記録が未入力の検査表があります。検査表を保存してから完了してください",
       "INSPECTION_NOT_PASS": "合格した検査記録だけ承認できます",
-      "NOT_APPROVER": "この検査表の承認者ではありません"
+      "NOT_APPROVER": "この検査表の承認者ではありません",
+      "WIP_DIAMETER_REQUIRED": "仕上がり径を入力してください",
+      "WIP_LENGTH_REQUIRED": "仕上がり長を入力してください",
+      "WIP_DIAMETER_INVALID": "仕上がり径は 0 より大きい数値を入力してください",
+      "WIP_LENGTH_INVALID": "仕上がり長は 0 より大きい数値を入力してください",
+      "WIP_PATH_REQUIRED": "品物が通ってきた経路を選択してください",
+      "WIP_PATH_INVALID": "選択した経路がこの工程の候補にありません。画面を読み込み直してください"
     },
     "finalInspection": {
       "title": "最終検査・出荷前確認",
@@ -378,6 +415,34 @@
       "openOne": "開く",
       "empty": "この工程はまとめられる状態ではありません",
       "notFound": "この工程は見つかりませんでした"
+    },
+    "programs": {
+      "title": "加工プログラム",
+      "machineModels": "機種: {names}",
+      "anyModel": "機種を問わない",
+      "modelMatch": "この機種用",
+      "revision": "v{revision}",
+      "download": "ダウンロード",
+      "noFile": "ファイルなし"
+    },
+    "seriesMemo": {
+      "title": "系列メモ",
+      "hint": "図面（{series}）の全版に共通するメモ",
+      "generic": "汎用"
+    },
+    "wip": {
+      "title": "在庫に置く仕掛品",
+      "description": "半製品として在庫に置く分は、加工状態と仕上がり寸法ごとに分けて在庫に入ります。",
+      "state": "加工状態",
+      "stateUnprocessed": "未加工（形を変える工程なし）",
+      "kindDefect": "半製品に振り分けた分",
+      "kindBranchTerminal": "分岐の終端（半製品在庫へ）",
+      "finishedDiameter": "仕上がり径 (mm)",
+      "finishedLength": "仕上がり長 (mm)",
+      "defaultsToBlank": "形を変える工程が済んでいないため、未入力なら仕掛ブランクの寸法（φ{diameter} × {length}）になります。",
+      "path": "通ってきた経路",
+      "pathHint": "手前に合流があるため、加工状態が一通りに決まりません。品物が通ってきた経路を確かめてください。",
+      "recommended": "推奨（本流）"
     }
   },
   "deviceError": {
@@ -405,7 +470,7 @@
     "pinMismatchTitle": "PIN が一致しません",
     "pinMismatchMessage": "最初から入力し直してください。",
     "pinVerifyTitle": "PIN を入力",
-    "pinVerifySubtitle": "3日以上利用がなかったため、本人確認が必要です。",
+    "pinVerifySubtitle": "本人確認のため、PIN を入力してください。",
     "pinIncorrectTitle": "PIN が違います",
     "pinIncorrectMessage": "もう一度入力してください。",
     "pinWeakTitle": "その PIN は使えません",
@@ -421,7 +486,9 @@
     "retry": "再試行",
     "lockedMessage": "PIN の入力に複数回失敗したため、一時的にロックされています。",
     "lockedUntil": " 解除予定: {time}",
-    "backToScan": "スキャンに戻る"
+    "backToScan": "スキャンに戻る",
+    "pinVerifySubtitleDeviceIdle": "この端末で 48 時間以上使われていない（または初めて使う）ため、本人確認が必要です。",
+    "pinVerifySubtitlePeriodic": "前回の PIN 確認から 2 週間たったため、本人確認が必要です。"
   },
   "setup": {
     "couldNotIssueCode": "コードを発行できませんでした",
@@ -493,6 +560,7 @@
     "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です"
   },
   "common": {

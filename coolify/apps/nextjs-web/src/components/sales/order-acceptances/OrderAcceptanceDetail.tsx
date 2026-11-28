@@ -31,7 +31,6 @@ import {
   Grid,
   Group,
   Paper,
-  Select,
   Stack,
   Table,
   Tabs,
@@ -48,6 +47,7 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconCalendar,
+  IconCopy,
   IconFile,
   IconInfoCircle,
   IconPencil,
@@ -63,14 +63,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
-  searchEndUserOptions,
   searchQuoteOptions,
-  searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   approveAcceptance,
   archiveAcceptance,
   confirmOrderLines,
+  recreateFromCancelledAcceptance,
   rejectAcceptance,
   requestAcceptanceCancel,
   retryExtraction,
@@ -92,6 +91,8 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { useStandardPrices } from "@/components/sales/useStandardPrices";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
@@ -127,10 +128,10 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   acceptanceDeliveryMethodLabel,
-  acceptanceDeliveryMethodOptions,
   orderTypeLabel,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
@@ -140,12 +141,12 @@ import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel"
 import {
   acceptanceReadiness,
   readinessSummary,
-  shipToApplies,
 } from "@/lib/order-acceptance-readiness";
 import {
   acceptanceTotals,
   productSummary,
 } from "@/lib/order-acceptance-totals";
+import type { PortalShareProps } from "@/lib/portal-share";
 import type { ActionResult } from "@/lib/server-action";
 import { AcceptanceCancelCard } from "./AcceptanceCancelCard";
 import { IntakeDocumentPane } from "./IntakeDocumentPane";
@@ -191,6 +192,7 @@ const EMPTY_PRICE_CHECK: AcceptancePriceCheck = {
 };
 
 export function OrderAcceptanceDetail({
+  portalShare = null,
   acceptance,
   auditEntries,
   attachments,
@@ -224,6 +226,8 @@ export function OrderAcceptanceDetail({
   cancelRequest?: PendingAcceptanceCancelView | null;
   /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
   cancelApproval?: ApprovalActionState | null;
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -237,6 +241,7 @@ export function OrderAcceptanceDetail({
   const [deployOpen, setDeployOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [cancelReqOpen, setCancelReqOpen] = useState(false);
+  const [recreateOpen, setRecreateOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   /**
    * 下書きの表示モード。既定は**閲覧** — 開いた直後に入力欄が並んでいると、
@@ -254,7 +259,12 @@ export function OrderAcceptanceDetail({
    * 畳むと左は細い帯（span="content"）になり、右が残り全部（span="auto"）を
    * 取る — 明細エディタは 1 行に 5 欄あるので、この差で折り返しが消える。
    */
-  const [docCollapsed, setDocCollapsed] = useState(false);
+  // 手入力（取込元ファイルが無い）ときは畳んで開く — 空の枠が右の幅を
+  // 食っているだけなので。畳むかどうかは利用者が後から自由に変えられる
+  // （useState の初期値なので、この既定は開閉の操作と喧嘩しない）。
+  const [docCollapsed, setDocCollapsed] = useState(
+    () => !acceptance.sourceFilename,
+  );
   const isMobile = useIsMobile();
   // モバイルは縦積み（書類はペイン内の折りたたみ）— 帯にはしない。
   const railed = docCollapsed && !isMobile;
@@ -303,26 +313,41 @@ export function OrderAcceptanceDetail({
     currentStage(a.status),
   );
 
-  // 上流 = 元になった見積書（FAX 直受けの注文書には無い）。
-  const sourceGroups: HandoffGroup[] | undefined = a.quoteNumber
-    ? [
+  // 上流 = 元になった見積書（FAX 直受けの注文書には無い）と、
+  // キャンセルして作り直した場合の元の請書。
+  const upstream: HandoffGroup[] = [];
+  if (a.quoteNumber) {
+    upstream.push({
+      key: "quote",
+      title: tr("common.quote"),
+      items: [
         {
-          key: "quote",
-          title: tr("common.quote"),
-          items: [
-            {
-              key: a.quoteNumber,
-              label: a.quoteNumber,
-              href: `/sales/quotes/${a.quoteNumber}`,
-              note: tr(
-                "sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom",
-              ),
-            },
-          ],
-          emptyNote: "—",
+          key: a.quoteNumber,
+          label: docNo(a.quoteNumber),
+          href: `/sales/quotes/${a.quoteNumber}`,
+          note: tr("sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom"),
         },
-      ]
-    : undefined;
+      ],
+      emptyNote: "—",
+    });
+  }
+  if (a.replacesNumber) {
+    upstream.push({
+      key: "replaces",
+      title: tr("sales.orderAcceptances.recreatedFrom"),
+      items: [
+        {
+          key: a.replacesNumber,
+          label: docNo(a.replacesNumber),
+          href: `${BASE_PATH}/${a.replacesNumber}`,
+          note: tr("sales.orderAcceptances.theCancelledOrderAcceptance"),
+        },
+      ],
+      emptyNote: "—",
+    });
+  }
+  const sourceGroups: HandoffGroup[] | undefined =
+    upstream.length > 0 ? upstream : undefined;
 
   // 下流 = 確定で生成された注文明細（1 明細行 = 1 注文明細）。
   const handoffGroups: HandoffGroup[] = [
@@ -335,7 +360,7 @@ export function OrderAcceptanceDetail({
           : null,
       items: a.orderLineNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `${SALES_ORDERS_PATH}/${n}`,
         done: true,
         note: null,
@@ -346,14 +371,31 @@ export function OrderAcceptanceDetail({
           : tr("sales.orderAcceptances.notExpandedExpandedIntoOrderLines"),
     },
   ];
+  // キャンセル済みの請書は注文明細を持たないので行き止まりに見える。
+  // 作り直した先があるなら、そこへ辿れるようにする。
+  if (a.replacedByNumbers.length > 0) {
+    handoffGroups.push({
+      key: "replaced-by",
+      title: tr("sales.orderAcceptances.recreatedAsTitle"),
+      summary: tr("common.itemsCount", {
+        count: a.replacedByNumbers.length,
+      }),
+      items: a.replacedByNumbers.map((n) => ({
+        key: n,
+        label: docNo(n),
+        href: `${BASE_PATH}/${n}`,
+        done: true,
+        note: null,
+      })),
+      emptyNote: "—",
+    });
+  }
 
   // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
   const readiness = acceptanceReadiness(
     {
       customerBpId: a.customerBpId,
-      deliveryMethod: a.deliveryMethod,
-      endUserBpId: a.endUserBpId,
       items: a.items,
     },
     tr,
@@ -367,18 +409,22 @@ export function OrderAcceptanceDetail({
   // 差異（説明のつかない食い違い）と上書き（人が宣言した単価）は別に出す。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
   const overrideLines = priceCheck.lines.filter((l) => l.overridden);
-  const checkByItemId = new Map<string, AcceptancePriceCheckLine>(
-    priceCheck.lines.map((l) => [l.itemId, l]),
+  const checkByLineId = new Map<string, AcceptancePriceCheckLine>(
+    priceCheck.lines.map((l) => [l.lineId, l]),
   );
 
-  const run = (action: () => Promise<ActionResult>, done: string) => {
+  const run = (action: () => Promise<ActionResult<unknown>>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
+        // 承認設定で OFF のとき、承認依頼はそのまま承認済にする（「依頼しました」と出さない）。
+        const skipped =
+          (result.data as { approvedWithoutFlow?: boolean } | undefined)
+            ?.approvedWithoutFlow === true;
         notifications.show({
-          title: done,
+          title: skipped ? tr("approvals.policy.approvedWithoutFlow") : done,
           message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-            number: a.number,
+            number: docNo(a.number),
           }),
           color: "green",
         });
@@ -405,7 +451,7 @@ export function OrderAcceptanceDetail({
         notifications.show({
           title: tr("common.confirmed2"),
           message: tr("sales.orderAcceptanceDetail.orderLinesCreatedMessage", {
-            numbers: result.data.numbers.join(", "),
+            numbers: result.data.numbers.map((n) => docNo(n)).join(", "),
           }),
           color: "green",
         });
@@ -438,7 +484,7 @@ export function OrderAcceptanceDetail({
             {tr("sales.orderAcceptances.theLinesBelowDoNotMatch")}
           </Text>
           {diffLines.map((l) => (
-            <Text key={l.itemId} size="sm">
+            <Text key={l.lineId} size="sm">
               {tr("sales.orderAcceptanceDetail.lineDiffText", {
                 row: l.row,
                 actual: formatMoney(l.actual),
@@ -521,7 +567,7 @@ export function OrderAcceptanceDetail({
         onReject={(reason) => rejectAcceptance(a.number, reason)}
         rejectReason={null}
         subject={tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-          number: a.number,
+          number: docNo(a.number),
         })}
       />
     );
@@ -590,6 +636,18 @@ export function OrderAcceptanceDetail({
             // 明細単位のキャンセルは無い — 注文請書ごと依頼して
             // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
             {
+              // 確定済みの請書を直す唯一の道 — キャンセルしたあと、この
+              // 操作で内容を引き継いだ下書きを起こす（紐付けは残る）。
+              label: tr("sales.orderAcceptances.recreateFromThis"),
+              icon: <IconCopy size={14} />,
+              disabled: a.status !== "CANCELLED",
+              disabledReason:
+                a.status === "CANCELLED"
+                  ? undefined
+                  : tr("sales.orderAcceptances.youCanRecreateOnceCancelled"),
+              onClick: () => setRecreateOpen(true),
+            },
+            {
               label: tr("sales.orderAcceptances.cancellationRequest"),
               icon: <IconX size={14} />,
               color: "red",
@@ -618,9 +676,10 @@ export function OrderAcceptanceDetail({
         { label: tr("common.orderAcceptance"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={a.number}
       createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
-      title={a.number}
+      title={docNo(a.number)}
       updatedAt={fmt.dateTime(a.updatedAt)}
     >
       {/*
@@ -779,7 +838,7 @@ export function OrderAcceptanceDetail({
                     {tr("sales.orderAcceptances.aLineSUnitPriceDoes")}
                   </Text>
                   {diffLines.map((l) => (
-                    <Text key={l.itemId} size="sm">
+                    <Text key={l.lineId} size="sm">
                       {l.noTier
                         ? tr("sales.orderAcceptanceDetail.lineNoTierText", {
                             row: l.row,
@@ -817,7 +876,7 @@ export function OrderAcceptanceDetail({
                     )}
                   </Text>
                   {overrideLines.map((l) => (
-                    <Text key={l.itemId} size="sm">
+                    <Text key={l.lineId} size="sm">
                       {tr("sales.orderAcceptanceDetail.lineOverrideText", {
                         row: l.row,
                         actual: formatMoney(l.actual),
@@ -847,6 +906,12 @@ export function OrderAcceptanceDetail({
                     label={tr("common.number")}
                     value={<DocNumber>{a.number}</DocNumber>}
                   />
+                  {a.legacyNumber && (
+                    <FieldValue
+                      label={tr("common.legacyNumber")}
+                      value={a.legacyNumber}
+                    />
+                  )}
                   <FieldValue
                     label={tr("common.importedFrom")}
                     value={
@@ -889,29 +954,11 @@ export function OrderAcceptanceDetail({
                     label={tr("common.salesRep")}
                     value={a.salesRepName}
                   />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.shipTo")}
-                    value={a.shipToName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.deliveryMethod")}
-                    value={acceptanceDeliveryMethodLabel(
-                      a.deliveryMethod,
-                      locale,
-                    )}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.endUser")}
-                    value={a.endUserName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.assignedSite")}
-                    value={a.assignedPlantName}
-                  />
-                  <FieldValue
-                    label={tr("sales.orderAcceptances.shippingWorkLocation")}
-                    value={a.shippingWorkLocationName}
-                  />
+                  {/*
+                    出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+                    明細ごとに持つ（§8）— ヘッダの要約には出さない。明細表
+                    （下の「明細」タブ）の各行に出る。
+                  */}
                   <FieldValue
                     label={tr(
                       "sales.orderAcceptances.customerProvidesDeliveryNote",
@@ -1049,12 +1096,15 @@ export function OrderAcceptanceDetail({
                           </Table.Th>
                           <Table.Th ta="right">{tr("common.amount")}</Table.Th>
                           <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+                          <Table.Th>
+                            {tr("sales.orderAcceptances.deliveryDestination")}
+                          </Table.Th>
                           <Table.Th>{tr("common.notes")}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
                         {a.items.map((it) => {
-                          const lc = checkByItemId.get(it.id);
+                          const lc = checkByLineId.get(it.id);
                           return (
                             <Table.Tr key={it.id}>
                               <Table.Td>
@@ -1066,7 +1116,7 @@ export function OrderAcceptanceDetail({
                                     href={`${SALES_ORDERS_PATH}/${it.lineNumber}`}
                                     size="sm"
                                   >
-                                    {it.lineNumber}
+                                    {docNo(it.lineNumber)}
                                   </Anchor>
                                 ) : (
                                   <Text c="dimmed" size="sm">
@@ -1214,6 +1264,43 @@ export function OrderAcceptanceDetail({
                                 {fmt.date(it.deliveryDate)}
                               </Table.Td>
                               <Table.Td>
+                                {/* 届け先（§8）— 通常配送は出荷先、
+                                    ユーザー直送はエンドユーザーを出す
+                                    （両方を書くと届け先が 2 つある書類に見える
+                                    ため、配送方法で出し分ける）。 */}
+                                {it.deliveryMethod === "DIRECT_TO_USER" ? (
+                                  <Group gap={4} wrap="nowrap">
+                                    <Badge
+                                      color="violet"
+                                      size="xs"
+                                      variant="light"
+                                    >
+                                      {acceptanceDeliveryMethodLabel(
+                                        it.deliveryMethod,
+                                        locale,
+                                      )}
+                                    </Badge>
+                                    {it.endUserName ? (
+                                      <Text size="xs">{it.endUserName}</Text>
+                                    ) : (
+                                      <Badge
+                                        color="orange"
+                                        size="xs"
+                                        variant="light"
+                                      >
+                                        {tr("common.notIdentified")}
+                                      </Badge>
+                                    )}
+                                  </Group>
+                                ) : it.shipToName ? (
+                                  <Text size="xs">{it.shipToName}</Text>
+                                ) : (
+                                  <Text c="dimmed" size="xs">
+                                    —
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>
                                 <Text c="dimmed" size="xs">
                                   {it.notes ?? "—"}
                                 </Text>
@@ -1250,7 +1337,7 @@ export function OrderAcceptanceDetail({
                             <Table.Th ta="right">
                               <MoneyText fw={700} value={totals.amount} />
                             </Table.Th>
-                            <Table.Th colSpan={2} />
+                            <Table.Th colSpan={3} />
                           </Table.Tr>
                         </Table.Tfoot>
                       )}
@@ -1289,6 +1376,11 @@ export function OrderAcceptanceDetail({
                   })}
                 </Tabs.Tab>
                 <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+                {portalShare && (
+                  <Tabs.Tab value="portal">
+                    {tr("settings.portal.portalSharing")}
+                  </Tabs.Tab>
+                )}
                 <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
               </Tabs.List>
 
@@ -1311,6 +1403,12 @@ export function OrderAcceptanceDetail({
                   ownerType="order_acceptances"
                 />
               </Tabs.Panel>
+
+              {portalShare && (
+                <Tabs.Panel pt="md" value="portal">
+                  <PortalShareCard {...portalShare} />
+                </Tabs.Panel>
+              )}
 
               <Tabs.Panel pt="md" value="history">
                 <HistoryPanel entries={auditEntries} />
@@ -1368,7 +1466,7 @@ export function OrderAcceptanceDetail({
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmDeployMessage", {
             count: a.items.length,
-            number: a.number,
+            number: docNo(a.number),
             lastBranch: String(a.items.length).padStart(2, "0"),
           })}
         </Text>
@@ -1388,9 +1486,60 @@ export function OrderAcceptanceDetail({
       >
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmArchiveMessage", {
-            number: a.number,
+            number: docNo(a.number),
           })}
         </Text>
+      </ModalShell>
+
+      {/* キャンセル済みからの作り直し。既に作り直した先があるときは番号を
+          並べる — 二重に起こしてしまうのが一番まずい事故なので、押す前に
+          見えるようにしておく。 */}
+      <ModalShell
+        confirmLabel={tr("sales.orderAcceptances.recreate")}
+        loading={isPending}
+        onClose={() => setRecreateOpen(false)}
+        onConfirm={() =>
+          startTransition(async () => {
+            const result = await recreateFromCancelledAcceptance(a.number);
+            if (result.ok && result.data) {
+              setRecreateOpen(false);
+              notifications.show({
+                title: tr("common.created"),
+                message: tr("sales.orderAcceptances.recreatedAs", {
+                  number: docNo(result.data.number),
+                }),
+                color: "green",
+              });
+              router.push(`${BASE_PATH}/${result.data.number}`);
+              return;
+            }
+            notifications.show({
+              title: tr("common.error"),
+              message: result.ok ? "" : result.error,
+              color: "red",
+            });
+          })
+        }
+        opened={recreateOpen}
+        size="sm"
+        title={tr("sales.orderAcceptances.recreateFromThis")}
+      >
+        <Stack gap="xs">
+          <Text size="sm">
+            {tr("sales.orderAcceptances.confirmRecreateMessage", {
+              number: docNo(a.number),
+            })}
+          </Text>
+          {a.replacedByNumbers.length > 0 && (
+            <Alert color="orange" variant="light">
+              <Text size="sm">
+                {tr("sales.orderAcceptances.alreadyRecreatedAs", {
+                  numbers: a.replacedByNumbers.map((n) => docNo(n)).join(" / "),
+                })}
+              </Text>
+            </Alert>
+          )}
+        </Stack>
       </ModalShell>
 
       {/* キャンセル依頼（理由必須）。承認設定があれば保留、無ければ即適用。 */}
@@ -1436,7 +1585,7 @@ export function OrderAcceptanceDetail({
       >
         <Text size="sm">
           {tr("sales.orderAcceptanceDetail.confirmCancelRequestMessage", {
-            number: a.number,
+            number: docNo(a.number),
           })}
         </Text>
         <Textarea
@@ -1474,7 +1623,6 @@ function DraftEditor({
   workLocationOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const a = acceptance;
@@ -1492,18 +1640,8 @@ function DraftEditor({
       : null,
   );
   const [salesRepId, setSalesRepId] = useState<string | null>(a.salesRepId);
-  const [shipToBpId, setShipToBpId] = useState<string | null>(a.shipToBpId);
-  const [deliveryMethod, setDeliveryMethod] = useState<
-    "NORMAL" | "DIRECT_TO_USER"
-  >(a.deliveryMethod);
-  const [endUserBpId, setEndUserBpId] = useState<string | null>(a.endUserBpId);
-  const [endUserError, setEndUserError] = useState<string | null>(null);
-  const [assignedPlantId, setAssignedPlantId] = useState<string | null>(
-    a.assignedPlantId,
-  );
-  const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
-    string | null
-  >(a.shippingWorkLocationId);
+  // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所はヘッダに無い
+  // — 明細ごと（items — §8）。
   const [customerProvidesDeliveryNote, setCustomerProvidesDeliveryNote] =
     useState(a.customerProvidesDeliveryNote);
   const [customerOrderRef, setCustomerOrderRef] = useState(
@@ -1518,18 +1656,22 @@ function DraftEditor({
   // 明細の単価は既定で価格表が持つ（§2）。編集中の顧客の価格表を引いて、
   // 行ごとの単価をその場で解決する（保存済み結果の照合ではなく、いまの入力
   // に対する解決 — 顧客や数量を変えた瞬間に単価が追随する）。
-  const priceEntries = usePriceEntries(customerId);
-  const priceContext = { customerBpId: customerId, priceEntries };
+  // 引くのはこの請書の発行会社の価格表だけ（作成時に決まり、以後は変わらない）。
+  const priceEntries = usePriceEntries(customerId, { acceptanceId: a.number });
+  // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。
+  // 画面と保存側で同じものを見ていないと「見えている単価」と
+  // 「保存される単価」がずれる。
+  const standardPrices = useStandardPrices(items.map((r) => r.itemId));
+  const priceContext = {
+    customerBpId: customerId,
+    priceEntries,
+    standardPrices,
+  };
 
   /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
   const fingerprint = JSON.stringify([
     customerId,
     salesRepId,
-    shipToBpId,
-    deliveryMethod,
-    endUserBpId,
-    assignedPlantId,
-    shippingWorkLocationId,
     customerProvidesDeliveryNote,
     customerOrderRef,
     quoteNumber,
@@ -1543,21 +1685,12 @@ function DraftEditor({
   const isDirty = fingerprint !== initialFingerprint;
 
   const save = () => {
-    if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError(tr("common.selectAnEndUserForDirect"));
-      return;
-    }
+    // 配送（出荷先・配送方法・エンドユーザー等）の必須チェックは行ごと
+    // （lineRefsError — サーバー側）に任せる。エラーは行番号つきで返る。
     startTransition(async () => {
       const result = await saveDraft(a.number, {
         customerBpId: customerId,
         salesRepId,
-        shipToBpId,
-        deliveryMethod,
-        endUserBpId,
-        assignedPlantId: assignedPlantId ? Number(assignedPlantId) : null,
-        shippingWorkLocationId: shippingWorkLocationId
-          ? Number(shippingWorkLocationId)
-          : null,
         customerProvidesDeliveryNote,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
@@ -1569,7 +1702,7 @@ function DraftEditor({
         notifications.show({
           title: tr("common.saved2"),
           message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
-            number: a.number,
+            number: docNo(a.number),
           }),
           color: "green",
         });
@@ -1671,7 +1804,7 @@ function DraftEditor({
               clearable
               initialOption={
                 a.quoteNumber
-                  ? { value: a.quoteNumber, label: a.quoteNumber }
+                  ? { value: a.quoteNumber, label: docNo(a.quoteNumber) }
                   : null
               }
               label={tr("common.quoteOptional")}
@@ -1695,102 +1828,11 @@ function DraftEditor({
               valueFormat="YYYY/MM/DD"
             />
           </Group>
+          {/*
+            出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+            ヘッダに無い — 明細ごと（§8、下の明細セクションの「配送」節）。
+          */}
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-            {/* 出荷先は顧客と異なり得る（支店渡しなど）— 通常配送のときだけの欄。
-                ユーザー直送の届け先はエンドユーザーなので灰色にする。 */}
-            <SearchSelect
-              clearable
-              description={
-                shipToApplies(deliveryMethod)
-                  ? undefined
-                  : tr("sales.orderAcceptances.shipToOnlyForNormalDelivery")
-              }
-              disabled={!shipToApplies(deliveryMethod)}
-              initialOption={
-                a.shipToBpId && a.shipToName
-                  ? { value: a.shipToBpId, label: a.shipToName }
-                  : null
-              }
-              label={
-                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
-              }
-              onChange={setShipToBpId}
-              onSearch={searchShipToOptions}
-              placeholder={tr("common.searchShipToOptional")}
-              storageKey="ship-to"
-              value={shipToBpId}
-            />
-            {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
-            <Select
-              allowDeselect={false}
-              data={acceptanceDeliveryMethodOptions(locale)}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
-                />
-              }
-              onChange={(v) => {
-                const next = (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL";
-                setDeliveryMethod(next);
-                // 直送に切り替えたら出荷先は捨てる（保存側も落とす）。
-                if (!shipToApplies(next)) setShipToBpId(null);
-                if (next !== "DIRECT_TO_USER") setEndUserError(null);
-              }}
-              value={deliveryMethod}
-              withAsterisk
-            />
-            {/* エンドユーザー — 直送では必須、通常配送でも記録用に任意で選べる。 */}
-            <SearchSelect
-              clearable
-              error={endUserError}
-              initialOption={
-                a.endUserBpId && a.endUserName
-                  ? { value: a.endUserBpId, label: a.endUserName }
-                  : null
-              }
-              label={
-                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
-              }
-              onChange={(v) => {
-                setEndUserBpId(v);
-                if (v) setEndUserError(null);
-              }}
-              onSearch={searchEndUserOptions}
-              placeholder={
-                deliveryMethod === "DIRECT_TO_USER"
-                  ? tr("common.searchEndUsers")
-                  : tr("common.searchEndUsersOptional")
-              }
-              storageKey="end-user"
-              value={endUserBpId}
-              withAsterisk={deliveryMethod === "DIRECT_TO_USER"}
-            />
-            <Select
-              clearable
-              data={plantOptions}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
-                />
-              }
-              onChange={setAssignedPlantId}
-              placeholder={tr("common.selectASiteOptional")}
-              searchable
-              value={assignedPlantId}
-            />
-            <Select
-              clearable
-              data={workLocationOptions}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
-                />
-              }
-              onChange={setShippingWorkLocationId}
-              placeholder={tr("common.selectAWorkLocationOptional")}
-              searchable
-              value={shippingWorkLocationId}
-            />
             <Checkbox
               checked={customerProvidesDeliveryNote}
               label={
@@ -1837,7 +1879,9 @@ function DraftEditor({
         <OrderAcceptanceItemsEditor
           items={items}
           onChange={setItems}
+          plantOptions={plantOptions}
           priceContext={priceContext}
+          workLocationOptions={workLocationOptions}
         />
       </FormSection>
 

@@ -43,9 +43,9 @@ export async function loadCatalog(): Promise<WorkflowCatalog> {
       defaultWorkHours:
         s.defaultWorkHours == null ? null : Number(s.defaultWorkHours),
       workLocationRequired: s.workLocationRequired,
+      allowedWorkOrderTypes: s.allowedWorkOrderTypes,
       planTimeRequired: s.planTimeRequired,
       planAssigneeRequired: s.planAssigneeRequired,
-      planQuantityRequired: s.planQuantityRequired,
       sortOrder: s.sortOrder,
     })),
     useDeps: useDeps.map((d) => ({
@@ -70,10 +70,12 @@ import {
   defaultOrder,
   isBlockingIssue,
   isPrepStep,
-  isShipStep,
   type ProcessRouteKind,
-  STOCK_ISSUE_STEP_CODE,
+  REGRIND_RECEIPT_STEP_CODE,
+  stepAllowedForType,
+  typeCompositionIssues,
   validateComposition,
+  type WorkOrderType,
 } from "./workflow-core";
 
 export interface StepCompositionInput {
@@ -83,6 +85,8 @@ export interface StepCompositionInput {
   supplierBpId: string | null;
   /** 作業時間 (h) — 任意。指示書は planned_work_hours、ルートは work_hours へ。 */
   workHours: number | null;
+  /** 工程納期（YYYY-MM-DD）— 指示書のみ。工程ルートは持たない。 */
+  dueDate?: string | null;
   /** 実行時のロット入力の上書き（null/未指定 = 工程マスタの既定を継承）。 */
   lotInputMode?: "REQUIRED" | "OPTIONAL" | "NONE" | null;
   /**
@@ -107,7 +111,7 @@ export interface OrderedStepCreate extends StepCompositionInput {
  */
 export async function validateAndOrderSteps(
   steps: readonly StepCompositionInput[],
-  type: "FROM_STOCK" | "MANUFACTURE" = "MANUFACTURE",
+  type: WorkOrderType = "MANUFACTURE",
   /**
    * 工程リストの片方だけを保存するとき（製品の製造工程リスト / 準備工程
    * リストの編集画面）に渡す。その種別の外を相手にした issue は落とし、
@@ -115,6 +119,15 @@ export async function validateAndOrderSteps(
    * 渡さない — 全体で検証する。
    */
   kind?: ProcessRouteKind,
+  options?: {
+    /**
+     * この指示書の**外で済んでいる**工程（在庫の仕掛品から始める指示書で、
+     * 投入する仕掛品で済んでいて工程から落とした分 + 半製品出しへ差し替えた
+     * 元の開始工程）。構成には載らないが、使用依存（「段加工には円筒が要る」）は
+     * 満たしているものとして数える。
+     */
+    satisfiedStepIds?: readonly number[];
+  },
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
@@ -135,40 +148,30 @@ export async function validateAndOrderSteps(
     };
   }
   const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
-  if (type === "FROM_STOCK") {
-    // 在庫分は固定構成: 製品出し（必須）+ 出荷前検査（任意）のみ。
-    const invalid = ids.filter((id) => {
-      const step = catalogById.get(id);
-      return (
-        !step || (step.code !== STOCK_ISSUE_STEP_CODE && !isShipStep(step))
-      );
-    });
-    if (invalid.length > 0) {
-      return {
-        ok: false,
-        error: tr("workflowActions.fromStockAllowedSteps"),
-      };
-    }
-    if (
-      !ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
-    ) {
-      return {
-        ok: false,
-        error: tr("workflowActions.fromStockRequiresStockIssue"),
-      };
-    }
-  } else if (
-    ids.some((id) => catalogById.get(id)?.code === STOCK_ISSUE_STEP_CODE)
-  ) {
-    return {
-      ok: false,
-      error: tr("workflowActions.stockIssueOnlyForFromStock"),
-    };
+  // 種別ごとの構成規則は workflow-core（stepAllowedForType 他）が唯一の定義 —
+  // ビルダーのカタログ絞り込みと同じ関数なので、画面で選べたものが保存で
+  // 弾かれることはない。
+  const TYPE_ISSUE_KEY = {
+    STOCK_ISSUE_ONLY_FOR_FROM_STOCK:
+      "workflowActions.stockIssueOnlyForFromStock",
+    FROM_STOCK_ALLOWED_STEPS: "workflowActions.fromStockAllowedSteps",
+    FROM_STOCK_REQUIRES_STOCK_ISSUE:
+      "workflowActions.fromStockRequiresStockIssue",
+    REGRIND_STEPS_ONLY_FOR_REGRIND:
+      "workflowActions.regrindStepsOnlyForRegrind",
+    REGRIND_FORBIDDEN_STEPS: "workflowActions.regrindForbiddenSteps",
+    REGRIND_REQUIRES_RECEIPT: "workflowActions.regrindRequiresReceipt",
+  } as const;
+  const typeIssue = typeCompositionIssues(ids, catalog.steps, type)[0];
+  if (typeIssue) {
+    return { ok: false, error: tr(TYPE_ISSUE_KEY[typeIssue]) };
   }
   if (kind) {
     const wrongKind = ids.filter((id) => {
       const step = catalogById.get(id);
-      return step != null && (kind === "PREP") !== isPrepStep(step);
+      if (step == null) return false;
+      if (kind === "REGRIND") return !stepAllowedForType(step, "REGRIND");
+      return (kind === "PREP") !== isPrepStep(step);
     });
     if (wrongKind.length > 0) {
       return {
@@ -176,16 +179,25 @@ export async function validateAndOrderSteps(
         error: tr(
           kind === "PREP"
             ? "workflowActions.prepRouteOnlyPrepSteps"
-            : "workflowActions.manufacturingRouteNoPrepSteps",
+            : kind === "REGRIND"
+              ? "workflowActions.regrindRouteOnlyRegrindSteps"
+              : "workflowActions.manufacturingRouteNoPrepSteps",
         ),
       };
     }
   }
-  const allBlocking = validateComposition(
-    ids,
-    catalog.useDeps,
-    catalog.steps,
-  ).filter(isBlockingIssue);
+  const satisfied = new Set(options?.satisfiedStepIds ?? []);
+  const allBlocking = validateComposition(ids, catalog.useDeps, catalog.steps)
+    .filter(isBlockingIssue)
+    // 依存先がこの指示書の外で済んでいるなら不足ではない。
+    .filter(
+      (i) =>
+        !(
+          i.kind === "MISSING_AND" &&
+          i.relatedStepIds.length > 0 &&
+          i.relatedStepIds.every((id) => satisfied.has(id))
+        ),
+    );
   const blocking = kind
     ? compositionIssuesForKind(allBlocking, kind, catalog.steps)
     : allBlocking;
@@ -208,6 +220,7 @@ export async function validateAndOrderSteps(
       plantId: s.executionLocation === "INTERNAL" ? s.plantId : null,
       supplierBpId: s.executionLocation === "OUTSOURCE" ? s.supplierBpId : null,
       workHours: s.workHours,
+      dueDate: s.dueDate ?? null,
       lotInputMode: s.lotInputMode ?? null,
       // 検査表は検査工程のみ保持（それ以外の指定は黙って落とす）
       inspectionTemplateIds: catalogById.get(stepId)?.isInspection
@@ -224,7 +237,10 @@ export async function validateAndOrderSteps(
 // セッションロックの獲得は updateMany の WHERE 句による原子的クレーム。
 
 import { getCurrentActorId, recordAudit } from "./audit";
+import { recordStepProgramsTx } from "./design-programs";
 import { missingInspectionSheets } from "./inspection-core";
+import { resolveWipRecording } from "./wip-recording";
+import type { WipRecordingInput } from "./wip-state-core";
 import {
   type BranchStockDisposition,
   branchableQuantity,
@@ -236,7 +252,9 @@ import {
   expectedInput,
   isOffMainline,
   isWorkOrderComplete,
+  regrindFullyReturned,
   resolveReceivedQuantity,
+  START_STEP_CODES,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -285,7 +303,14 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
       stepLinks: { select: STEP_LINK_STATE_SELECT },
     },
   });
-  const execDeps = await prisma.processStepExecDependency.findMany();
+  const [execDeps, startSteps] = await Promise.all([
+    prisma.processStepExecDependency.findMany(),
+    // 開始工程（出し・受渡し）— 終わるまで他の工程を開始させない（canStartStep）。
+    prisma.processStepCatalog.findMany({
+      where: { code: { in: [...START_STEP_CODES] } },
+      select: { id: true },
+    }),
+  ]);
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
   const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
@@ -299,6 +324,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      startStepIds: startSteps.map((c) => c.id),
       ...woLinkCtx,
     },
     workOrder: {
@@ -403,22 +429,29 @@ export async function startStepExecution(
 
   const input = expectedInput(stepId, ctx);
 
-  // 原子的クレーム: PENDING かつ未ロックの行だけを更新（同時開始の競合防止）
-  const claimed = await prisma.workOrderStep.updateMany({
-    where: {
-      id: stepId,
-      status: "PENDING",
-      OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
-    },
-    data: {
-      status: "IN_PROGRESS",
-      sessionLockedBy: actor,
-      sessionLockedAt: new Date(),
-      startedAt: new Date(),
-      startedBy: actor,
-      inputQuantity: input ?? undefined,
-      ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
-    },
+  // 原子的クレーム: PENDING かつ未ロックの行だけを更新（同時開始の競合防止）。
+  // 同じトランザクションで「いま出ている加工プログラムの版」を記録する —
+  // 記録した版は使用済みになり、以後その場では書き換えられない
+  // （lib/design-programs recordStepProgramsTx。共有端末の開始も同じ）。
+  const claimed = await prisma.$transaction(async (tx) => {
+    const c = await tx.workOrderStep.updateMany({
+      where: {
+        id: stepId,
+        status: "PENDING",
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+      },
+      data: {
+        status: "IN_PROGRESS",
+        sessionLockedBy: actor,
+        sessionLockedAt: new Date(),
+        startedAt: new Date(),
+        startedBy: actor,
+        inputQuantity: input ?? undefined,
+        ...(lotMode !== "NONE" && lot != null ? { lotText: lot } : {}),
+      },
+    });
+    if (c.count === 1) await recordStepProgramsTx(tx, stepId);
+    return c;
   });
   if (claimed.count === 0) {
     return {
@@ -463,6 +496,12 @@ export async function completeStepExecution(
   stepId: string,
   quantities: StepQuantities | null,
   defectReasons: StepDefectReason[] | null = null,
+  /**
+   * 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。品物が工程を
+   * 離れて在庫に入る完了（半製品の数 > 0 / 半製品で終わる分岐の終端）でだけ
+   * 読む — それ以外の完了では無視する。規則は lib/wip-recording.ts。
+   */
+  wipRecording: WipRecordingInput | null = null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
   const actor = await getCurrentActorId();
@@ -471,7 +510,7 @@ export async function completeStepExecution(
     include: {
       workOrder: true,
       outgoingLinks: true,
-      processStep: { select: { quantityTracking: true } },
+      processStep: { select: { quantityTracking: true, code: true } },
       // 検査表が埋まっているかの判定に使う（割当と記録の突き合わせ）。
       inspectionTemplates: {
         include: { inspectionTemplate: { select: { id: true, name: true } } },
@@ -511,6 +550,11 @@ export async function completeStepExecution(
   }
 
   const mode = stepRow.processStep.quantityTracking;
+  // 製品受入（再研磨）: 顧客の工具を受け入れる開始工程。受入数は画面の入力値が
+  // 権威で（届いた本数は予定と違ってよい）、完了時に預り品として入庫する。
+  const isRegrindReceipt =
+    stepRow.workOrder.type === "REGRIND" &&
+    stepRow.processStep.code === REGRIND_RECEIPT_STEP_CODE;
   // 完了時点の想定受入数（前工程の良品数 + 流入エッジ — workflow-core.expectedInput）。
   // 開始時に inputQuantity へ写すのと同じ規則だが、開始が前工程の完了より早かった
   // 工程（同期可能工程・先行 WO 未完了）は開始時に null で、完了時に初めて確定する。
@@ -546,6 +590,7 @@ export async function completeStepExecution(
       expectedAtCompletion,
       startedWith: stepRow.inputQuantity,
       client: quantities?.inputQuantity,
+      clientAuthoritative: isRegrindReceipt,
     });
     // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
     // リスト無しで区分数量だけが来るのは旧クライアント — 黙って受けず再入力を求める。
@@ -582,6 +627,14 @@ export async function completeStepExecution(
     const semi = sumType("SEMI");
     const scrap = sumType("SCRAP");
     const rework = sumType("REWORK");
+    // 再研磨指示書では半製品の区分を使わない — 完了時に自社の半製品として
+    // 入庫する経路で、顧客の工具が自社在庫に化ける。
+    if (stepRow.workOrder.type === "REGRIND" && semi > 0) {
+      return {
+        ok: false,
+        errors: [tr("workflowActions.semiFinishedNotAllowedForRegrind")],
+      };
+    }
     persisted = {
       inputQuantity: authoritativeInput,
       outputSuccessQuantity: authoritativeInput - semi - scrap - rework,
@@ -599,9 +652,28 @@ export async function completeStepExecution(
       },
       mode,
       workflowCoreT(tr),
+      stepRow.processStep.code,
     );
     if (qIssues.length > 0)
       return { ok: false, errors: qIssues.map((i) => i.message) };
+  }
+
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端）は、
+  // 仕上がり寸法と — 手前に合流があれば — 通ってきた経路を記録する。
+  // 在庫に置かない完了では 3 つとも null になる（入力は捨てる）。
+  const wip = await resolveWipRecording(
+    stepId,
+    {
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      outputSuccess: persisted.outputSuccessQuantity,
+    },
+    wipRecording,
+  );
+  if (wip.issues.length > 0) {
+    return {
+      ok: false,
+      errors: wip.issues.map((i) => tr(`production.wipRecording.issues.${i}`)),
+    };
   }
 
   // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
@@ -629,29 +701,91 @@ export async function completeStepExecution(
   if (rIssues.length > 0)
     return { ok: false, errors: rIssues.map((i) => i.message) };
 
+  // 製品受入（再研磨）の完了は預り品の入庫と**同じトランザクション**で行う。
+  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。伝票番号は
+  // INSERT のときに DB が払い出す（勝てなかった要求は伝票を作らない = 欠番なし）。
+  const postsReceipt =
+    isRegrindReceipt &&
+    stepRow.regrindReceiptMovementId == null &&
+    persisted.inputQuantity > 0;
+
+  // **全量返却なら下流の未着手工程を畳む。** 研ぎ直せる物が 1 本も無いので
+  // 後続は 0 本を受け取るだけ。放っておくと「意味のない工程を 0 で押していく」
+  // までこの指示書は閉じず、受入が COMPLETED になった時点で cancelWorkOrder
+  // （着手前のみ）も使えない。畳めば下の isWorkOrderComplete が CANCELLED を
+  // 無視して、同じ要求の中で指示書が完了する（返却の OUT もそこで立つ）。
+  const fullyReturned =
+    isRegrindReceipt &&
+    regrindFullyReturned({
+      inputQuantity: persisted.inputQuantity,
+      outputSuccess: persisted.outputSuccessQuantity,
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      defectScrap: persisted.outputDefectScrap,
+      defectRework: persisted.outputDefectRework,
+    });
+  // ctx を引くのは全量返却のときだけ（普段の完了で 1 クエリ増やさない）。
+  const foldIds = fullyReturned
+    ? downstreamStepIds(
+        stepId,
+        (await fetchWorkflowCtx(stepRow.workOrderId)).ctx,
+      )
+    : [];
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。
-  const claimed = await prisma.workOrderStep.updateMany({
-    where: {
-      id: stepId,
-      status: "IN_PROGRESS",
-      // 開始と同じ規則 — 他者のセッションロック中は完了できない。事前チェック
-      // と更新の間にロックが移っても WHERE で弾く。
-      OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
-    },
-    data: {
-      status: "COMPLETED",
-      inputQuantity: persisted.inputQuantity,
-      outputSuccessQuantity: persisted.outputSuccessQuantity,
-      outputDefectSemiFinished: persisted.outputDefectSemiFinished,
-      outputDefectScrap: persisted.outputDefectScrap,
-      outputDefectRework: persisted.outputDefectRework,
-      ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
-      completedAt: new Date(),
-      completedBy: actor,
-      sessionLockedBy: null,
-      sessionLockedAt: null,
-    },
+  const claimed = await prisma.$transaction(async (tx) => {
+    const c = await tx.workOrderStep.updateMany({
+      where: {
+        id: stepId,
+        status: "IN_PROGRESS",
+        // 開始と同じ規則 — 他者のセッションロック中は完了できない。事前チェック
+        // と更新の間にロックが移っても WHERE で弾く。
+        OR: [{ sessionLockedBy: null }, { sessionLockedBy: actor }],
+      },
+      data: {
+        status: "COMPLETED",
+        inputQuantity: persisted.inputQuantity,
+        outputSuccessQuantity: persisted.outputSuccessQuantity,
+        outputDefectSemiFinished: persisted.outputDefectSemiFinished,
+        outputDefectScrap: persisted.outputDefectScrap,
+        outputDefectRework: persisted.outputDefectRework,
+        ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
+        finishedDiameterMm: wip.value.finishedDiameterMm,
+        finishedLengthMm: wip.value.finishedLengthMm,
+        wipPathStepIds: wip.value.pathStepIds ?? Prisma.DbNull,
+        completedAt: new Date(),
+        completedBy: actor,
+        sessionLockedBy: null,
+        sessionLockedAt: null,
+      },
+    });
+    let folded = 0;
+    if (c.count === 1 && foldIds.length > 0) {
+      // **未着手のものだけ。** 進行中・完了済みの工程は人が手を付けた実績が
+      // あるので畳まない（その場合は指示書は開いたままになる — 正しい）。
+      const f = await tx.workOrderStep.updateMany({
+        where: { id: { in: foldIds }, status: "PENDING" },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelledBy: actor,
+          cancelReason: tr("workflowActions.autoCancelledAllReturned"),
+        },
+      });
+      folded = f.count;
+    }
+    if (c.count === 1 && postsReceipt) {
+      const { onRegrindReceiptTx } = await import("./inventory");
+      await onRegrindReceiptTx(tx, {
+        stepId,
+        workOrderId: stepRow.workOrderId,
+        workOrderNumber: stepRow.workOrder.workOrderNumber,
+        itemId: stepRow.workOrder.productItemId,
+        plantId: stepRow.plantId,
+        quantity: persisted.inputQuantity,
+        box: stepRow.lotText,
+      });
+    }
+    return { count: c.count, folded };
   });
   if (claimed.count !== 1) {
     // 進行中のまま他者がロックを持っている = ロック、それ以外 = 先に完了した。
@@ -678,6 +812,8 @@ export async function completeStepExecution(
   // （COMPLETED なのに在庫が無く、巻き戻しも拒否される状態を作らない）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
+    // 入出庫伝票の番号は伝票を起こすときに DB が払い出す — 勝者以外・計上ゼロ
+    // では伝票そのものを作らないので、番号も欠けない。
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },
@@ -699,6 +835,9 @@ export async function completeStepExecution(
         input: persisted.inputQuantity,
       }),
       ...persisted,
+      // 工程が自動で畳まれたことは履歴から読めなければ困る（工程が消えて
+      // 見えるので、理由が無いと「なぜ飛んでいるのか」が分からない）。
+      ...(claimed.folded > 0 ? { autoCancelledSteps: claimed.folded } : {}),
     },
   });
   return { ok: true };
@@ -786,6 +925,14 @@ export async function rollbackStepExecution(
       errors: [tr("workflowActions.cannotRollbackAfterInventoryPosting")],
     };
   }
+  // 製品受入（再研磨）は完了時に預り品を入庫している — 巻き戻して再完了すると
+  // 二重に載る。訂正は手動入出庫（ST06）で預り品バケットを直す。
+  if (stepRow.regrindReceiptMovementId != null) {
+    return {
+      ok: false,
+      errors: [tr("workflowActions.cannotRollbackAfterInventoryPosting")],
+    };
+  }
 
   // 後続が着手済みなら巻き戻し不可（数量整合を守る）。下流は DAG 到達性で
   // 判定する — 合流先は分岐工程より小さい sortOrder を持ち得る。
@@ -814,6 +961,10 @@ export async function rollbackStepExecution(
         // 不良の内訳も完了時の記録なので数量と一緒に消す（残すと次の完了で
         // 区分列と食い違う）。ロット/伝票コード（lotText）は開始時の記録なので残す。
         defectReasons: Prisma.DbNull,
+        // 在庫に置く分の記録も完了時のもの — 数量と一緒に消す。
+        finishedDiameterMm: null,
+        finishedLengthMm: null,
+        wipPathStepIds: Prisma.DbNull,
         completedAt: null,
         completedBy: null,
         cancelReason: reason,
@@ -992,7 +1143,7 @@ export async function addBranchSeries(input: {
             where: {
               isActive: true,
               relatedProcessStepId: { in: inspectionCatalogIds },
-              OR: [{ productId: null }, { productId: wo.productId }],
+              OR: [{ itemId: null }, { itemId: wo.productItemId }],
             },
             orderBy: [{ code: "asc" }, { version: "desc" }],
             select: { id: true, code: true, relatedProcessStepId: true },

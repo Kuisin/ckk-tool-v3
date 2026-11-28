@@ -2,7 +2,10 @@
  * GET /api/v1/delivery-notes — 納品書の一覧（keyset + 差分同期）。
  *
  * 権限は `delivery_note:READ`。行スコープは**親の出荷書の出荷元拠点**
- * ∪ 作成者（納品書自身は拠点を持たない）。
+ * ∪ 作成者（納品書自身は拠点を持たない）。 *
+ * 明細の `productId` の値は **`items.id`**（2026-09-20 の切り替え —
+ * `_specs/api.md` §6.1）。項目名は従来のままで、`/api/v1/products` の `id` と
+ * 同じ id 空間を指す。
  */
 
 import { ownOrPlantWhere } from "@ckk/authz-core";
@@ -11,7 +14,7 @@ import { iso, num } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { DOC_FIELDS_SELECT, docFields, relatedDocNumber } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,10 +40,10 @@ export async function GET(request: Request): Promise<Response> {
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
-          yearMonth: true,
-          seq: true,
-          deliveryOrderYearMonth: true,
-          deliveryOrderSeq: true,
+          ...DOC_FIELDS_SELECT,
+          deliveryOrderId: true,
+          // 親の出荷書の番号は関係から読む（旧い複合キーの列は読まない）。
+          deliveryOrder: { select: { docRef: true } },
           status: true,
           deliveryMethod: true,
           recipientBpId: true,
@@ -56,7 +59,7 @@ export async function GET(request: Request): Promise<Response> {
             orderBy: { sortOrder: "asc" },
             select: {
               id: true,
-              productId: true,
+              itemId: true,
               quantity: true,
               unitPrice: true,
               amount: true,
@@ -66,19 +69,15 @@ export async function GET(request: Request): Promise<Response> {
         },
       }),
     query,
-    tiebreak: "doc",
-    toCursor: (r) => ({
-      kind: "doc",
-      seq: r.seq,
-      t: r.updatedAt.toISOString(),
-      ym: r.yearMonth,
-    }),
+    // 決着キーは行の uuid（索引 (updated_at, id)）。番号は法人をまたいで重なる。
+    tiebreak: "id",
+    toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
-      number: formatDocNumber("DRN", r),
-      deliveryOrderNumber: formatDocNumber("DOR", {
-        seq: r.deliveryOrderSeq,
-        yearMonth: r.deliveryOrderYearMonth,
-      }),
+      ...docFields(r),
+      /** 親の出荷書の uuid（`/delivery-orders` の `id`）。 */
+      deliveryOrderId: r.deliveryOrderId,
+      /** 親の出荷書の番号。納品書と同じ法人の書類（`companyCode` が共通）。 */
+      deliveryOrderNumber: relatedDocNumber(r.deliveryOrder),
       status: r.status,
       deliveryMethod: r.deliveryMethod,
       recipientId: r.recipientBpId,
@@ -90,7 +89,7 @@ export async function GET(request: Request): Promise<Response> {
       notes: r.notes,
       items: r.items.map((i) => ({
         id: i.id,
-        productId: i.productId,
+        productId: i.itemId,
         quantity: i.quantity,
         unitPrice: num(i.unitPrice),
         amount: num(i.amount),

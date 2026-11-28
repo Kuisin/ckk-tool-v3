@@ -21,8 +21,9 @@
  */
 
 import { Group, Stack, Text } from "@mantine/core";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 
@@ -48,7 +49,18 @@ export function EditablePanel({
   const editLabel = editLabelProp ?? tr("common.edit");
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState(false);
-  const close = () => setEditing(false);
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  // 閲覧へ戻すのは**新しい値が届いてから**。`view` はサーバーが描いた値なので、
+  // 保存直後にすぐ閉じると、router.refresh() が戻るまで一瞬だけ古い値が出ていた
+  // （SY0J 会計連携）。refresh と閉じる操作を同じ遷移に入れると、React は新しい
+  // 値が描けるまで編集側を出したままにし、両方を一緒に切り替える。キャンセルでも
+  // 同じ道を通る — 他の人の変更も拾える、の副作用しかない。
+  const close = () =>
+    startTransition(() => {
+      router.refresh();
+      setEditing(false);
+    });
 
   const header =
     title || (canEdit && !editing) ? (

@@ -14,9 +14,15 @@ screenshots:
 
 A page covering the flow from finding out that material is short, through ordering and receiving it, until it can be used as stock. It is where you check "what stage things are at now, and who does what next", the **branches** such as approval and split receiving, and each **document's states**.
 
+```video
+process-purchasing
+```
+
 ## Overall flow
 
-![Diagram of the whole purchasing flow (swimlanes including the approval send-back and split-receiving loops)](../assets/diagrams/process-purchasing.en.svg)
+![Purchasing — from requesting material to receiving it](../assets/diagrams/flow-purchasing.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#purchasing).
 
 When it is urgent or the amount is small, you can also start **directly from a purchase order** without going through a purchase request. Semi-finished goods procured from outside get no work order — they are simply received as material.
 
@@ -28,7 +34,7 @@ When it is urgent or the amount is small, you can also start **directly from a p
 | 2. Approve the request | Judge whether it is really needed, then approve or send back | Approver | [Purchase request](/manual/en/operations/purchasing/purchase-request/user) (`PU01`) |
 | 3. Make the purchase order | Decide the supplier, the unit price and the expected date | Purchasing | [Material purchase order](/manual/en/operations/purchasing/purchase-order/user) (`PU02`) |
 | 4–5. Approve and place the order | Check the amount and terms, approve, and place the order with the supplier | Approver → purchasing | [Material purchase order](/manual/en/operations/purchasing/purchase-order/user) (`PU02`) |
-| 6. Record the receipt | Record the quantity and date received | Receiving | [Material receipt](/manual/en/operations/purchasing/material-receipt/user) (`PU03`) |
+| 6. Record the receipt | For ordered material, press「入荷完了」(Receiving complete) or「分割入荷」(Partial receipt) on the purchase order. Only material bought without a purchase order is recorded in Material receipt | Receiving | [Material purchase order](/manual/en/operations/purchasing/purchase-order/user) (`PU02`) / direct purchases: [Material receipt](/manual/en/operations/purchasing/material-receipt/user) (`PU03`) |
 | (In parallel) Outsource | Send part of the machining to an outside company | Production control | [Outsource order](/manual/en/operations/purchasing/outsource-order/user) (`PU04`) |
 
 ## What happens at each stage
@@ -57,11 +63,15 @@ Check the amount and terms, and request approval. Once approved, place the order
 
 ![Draft material purchase order. The request-approval button is highlighted with a red box](../assets/screenshots/flow-purchase-order-approve-01.png)
 
-### 6. Recording the receipt (material receipt)
+### 6. Recording the receipt
 
-Record the material that arrived. **The stock at the specified site increases as of the recorded received date.**
+Record the material that arrived. **The stock at the receiving site increases as of the recorded date.** Ordered material is recorded **on its material purchase order screen**; doing so creates a material receipt record linked to the purchase order automatically.
 
-**The split-receiving branch** — the quantity may differ from what was ordered. When it arrives in parts, record only what arrived and record the rest as the next receipt. Once everything has arrived, the purchase order becomes「入荷完了」(received).
+**The split-receiving branch** — when everything has arrived,「**入荷完了**」(Receiving complete) receives the rest at once. When only part has arrived,「**分割入荷**」(Partial receipt) receives just that part (receiving more than the ordered quantity is refused). When every line reaches its ordered quantity, the purchase order becomes「入荷完了」(received) automatically. When it is decided that the rest will not come,「**未入荷のまま完了**」(Close without receiving) closes the order with a reason, without receiving anything.
+
+> ⚠️ Do not record arrivals of ordered material with「新規作成」(New) or「納品書から登録」(From a delivery note) in [Material receipt](/manual/en/operations/purchasing/material-receipt/user) (`PU03`). Those receipts are not linked to the purchase order, so its remaining quantity does not go down, and pressing「入荷完了」(Receiving complete) later puts the same material into stock a second time. The Material receipt screen is only for material bought without a purchase order (direct purchases).
+
+The screen below is Material receipt, used to record a direct purchase.
 
 ![Material receipt entry screen. The save button is highlighted with a red box](../assets/screenshots/flow-material-receipt-01.png)
 
@@ -83,19 +93,22 @@ Outsourcing does not come from a purchase request or a purchase order but from a
 **The request is not approved**
 Check whether the reason for the request says nothing more than "because we need it". It can be judged when it states which step of which product it is for, and by when.
 
+**Approval cannot be requested**
+If the purchase request or material purchase order approval flow has no steps, approval cannot be requested. An administrator creates the steps in [Approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`).
+
 **Stock does not increase**
-The receipt may not have been recorded yet. In Material receipt, record the quantity that arrived, the received date, and the site that received it.
+The receipt may not have been recorded yet. Record the quantity that arrived and the receiving site — with「入荷完了」(Receiving complete) or「分割入荷」(Partial receipt) on the purchase order for ordered material, or in Material receipt for material bought without a purchase order.
 
 **Stock went into a different site**
 The wrong receiving site was chosen. Choose the site where the goods actually arrived.
 
 **The purchase order does not become「入荷完了」(received)**
-Part of the ordered quantity has not been recorded yet. When it arrives in parts, record a receipt each time it arrives.
+Part of the ordered quantity has not been recorded yet. When it arrives in parts, record each arrival with「分割入荷」(Partial receipt) on the purchase order. Receipts recorded in Material receipt are not counted against the purchase order. If the rest will not come, close it with「未入荷のまま完了」(Close without receiving).
 
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Purchasing** on the left
+- How to operate each app and what each field means … **Operations › Purchasing** on the left
 - The flow to return to … [Production flow](/manual/en/process/production) (material shortages come from there)
 - Registering the material itself … [Material master](/manual/en/operations/masters/material/user)
-- Checking stock … [Inventory](/manual/en/operations/production/material-inventory/user)
+- Checking stock … [Inventory](/manual/en/operations/inventory/inventory-management/user)

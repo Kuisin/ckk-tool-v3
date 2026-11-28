@@ -26,6 +26,8 @@ import { getTranslations } from "next-intl/server";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { toDocRef, toDocRefs } from "@/lib/doc-ref";
+import { documentInScope } from "@/lib/document-scope";
 import {
   findBlockedLinks,
   mintShortLinks,
@@ -73,6 +75,12 @@ const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   // 設計図は **メモ**（1 版 1 件の共有欄）— 「この版で何が変わったか」は
   // 版ごとに 1 つの事実で、書き換わってよい。ownerId は版の uuid。
   design_files: { permission: "design_file", kind: "MEMO" },
+  // 設計図の**系列**（製品 × 受注元）で共有するメモ — 版をまたいで残したい
+  // こと（この客先の癖・加工上の注意）は版ごとのメモに書くと改訂のたびに
+  // 埋もれる。版の変更点は版の notes が持つ。系列には行が無いので ownerId は
+  // `<品目 id>:<受注元 id | generic>`（lib/design-files-core designSeriesOwnerId）。
+  // 掃除は版の削除トリガー app.purge_design_series_memos（系列が空になったら）。
+  design_series: { permission: "design_file", kind: "MEMO" },
 };
 
 /** owner の種別（MEMO / COMMENT）。未登録なら null。 */
@@ -145,9 +153,20 @@ interface Actor {
 async function actorFor(
   permission: string,
   action: PermissionAction,
+  owner?: { type: string; id: string },
 ): Promise<{ ok: true; actor: Actor } | { ok: false; error: string }> {
   const authz = await checkPermission(permission, action);
   if (!authz.ok) return { ok: false, error: authz.error };
+  // 権限コードに加えて、対象書類が**行スコープ内**かも見る（L-7）。owner を
+  // 渡さない呼び出しは従来どおりコードのみ。拒否は owner 番号で推測した他担当・
+  // 他拠点の書類に内部メモを読み書きさせないため。
+  if (
+    owner &&
+    !(await documentInScope(authz.access, authz.userId, owner.type, owner.id))
+  ) {
+    const tr = await getTranslations();
+    return { ok: false, error: tr("common.scopeDenied") };
+  }
   const admin = await checkPermission(permission, "ADMIN");
   return { ok: true, actor: { userId: authz.userId, isAdmin: admin.ok } };
 }
@@ -199,10 +218,15 @@ export async function listMemosByOwnerIds(
   const ids = [...new Set(ownerIds)];
   if (!owner || ids.length === 0) return {};
   try {
+    // 書類は法人コード付きの参照で指す（lib/doc-ref-core.ts）。呼び出し側の
+    // id（番号）→ 参照 に直して引き、結果は呼び出し側の id で返す。
+    const refs = await toDocRefs(ownerType, ids);
+    const idOfRef = new Map([...refs].map(([id, ref]) => [ref, id]));
+    if (refs.size === 0) return {};
     const [rows, actorId, canUpdate, canDelete, isAdmin, tr] =
       await Promise.all([
         prisma.documentMemo.findMany({
-          where: { ownerType, ownerId: { in: ids } },
+          where: { ownerType, ownerId: { in: [...refs.values()] } },
           // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
           orderBy: { createdAt: "desc" },
           include: {
@@ -230,8 +254,9 @@ export async function listMemosByOwnerIds(
     for (const r of rows) {
       const mine = mayMutate(r.kind, r.createdBy, actor);
       const doc = r.content as unknown as RichTextDoc;
-      const bucket = byOwner[r.ownerId] ?? [];
-      byOwner[r.ownerId] = bucket;
+      const inputId = idOfRef.get(r.ownerId) ?? r.ownerId;
+      const bucket = byOwner[inputId] ?? [];
+      byOwner[inputId] = bucket;
       bucket.push({
         id: r.id,
         // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
@@ -291,9 +316,15 @@ export async function saveMemo(
   const owner = MEMO_OWNERS[ownerType];
   if (!owner || !ownerId) return actionError(tr("common.invalidMemoTarget"));
 
-  const auth = await actorFor(owner.permission, "UPDATE");
+  const auth = await actorFor(owner.permission, "UPDATE", {
+    type: ownerType,
+    id: ownerId,
+  });
   if (!auth.ok) return actionError(auth.error);
   const actor = auth.actor;
+  // 保存するのは法人コード付きの参照。対象の書類が無ければ保存しない。
+  const ownerRef = await toDocRef(ownerType, ownerId);
+  if (ownerRef == null) return actionError(tr("common.invalidMemoTarget"));
 
   const parsed = parseRichText(input.content);
   if (!parsed.ok) {
@@ -345,7 +376,7 @@ export async function saveMemo(
         ? await tx.documentMemo.findUnique({ where: { id: input.id } })
         : owner.kind === "MEMO"
           ? await tx.documentMemo.findFirst({
-              where: { ownerType, ownerId, kind: "MEMO" },
+              where: { ownerType, ownerId: ownerRef, kind: "MEMO" },
               orderBy: { createdAt: "asc" },
             })
           : null;
@@ -354,7 +385,7 @@ export async function saveMemo(
         const row = await tx.documentMemo.create({
           data: {
             ownerType,
-            ownerId,
+            ownerId: ownerRef,
             kind: owner.kind,
             content,
             plainText: parsed.plainText,
@@ -368,7 +399,7 @@ export async function saveMemo(
           data: {
             memoId: row.id,
             ownerType,
-            ownerId,
+            ownerId: ownerRef,
             kind: owner.kind,
             action: "CREATE",
             content,
@@ -379,7 +410,7 @@ export async function saveMemo(
         return { created: true as const, id: row.id, before: null };
       }
 
-      if (existing.ownerType !== ownerType || existing.ownerId !== ownerId) {
+      if (existing.ownerType !== ownerType || existing.ownerId !== ownerRef) {
         throw new MemoError(tr("common.memoTargetMismatch"));
       }
       if (!mayMutate(existing.kind, existing.createdBy, actor)) {
@@ -394,7 +425,7 @@ export async function saveMemo(
         data: {
           memoId: row.id,
           ownerType,
-          ownerId,
+          ownerId: ownerRef,
           kind: existing.kind,
           action: "UPDATE",
           content,
@@ -462,6 +493,23 @@ export async function listMemoRevisions(
   if (!owner) return [];
   const authz = await checkPermission(owner.permission, "READ");
   if (!authz.ok) return [];
+  // 履歴は memoId（uuid）で引くが、対象書類が行スコープ内かも確かめる（L-7）。
+  // 本体が消えていても改訂行に ownerId が残るので、そこから owner を得る。
+  const ownerRef = await prisma.documentMemoRevision.findFirst({
+    where: { memoId },
+    select: { ownerId: true },
+  });
+  if (
+    ownerRef &&
+    !(await documentInScope(
+      authz.access,
+      authz.userId,
+      ownerType,
+      ownerRef.ownerId,
+    ))
+  ) {
+    return [];
+  }
 
   try {
     const [rows, tr] = await Promise.all([
@@ -498,7 +546,10 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
     const owner = MEMO_OWNERS[row.ownerType];
     if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
-    const auth = await actorFor(owner.permission, "DELETE");
+    const auth = await actorFor(owner.permission, "DELETE", {
+      type: row.ownerType,
+      id: row.ownerId,
+    });
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
       return actionError(tr("common.cannotDeleteOthersPosts"));
@@ -558,7 +609,10 @@ export async function setMemoArchived(
     const owner = MEMO_OWNERS[row.ownerType];
     if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
-    const auth = await actorFor(owner.permission, "UPDATE");
+    const auth = await actorFor(owner.permission, "UPDATE", {
+      type: row.ownerType,
+      id: row.ownerId,
+    });
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
       return actionError(tr("common.cannotOperateOnOthersPosts"));

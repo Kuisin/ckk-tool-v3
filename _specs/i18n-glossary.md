@@ -19,7 +19,7 @@
 | ○ | アプリにハードコードされた UI 文言 | `.tsx` の文字列、`messages/*.json`、`StatusBadge.tsx`、`enum-labels.ts`、`app-list.ts`、`audit.ts`、PDF/メールのテンプレート文言 |
 | ✕ | **DB に入るデータ** | マスタ名称（製品・素材・材種・拠点・工程・検査項目）、取引先名、ロール名、権限の表示名、工具種、不良種類、製品項目の値 |
 | ✕ | 識別子 | 書類番号・接頭辞（`QOT-` `ORD-` `PO-` `DRN-` `INV-` `WOR-` `EST-` `PRC-`）、操作コード、DB の enum 値、製品コード・素材コード |
-| ✕ | 固有名詞 | 社名・人名・製品名（弥生会計 / Gotenberg など）、`LD`（社内語） |
+| ✕ | 固有名詞 | 社名・人名・製品名（TKC FX4クラウド / Gotenberg など）、`LD`（社内語） |
 | ✕ | **外部 API の誤り本文** | `/api/v1` が返す RFC 9457 の `type` / `title` / `code` / `detail`（`lib/api-problem-core.ts`）。機械向けの契約なので**英語で固定**し、next-intl を通さない —閲覧者ごとに変わる文字列を契約に混ぜない（`_specs/api.md` §4） |
 
 DB データは**訳す対象ではないが、入れ物の作り方は決めてある**（§2.10）。
@@ -142,6 +142,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 販売 | Sales | 销售 |
 | 購買 | Purchasing | 采购 |
 | 生産 | Production | 生产 |
+| 在庫 | Inventory | 库存 |
 | 出荷 | Shipping | 出货 |
 | 請求 | Billing | 请款 |
 | マスタ | Master data | 主数据 |
@@ -168,9 +169,18 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | PU03 | 素材入荷 | Material receipt | 材料到货 |
 | PU04 | 外注依頼 | Outsource order | 外协委托单 |
 | PD02 | 指示書 | Work order | 工单 |
-| PD04 | 在庫管理 | Inventory | 库存管理 |
+| ST01 | 在庫管理 | Inventory | 库存管理 |
+| ST02 | 在庫一覧 | Stock overview | 库存一览 |
+| ST03 | 在庫・所要量 | Stock requirements | 库存・所要量 |
 | PD05 | 未処理指示書 | Pending work orders | 未处理工单 |
 | PD06 | 設計図 | Drawing | 图纸 |
+| PD09 | 作業場所一覧 | Work location board | 作业场所一览 |
+| ST04 | 入出庫伝票 | Stock movement | 出入库单 |
+| 預け在庫 | Stock held by a partner | 寄存库存 |
+| 預け先 | Held by | 寄存方 |
+| ST05 | 棚卸 | Stocktaking | 盘点 |
+| ST06 | 手動入出庫 | Manual stock movement | 手动出入库 |
+| ST09 | 移動タイプ | Movement type | 移动类型 |
 | SH01 | 出荷書 | Delivery order | 出货单 |
 | SH02 | 納品書 | Delivery note | 送货单 |
 | SH03 | 未処理出荷書 | Pending shipments | 未处理出货 |
@@ -189,6 +199,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | MS0D | 作業場所 | Work locations | 作业场所 |
 | MS0E | 保管場所 | Storage locations | 存放位置 |
 | MS0F | 税区分 | Tax categories | 税种 |
+| MS0G | 料金マスタ | Charge items | 费用项目 |
+| MS0H | 再研磨品目 | Regrind items | 再研磨服务 |
+| MS0I | 自社法人 | Own companies | 本公司法人 |
 | DC01 | マニュアル | Manual | 操作手册 |
 | DC02 | 管理マニュアル | Admin manual | 管理手册 |
 | SY01 | ユーザー管理 | Users | 用户管理 |
@@ -208,6 +221,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | SY0F | 通知メール | Notification email | 通知邮件 |
 | SY0G | 特権アクセス | Privileged access | 特权访问 |
 | SY0H | 取引先ポータル | Partner portal | 客户门户 |
+| SY0I | 外部 API | External API | 外部 API |
+| SY0J | 会計連携 | Accounting export | 会计对接 |
 
 ### 3.3 書類・番号
 
@@ -224,6 +239,12 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求番号 | Invoice number | 请款单号 | |
 | 指示書番号 | Work order number | 工单编号 | |
 | ロット番号 | Lot number | 批次号 | |
+| 旧番号 | Legacy number | 旧编号 | 振り直し前の書類番号（PREFIX-YYYYMM-NNNNN）。詳細画面と検索に出る |
+| 会計年度 | Fiscal year | 会计年度 | 書類番号 `PREFIX-FFFF-NNNNN` の FFFF。年度が始まる年で表す |
+| 発行会社を選択 | Select the issuing company | 选择开具公司 | 同じ番号が複数の自社法人にあるときの選択画面（/doc/choose） |
+| 印字番号 | Marking number | 打标编号 | 製品にレーザーで刻む通し番号 `A{基数}-{NNN}`（明細ごとなら `A{基数}`）。ロット番号とは別系列 |
+| 分割番号 / 分割 {n} | Split number / Split {n} | 分割号 / 分割 {n} | 1 明細を複数の指示書に分けたときの印字番号の枝。接頭辞は `A{基数}{分割番号}`、枝番は分割の中で 001 から（`A2000001-001`）。割当の作成時に決まり、変わらない |
+| 分割ごと | Per split | 按分割 | 印字番号の「明細ごと」に対応する、分割 1 つに 1 つ刻むときの番号（`A2000001`） |
 | 枝番 | Line branch no. | 分项号 | |
 | 採番 / 未採番 | Numbering / Not numbered | 编号 / 未编号 | |
 | 帳票・書類 | Document | 单据 | |
@@ -262,14 +283,27 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 営業担当（自社） | Sales rep | 销售负责人 |
 | 部門 | Department | 部门 |
 | 拠点 | Site | 据点 |
+| 自社法人 | Own company | 本公司法人 |
+| 既定の法人 | Default company | 默认法人 |
+| 発行元（書類の） | Issuer | 开具方 |
+| 発行会社（作成フォームの欄 / 一覧・詳細の法人コードのバッジ） | Issuing company | 开具公司 |
+| 取込口（注文書の入口 — 取込フォルダ・メール・外部連携） | Intake channel | 导入渠道 |
+| 取込口の自社法人（注文書取込 SY0C の設定） | Own company of the intake channel | 导入渠道的本公司法人 |
+| 法人コード（自社法人を見分ける短い文字。書類の URL に入る） | Company code | 法人编号 |
+| 適格請求書発行事業者登録番号 | Invoice registration number | 合格请款单发行事业者登记号 |
+| 社印 | Company seal | 公司印章 |
+| ロゴ（自社法人の。PDF の見出しに刷る） | Logo | 标志 |
+| 会計年度の開始月 | Fiscal year start month | 会计年度开始月 |
 | 地域 / 国 | Region / Country | 地区 / 国家 |
 | ロール | Role | 角色 |
 | 締日 / 支払日 | Closing day / Payment day | 结算日 / 付款日 |
 | 支払サイト | Payment terms | 账期 |
+| 支払期日 | Due date | 付款期日 |
 | 与信限度額 | Credit limit | 信用额度 |
 | 課税 / 非課税 / 軽減税率 | Taxable / Tax exempt / Reduced tax rate | 应税 / 免税 / 减免税率 |
 | 製品に従う（顧客の課税区分） | Follow the product | 按产品 |
 | 振込先 | Bank account | 银行账户 |
+| 金融機関 / 支店（金融機関の） / 口座種別 / 口座番号 / 口座名義 | Bank / Branch / Account type / Account number / Account holder | 金融机构 / 分行 / 账户类别 / 账号 / 账户名 |
 | 普通 / 当座 | Savings / Checking | 活期 / 支票 |
 | 日本 / 中国 / アメリカ / 韓国 | Japan / China / United States / Korea | 日本 / 中国 / 美国 / 韩国 |
 
@@ -279,6 +313,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 
 | ja | en | zh |
 |---|---|---|
+| 品目 / 品目コード | Item / Item code | 品目 / 品目编号 |
+| 品目種別 | Item type | 品目类别 |
 | 製品 / 製品コード | Product / Product code | 产品 / 产品编号 |
 | 素材 | Material | 材料 |
 | 材種 | Material type | 材料类别 |
@@ -294,9 +330,35 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 図面 / 設計書 | Drawing / Design document | 图纸 / 设计文件 |
 | 設計図（= 図面。PD06 のアプリ名） | Drawing | 图纸 |
 | 版 / 最新版 | Version / Latest version | 版本 / 最新版本 |
-| 図面データ / プレビュー用 / 参考資料 | Drawing file / Preview / Reference | 图纸文件 / 预览 / 参考资料 |
+| 2D 原図 / 3D 原図 / プレビュー用 / 参考資料 | 2D drawing / 3D model / Preview / Reference | 2D 图纸 / 3D 模型 / 预览 / 参考资料 | 設計図の版に載せるファイルの役割（旧「図面データ」は 2D 原図） |
+| 設計図の版 | Drawing version | 图纸版本 | 承認の対象・監査の表名 |
+| 図面情報（表題欄の記載） | Title block | 图纸标题栏 | 版が持つ。図脳 SXF から読める |
+| 工具番号 | Tool No. | 刀具编号 | 図面情報の項目 |
+| 材質（図面の記載） | Material | 材质 | 材種（マスタ）とは別物 — 図面に書かれた文字 |
+| ネジレ | Helix angle | 螺旋角 | 図面情報の項目 |
+| 刻印 | Marking | 刻印 | 図面情報の項目 |
+| 作成年月日（図面） | Drawn date | 绘制日期 | 図面情報の項目 |
+| 図脳（図脳RAPID） | Zunou (Zunou RAPID) | 图脑（图脑 RAPID） | CAD ソフトの名前。SXF（.sfc）の書き出し元 |
+| 手入力（図面から読んだ値の上書き） | Manual / Edit manually | 手动输入 | 状態の印は Manual、切り替えボタンは Edit manually |
+| 図面の値に戻す | Revert to drawing value | 恢复为图纸的值 | 手入力をやめて読み取り専用へ戻す |
 | 汎用（受注元を限定しない図面） | Generic | 通用 |
+| 系列メモ（製品 × 受注元で共有するメモ） | Series memo | 系列备忘 |
+| 加工プログラム | Machining program | 加工程序 |
+| プログラム番号 | Program number | 程序编号 |
+| 機械（= 作業場所。機種を 0..1 持つ） | Machine | 机器 |
+| 機種（同じ型の機械をまとめる名前。加工プログラムの対象） | Machine model | 机型 | 作業場所マスタ（MS0D）の「機種」タブ |
+| この機種用（工程実行画面の印） | For this machine model | 本机型用 | 計画・実績の機械と同じ機種のプログラム |
+| 機種を問わない | Any machine model | 不限机型 | 機種が空のプログラム |
+| プログラムの版 / 新しい版を作る | Version / Create new version | 版本 / 创建新版本 | 加工プログラムの版（v1, v2 …）。図面の版とは別 |
+| 使用済み / 未使用（加工プログラムの版） | Used / Not used | 已使用 / 未使用 | 工程の開始で記録された版が使用済み |
+| 廃止（加工プログラム） | Retired / Retire | 已废止 / 废止 | 新しい工程に出さない。版と記録は残る |
+| 加工プログラムの変更（承認の対象） | Machining program change | 加工程序变更 | 承認設定（MS0B）の書類種別 |
 | キーワード | Keywords | 关键词 |
+| 他社製品 | External product | 他社产品 | 他社が作った工具。再研磨専用の品目（製造・本番の明細では使えない） |
+| メーカー名（他社製品） | Maker | 制造商 | 自由記入。BP にはしない |
+| 顧客品番 | Customer part number | 客户料号 |
+| 顧客品名 | Customer part name | 客户品名 |
+| 別表記（旧品番など） | Alternate codes | 其他料号 |
 
 ### 3.6 販売・価格
 
@@ -305,6 +367,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 価格試算 | Price estimate | 价格试算 |
 | 見積単価 | Estimated unit price | 试算单价 |
 | 基準単価 / 単価 | Base unit price / Unit price | 基准单价 / 单价 |
+| 標準価格 | Standard price | 标准价格 |
 | 金額 / 合計金額 | Amount / Total amount | 金额 / 合计金额 |
 | 小計 / 消費税 | Subtotal / Tax | 小计 / 税额 |
 | 税区分 | Tax category | 税种 |
@@ -317,6 +380,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 対象額（その税率の税抜合計） | Taxable amount | 应税金额 |
 | 数量 | Quantity | 数量 |
 | 数量段階 / 倍率 | Quantity tier / Multiplier | 数量档 / 系数 |
+| 数量スケール（価格表の初期の数量段階の表） | Quantity scale | 数量阶梯 |
+| プリセット | Preset | 预设 |
+| カスタム（ボタン。手で決める） / 自動に戻す | Custom / Back to auto | 自定义 / 恢复自动 |
 | 値引き / 値引き設定 | Discount / Discount rules | 折扣 / 折扣设置 |
 | 価格設定 | Pricing | 价格设置 |
 | 注文種別 | Order type | 订单类别 |
@@ -328,6 +394,23 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 注文日 | Order date | 订货日 |
 | 通貨 / 円 | Currency / JPY | 币种 / 日元 |
 | 価格差異 | Price mismatch | 价格差异 |
+| 他社の価格表（同じ顧客 × 品目の、別の発行会社の価格表） | Other companies' price lists | 其他公司的价格表 |
+| 〇〇と同じ / 〇〇と差分あり | Same as 〇〇 / Differs from 〇〇 | 与〇〇相同 / 与〇〇有差异 |
+| 他社との差分（一覧の列） | Other companies | 与其他公司对比 |
+| 他社の価格表からコピー | Copy from another company's price list | 从其他公司的价格表复制 |
+| 〇〇の内容で同期 | Sync from 〇〇 | 按〇〇的内容同步 |
+| 仕訳 | Journal entry | 记账凭证 |
+| 勘定科目 | Account | 科目 |
+| 科目コード | Account code | 科目代码 |
+| 補助科目 | Sub-account | 辅助科目 |
+| 部門コード | Department code | 部门代码 |
+| 売掛金 | Accounts receivable | 应收账款 |
+| 売上高 | Sales | 销售收入 |
+| 仮受消費税 | Tax suspense (received) | 暂收消费税 |
+| 消費税コード | Tax code | 税代码 |
+| 追加料金 | Additional charge | 附加费用 |
+| 料金マスタ | Charge items | 费用项目 |
+| 固定 / 可変（金額の決まり方） | Fixed / Variable | 固定 / 可变 |
 
 ### 3.7 購買
 
@@ -349,6 +432,11 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 工程 | Step | 工序 | 「工程ステップ」とは言わない。工程マスタ = Process steps / 工序主数据 |
 | 工程順 / 工程フロー | Step order / Workflow | 工序顺序 / 工序流程 | |
 | 工程リスト | Step list | 工序清单 | 製品工程ルート（product_process_routes）の画面語 |
+| 工程納期 | Step due date | 工序交期 | 工程ごとの締切（work_order_steps.due_date）。指示書の「予定納期」とは別 |
+| 持ち越し | Carried over | 顺延 | 前日以前の計画で、まだ終わっていない工程（作業場所一覧 PD09） |
+| 作業中（作業場所一覧の印 — その場所で実績を記録した進行中の工程） | In progress here | 作业中 | 作業場所一覧 PD09。工程の状態「進行中」とは別の印 |
+| 作業場所なし（作業場所一覧の枠） | No work location | 无作业场所 | 作業計画に作業場所が入っていない工程をまとめる枠（PD09） |
+| 使える指示書種別 | Work order types | 可用的工单类别 | 工程マスタ (MS08) の設定 — この工程を載せてよい指示書種別。開始工程（製品出し（在庫）/ 製品受入（再研磨））だけは固定で選べない |
 | 準備工程 / 製造工程 | Preparation step / Manufacturing step | 准备工序 / 制造工序 | 工程リストの 2 種別（§7）。準備 = 〇〇出し・受渡し + 材料準備 |
 | 準備工程リスト / 製造工程リスト | Preparation step list / Manufacturing step list | 准备工序清单 / 制造工序清单 | 前者は共通、後者は 製品 × 受注元 |
 | 予定納期 | Planned delivery | 预定交期 | 指示書の工程ワークフロー見出し。割当明細の納期のうち最も早いもの |
@@ -379,6 +467,19 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 担当者（作業） / 未割当 | Assignee / Unassigned | 负责人 / 未分配 | |
 | 一時停止 / 再開 | Paused / Resume | 已暂停 / 继续 | 工程の状態。QRカードの一時停止は Suspended |
 | 工具種 | Tool type | 刀具类别 | 種類の値は DB データ（対象外） |
+| 再研磨 | Regrind | 再研磨 | 注文種別・指示書種別・工程カテゴリのすべてで同じ語。顧客の工具を預かって研ぎ直す |
+| 再研磨工程リスト | Regrind step list | 再研磨工序清单 | 共通（製品・顧客に紐づかない）。準備工程リストと同型 |
+| 製品受入（再研磨） | Tool receipt (regrind) | 产品接收（再研磨） | 再研磨指示書の開始工程。完了で受入本数が預り品として入庫 |
+| 受入本数 / 返却本数 / 完成本数 | Received / Returned / Finished | 接收数 / 退回数 / 完成数 | 再研磨の 3 つの本数 |
+| 返却（再研磨不可） | Returned as-is (not regrindable) | 退回（无法再研磨） | 製品受入の「廃棄」欄の読み方 = 研ぎ直せずそのまま返す分 |
+| 箱番号 | Box number | 箱号 | 再研磨で工具が入ってきた箱。**専用の入力欄は無い** — 製品受入（再研磨）工程の汎用の「ロット/伝票コード」欄に入れ、入出庫伝票の摘要に「箱番号」として出る |
+| 再研磨品目 | Regrind item | 再研磨服务 | **売る役務**としての研ぎ直し（ItemType REGRIND）。値段はここに付く。研ぎ直す工具（製品）とは別の物 — zh を「再研磨品目」にしないのは、この行が表すのは品物ではなく役務だから |
+| 研ぎ直す工具 | Tool to regrind | 要研磨的刀具 | 再研磨の明細が指すもう 1 つの品目（order_lines.tool_item_id）。預り品・指示書・出荷はこちらで数える |
+| 対象工具（価格表） | Target tool | 适用刀具 | 再研磨品目の価格表が任意で持つ工具（price_list_entries.tool_item_id）。その工具を研ぐときだけ当たる値段。未設定は「工具を問わない / Any tool / 不限刀具」 |
+| 工具の種類 | Tool class | 刀具种类 | 再研磨品目の条件。例: 超硬ヘリカルエンドミル |
+| 加工箇所 | Ground area | 加工部位 | 再研磨品目の条件。例: 外周 + 溝 |
+| 刃数 | Flutes | 刃数 | 再研磨品目の条件 |
+| サイズ帯 | Size band | 尺寸区间 | 再研磨品目の条件（min < 径 ≤ max）|
 
 ### 3.9 在庫
 
@@ -387,19 +488,62 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 在庫 / 在庫数 | Stock / On hand | 库存 / 库存数 |
 | 製品在庫 / 素材在庫 | Product stock / Material stock | 产品库存 / 材料库存 |
 | 仕掛品 | WIP | 在制品 |
+| 仕掛ブランク | WIP blank | 在制坯料 |
+| 加工状態 | Processing state | 加工状态 |
+| 加工状態に数える（工程マスタの印） | Counts toward processing state | 计入加工状态 |
+| 目標製品 | Target product | 目标产品 |
+| 仕上がり径 / 仕上がり長（仕掛品の研削後の寸法） | Finished diameter / Finished length | 成品直径 / 成品长度 |
+| 仕上がり寸法 | Finished size | 成品尺寸 |
+| 通ってきた経路（合流の後で仕掛品の加工状態を確かめる欄） | Route taken | 经过的路径 |
+| 推奨（本流） | Recommended (main line) | 推荐（主线） |
+| 未加工（形を変える工程が済んでいない仕掛品） | Unprocessed | 未加工 |
+| 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す） | Close out | 中止 |
+| 指示書の打ち切り（承認設定の書類種別・入出庫伝票の事由） | Work order close-out | 工单中止 |
+| 打ち切り済み / 打ち切り承認依頼中 | Closed out / Close-out pending approval | 已中止 / 中止审批中 |
+| 工程内 / 工程待ち（打ち切りで品がいる位置） | In step / Waiting | 工序中 / 等待中 |
+| 仕掛品として戻す数 | Return to stock as WIP | 作为在制品退回的数量 |
+| ちょうど / 長い / 太い（仕掛品の突合の区分） | Exact / Longer / Larger diameter | 尺寸一致 / 较长 / 较粗 |
+| 工程内（進行中の指示書に乗っている本数。在庫ではない — 在庫管理のタブ名） | In process | 工序内 |
+| 未分類（移行で行き先を決められなかった旧来の半製品） | Unclassified | 未分类 |
+| 分類する（未分類の仕掛品を仕掛ブランク × 加工状態へ移す） | Classify | 分类 |
+| 使える仕掛品（製品に回せる仕掛品の本数） | Usable WIP | 可用在制品 |
+| 発生工程（仕掛品を在庫に置いた工程） | Source step | 产生工序 |
+| 開始状態（在庫の仕掛品から始める指示書の、投入する仕掛品の加工状態） | Start state | 开始状态 |
+| 投入する / 投入数（仕掛品を指示書に使う） | Issue / Issue quantity | 投入 / 投入数 |
+| 飛ばす工程 / 飛ばした工程（仕掛品で済んでいて行わない工程） | Skipped steps | 跳过的工序 |
+| もう一度行う工程（済んでいるが、この指示書でも行う） | Steps to perform again | 需要再次进行的工序 |
+| 加工状態が合わない（製品の工程の先頭部分になっていない仕掛品） | Processing state does not match | 加工状态不符 |
+| 仕掛品で済み（工程一覧の印） | Done in WIP | 在制品已完成 |
+| 経過日数 | Age | 经过天数 |
+| 呼び名（加工状態に付ける任意の名前） | Name | 名称 |
 | 予約 / 引当 / 予約解除 | Reserved / Allocated / Released | 预留 / 已分配 / 解除预留 |
 | 棚卸調整 | Adjustment | 盘点调整 |
+| 棚卸 | Stocktaking | 盘点 |
+| 入出庫伝票 | Stock movement | 出入库单 |
+| 伝票番号 | Slip number | 单据编号 |
+| 事由（入出庫の） | Cause | 事由 |
+| 帳簿数 / 実測数 | Book quantity / Counted | 账面数 / 实测数 |
+| 差異 | Difference | 差异 |
+| 未カウント | Not counted | 未记录 |
 | 入庫 / 出庫 | In / Out | 入库 / 出库 |
 | 在庫移動 | Stock transfer | 库存调拨 |
 | 保管場所 / 棚 | Storage location / Shelf | 存放位置 / 货架 |
 | 未手配 / 手配済 | Not planned / Planned | 未安排 / 已安排 |
+| 手動（入出庫伝票の事由 — ST06 手動入出庫で作った伝票） | Manual | 手动 |
+| 外注支給（入出庫伝票の事由 — 外注へ出して預け在庫が増える） | Issued to subcontractor | 外协发出 |
+| 外注戻り（入出庫伝票の事由 — 外注から戻って預け在庫が減る） | Returned from subcontractor | 外协返回 |
+| 返品（入出庫伝票の事由 — 出荷後に顧客から戻る） | Sales return | 销售退货 |
 | 割当 | Allocation | 分配 |
+| 預り品 | Customer-owned stock | 客户寄存品 | 再研磨で預かった顧客の工具。所有者（owner_bp_id）付きのバケットで、自社在庫ではない |
+| 所有者 | Owner | 所有者 | 預り品の顧客。預け先（custody）は「誰が持っているか」、所有者は「誰の物か」 |
+| 再研磨受入（入出庫の事由） | Regrind receipt | 再研磨接收 | INVENTORY_MOVEMENT_CAUSE.REGRIND_RECEIPT |
 
 ### 3.10 出荷・請求
 
 | ja | en | zh |
 |---|---|---|
 | 出荷 / 出荷日 | Shipment / Shipped date | 出货 / 出货日 |
+| 返品 / 返品数 | Return / Return qty | 退货 / 退货数 |
 | 出荷元拠点 | From site | 出货据点 |
 | 在庫保管（出荷書種別） | Stock storage | 库存保管 |
 | 発送 | Dispatch | 发货 |
@@ -409,10 +553,21 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 納品日 | Delivered date | 交货日 |
 | 請求期間 | Billing period | 请款期间 |
 | 締日処理 | Billing closing | 结算处理 |
+| 試算（実行せずに結果を見る） | Dry run | 试算 |
+| 指定日 | Target date | 指定日 |
 | 会計連携 | Accounting export | 会计对接 |
+| 会計連携CSV | Accounting CSV | 会计对接 CSV |
+| 会計連携日時 | Accounting export date | 会计对接时间 |
+| 会計文書 | Accounting document | 会计凭证 |
+| 転記済み | Posted | 已过账 |
+| 反対仕訳 | Reversing entry | 冲销分录 |
+| 反対仕訳済み | Reversed | 已冲销 |
+| 反対仕訳を作成 | Create reversal | 冲销 |
+| 文書履歴 | Document history | 凭证历史 |
 | 過不足納品 | Delivery quantity variance | 交货数量差异 |
 | 許容の基準 / 許容範囲（過不足の） | Tolerance basis / Tolerance | 允许基准 / 允许范围 |
 | 請求単価 | Billing unit price | 请款单价 |
+| 送料 | Shipping cost | 运费 |
 
 ### 3.11 承認
 
@@ -430,6 +585,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 代理設定 / 代理 | Delegation / Delegate | 代理设置 / 代理人 | |
 | 承認者 / 承認記録 | Approver / Approval record | 审批人 / 审批记录 | |
 | 理由 | Reason | 理由 | |
+| 独自値 | Custom value | 自定义值 | 前の書類から引き継いでいない値（価格試算に無い基準単価・価格表どおりでない単価など） |
+| 独自値の追加承認 | Custom value approval | 自定义值追加审批 | MS0B のタブ。独自値があるときだけ通常のフローの後ろに足す段 |
 | 手続き状況 | Progress | 办理状态 | ProcedurePanel の見出し |
 | 前の書類から / 次の書類へ | From / To | 来源单据 / 后续单据 | |
 
@@ -478,7 +635,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 
 | ja | en | zh | 出どころ |
 |---|---|---|---|
-| 在庫分 / 製造分 | From stock / Manufacture | 库存分 / 制造分 | 指示書種別 |
+| 在庫分 / 製造分 / 再研磨 | From stock / Manufacture / Regrind | 库存分 / 制造分 / 再研磨 | 指示書種別 |
 | 見積時 / 受注時 / 単独 | At quote / At order / Standalone | 报价时 / 接单时 / 独立 | 設計依頼トリガ |
 | 新規 / 改訂 | New / Revision | 新增 / 修订 | 設計依頼区分 |
 | 通常 / 急ぎ | Normal / High | 普通 / 加急 | 優先度 |
@@ -528,6 +685,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | QRカード | QR card | 二维码卡 |
 | PIN | PIN | PIN |
 | フロアマップ | Floor map | 平面图 |
+| 指示書一覧（共有端末アプリ /wo-list） | Work order list | 工单列表 |
 | 有効化 / 無効化 | Enable / Disable | 启用 / 停用 |
 | リンク / リンク解除 | Link / Unlink | 关联 / 解除关联 |
 | 端末アテステーション | Device attestation | 终端认证 |
@@ -596,6 +754,10 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 送る間隔 / 猶予（分） | Send interval / Grace period (min) | 发送间隔 / 宽限（分钟） | 通知メール（SY0F） |
 | 1通の件数 / 最大件数 | Items per email / Max items | 每封件数 / 最多件数 | 通知メール（SY0F） |
 | 元に戻す | Reset to default | 恢复默认 | |
+| 動画 | Video | 视频 | マニュアルに載せる業務の通し操作の録画（ManualVideo） |
+| 手順（動画の区切り） | Steps | 步骤 | 動画の章 = 通し操作の 1 手順。字幕と同じ文。「チャプター」とは言わない |
+| 〜 録画 | Recorded 〜 | 录制于 〜 | 動画の下に出す録画日 |
+| 〜 へ移動（動画の位置） | Jump to 〜 | 跳转到 〜 | 手順の時刻ボタンの aria-label |
 
 ### 3.18 定型メッセージ
 
@@ -629,6 +791,13 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | ja | en | zh |
 |---|---|---|
 | 材料原価 | Material cost | 材料成本 |
+| 原価 / 原価に数える | Cost / Count as cost | 成本 / 计入成本 |
+| 原価合計 / 粗利 | Total cost / Gross margin | 成本合计 / 毛利 |
+| 原価の扱い | Cost handling | 成本处理 |
+| 原価に数えない / 原価と売価に数える / 原価のみに含める | Not a cost / Cost and price / Cost only | 不计入成本 / 计入成本和售价 / 仅计入成本 |
+| 原価試算（価格試算の種別。原価合計だけを出す） | Cost estimate | 成本试算 |
+| 売価試算（価格試算の種別。見積単価まで出す — 従来の価格試算） | Selling-price estimate | 售价试算 |
+| 売価試算を作成 | Create selling-price estimate | 创建售价试算 |
 | 段加工費 / 段加工長 | Step machining cost / Step length | 阶梯加工费 / 阶梯加工长度 |
 | 首下 | Neck length | 颈下长度 |
 | 加工単価 | Machining rate | 加工单价 |
@@ -661,6 +830,22 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 未使用 | Never used | 未使用 |
 | このトークンは二度と表示されません | This token will not be shown again | 此令牌不会再次显示 |
 
+### 3.22 外向き Webhook（SY0I）
+
+| ja | en | zh |
+|---|---|---|
+| Webhook | Webhook | Webhook |
+| 外向き Webhook | Outbound webhooks | 出站 Webhook |
+| 送信先 | Endpoint | 接收地址 |
+| 送信先 URL | Endpoint URL | 接收地址 URL |
+| 署名鍵 | Signing secret | 签名密钥 |
+| 署名鍵を再発行 | Rotate signing secret | 重新签发签名密钥 |
+| 配送 / 配送履歴 | Delivery / Deliveries | 发送 / 发送记录 |
+| 再送 | Redeliver | 重发 |
+| テスト送信 | Send test | 测试发送 |
+| イベント | Event | 事件 |
+| 合図（Webhook の本文） | Signal | 信号 |
+
 ---
 
 ## 4. 決定事項（2026-08-30）
@@ -684,6 +869,15 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 15 | **決定 2（試算 → 価格試算）が効くのは「もの」を指す名詞だけ。** 動詞や複合語の中まで機械的に置き換えない — 2026-08-30 の一括置換が実際に `複製して再価格試算`・`単価を価格試算する` を作った（`再試算`・`試算する` の中の 2 文字まで置換された）。動詞側は素直な日本語にする: **複製して作り直す**（メニュー / 名前の接尾は `（作り直し）`）、**単価を算出する**（スイムレーン図）。en / zh は壊れていないので触らない（`Duplicate and re-estimate` / `复制并重新试算` のまま） | `messages/ja.json` / マニュアル 3 言語 / `tools/swimlane/diagrams/` |
 | 16 | **CM01 は「未処理一覧 / Pending list / 未处理列表」**（旧「承認・予定」）。並ぶのは承認だけではない — 作業予定・未回答のフォーム・文書のコメント・特権アクセスの決裁待ちも同じ画面に出るので、「自分がまだ処理していないもの」という 1 語にした。`未処理` は PD05 未処理指示書 / SH03 未処理出荷書 と同じ語（en `Pending` / zh `未处理`）| `app-list.ts` / `operation-codes.ts` / `messages/*.json` / マニュアル 3 言語 |
 | 17 | **税区分はマスタ（MS0F 税区分 / Tax categories / 税种）に一本化**し、製品と顧客の双方がそれを参照する。**顧客の課税区分が優先**で、顧客が未設定（null）のときだけ製品の区分が効く — その状態を画面では「**製品に従う / Follow the product / 按产品**」と呼ぶ。enum `TAX_TYPE` は `tax_categories.code` の値としてだけ残す（訳語 課税 / 非課税 / 軽減税率 は §3.4 のまま変えない）。率は DB 行で適用開始日を持ち、**引くときの基準日は注文日** | `app-list.ts` / 製品・取引先マスタ / 請求書・見積書の税表示 |
+
+| 18 | **入出庫伝票 = Stock movement / 出入库单**、**棚卸 = Stocktaking / 盘点**。既にある 在庫移動（Stock transfer / 库存调拨）と 棚卸調整（Adjustment / 盘点调整）とは**別の語**として扱う — 前者は「保管場所・拠点の間で動かす操作」、入出庫伝票は「在庫が動いた出来事の記録そのもの」で、en で Stock transfer を使い回すと 2 つが同じものに見える | `app-list.ts` / PD07・PD08 の画面 / `enum.INVENTORY_MOVEMENT_CAUSE_LABEL` |
+| 20 | **製品と素材は 1 つのマスタ（品目 / Item / 品目）に統合した**（`app.items`、2026-09-20）。画面の語としては **製品・素材も残る** — MS04 製品 / MS06 素材 は「品目のうち製品だけ / 素材だけ」を編集する入口で、利用者にとっては従来どおりの 2 つのマスタに見える。**品目**を使うのは両方が混ざる場所だけ（在庫・入出庫伝票・棚卸・手動入出庫・照合エラー）。zh は **品目** をそのまま使う（物料 は当てない — 素材だけを指すと読めてしまうため） | `app-list.ts` / 在庫まわりの全画面 / `inventoryNote.*` |
+| 19 | **会計ソフトは TKC FX4クラウド**（旧 弥生会計 Next）。ただし**画面には製品名を出さない** — ボタンも履歴も列も「会計連携CSV / Accounting CSV / 会计对接 CSV」「会計連携日時」で統一し、製品名は仕様書とマニュアル本文にだけ書く。理由は 2 つ: 会計ソフトが替わるたびに 3 言語の文言と DB 列名を直す作業が再発すること、および zh に「FX4クラウド」の定訳が無く、弥生のときは「弥生会计」という造語を当てていたこと。仕訳の勘定科目は**マスタの列**（`tax_categories` / `bp_customer_attrs`）から引き、空なら `system_settings` の `accounting.*` の既定に落ちる。列レイアウトと文字コードは SY0J で可変 | `app-list.ts` / `messages/*.json` / `lib/accounting-export-core.ts` / MS0F・MS01 / マニュアル 3 言語 |
+| 21 | **再研磨の値段は「再研磨品目」（MS0H / Regrind items / 再研磨服务）が持つ** — 研ぎ直しという**役務**そのものを 1 つの品目にして、そこに値段を付ける。注文明細は品目を 2 つ指し、売り物は再研磨品目、**研ぎ直す工具 / Tool to regrind / 要研磨的刀具**は別の欄。工具（他社製品を含む製品）は**売り物にならない**ので値段も価格表も持たない。ただし**再研磨品目の価格表は任意で「対象工具」を持てる**（顧客 × 役務 × 工具。解決は 工具一致 → 工具なし → 標準価格）— 値段の持ち主はあくまで役務で、工具は条件にすぎない。zh を「再研磨品目」にしないのは、この行が表すのは品物ではなく役務だから |
+| 22 | **製品の仕様（材種・直径・全長・製品種別と製品項目）は設計図の版が持つ**（`app.design_versions`、2026-09-25）。製品マスタ（MS04）では直せず、確定した版の値を読むだけ。版の状態は書類と同じ **下書き / 承認依頼中 / 確定 / 差し戻し**（新語を作らない）で、承認は承認設定（MS0B）の「**設計図の版 / Drawing version / 图纸版本**」に段を組んだときだけ通る。ファイルの役割「図面データ」は **2D 原図 / 2D drawing / 2D 图纸** に改め、**3D 原図 / 3D model / 3D 模型** を足した。図面の表題欄の記載は **図面情報 / Title block / 图纸标题栏** — 材種（マスタの値）と図面の「材質」（書かれた文字）は別の語として扱う | `messages/*.json` の `production.designVersion.*` / `enum.DESIGN_FILE_ROLE_LABEL` / 設計図・製品のマニュアル 3 言語 |
+| 23 | **書類の発行元は「自社法人」（MS0I / Own companies / 本公司法人）が持つ**（2026-11-26）。CKK と TSP のように同じグループの別法人が書類を出すため。**拠点が 1 つの法人に属し、書類の法人は拠点から決まる** — 書類ごとに法人を選ばせない。拠点の分からない書類は**既定の法人 / Default company / 默认法人**。zh を「自社」の字面（自社法人）にせず 本公司法人 にしているのは、自社 は中国語で通じないため。発行元 = Issuer / 开具方 | `lib/own-company-core.ts` / 見積書・納品書・請求書の PDF |
+| 24 | **拠点を持たない書類（見積書・価格試算・価格表）は作成フォームの「発行会社 / Issuing company / 开具公司」で法人を決める**（2026-11-25、決定 23 の補足）。拠点から法人が決まらない書類だけの欄で、初期値は作成者の所属拠点の法人が 1 つならそれ、そうでなければ既定の法人。**所属拠点が 2 つ以上の法人にまたがる人にだけ出す**。作成後は変えられない。「発行元 / Issuer」は帳票に刷る側の語、「発行会社」は入力欄の語 — 同じ自社法人を指すが場面で使い分ける | `components/ui/IssuingCompanySelect.tsx` / `lib/doc-company-core.ts` |
+
 
 ## 5. 未決
 

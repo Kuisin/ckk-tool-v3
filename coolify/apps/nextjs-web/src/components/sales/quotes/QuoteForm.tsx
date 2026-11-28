@@ -27,7 +27,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   createQuote,
@@ -37,19 +37,27 @@ import {
   ProductPriceResolverInput,
   type ResolverValue,
 } from "@/components/sales/ProductPriceResolverInput";
+import { useStandardPrices } from "@/components/sales/useStandardPrices";
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import type { IssuingCompanyField } from "@/lib/doc-company";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { totalsByRateYen } from "@/lib/money";
 import { resolveLineTax, type TaxCatalog } from "@/lib/tax-rate";
+import { entriesForCompany } from "../price-lists/company-sync";
 import { isoDateJst, type PriceListEntry } from "../price-lists/model";
-import { type Quote, resolveUnitPriceFromEntries } from "./model";
+import {
+  lineToolItemId,
+  type Quote,
+  resolveUnitPriceFromEntries,
+} from "./model";
 
 /**
  * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
@@ -59,8 +67,12 @@ import { type Quote, resolveUnitPriceFromEntries } from "./model";
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z
     .object({
-      productId: z.string().min(1, tr("common.selectAProduct")),
+      /** 製品 — 値は品目 id（items.id）。 */
+      itemId: z.string().min(1, tr("common.selectAProduct")),
       productName: z.string(),
+      /** 研ぎ直す工具（品目 id）— 再研磨の行だけ。必須（下の refine）。 */
+      toolItemId: z.string().nullable(),
+      toolLabel: z.string().nullable(),
       orderType: z.string().min(1),
       quantity: z.number().int().min(1, tr("sales.quoteForm.atLeast1")),
       // 単価・値引きは価格表から自動解決される（手入力なし）。
@@ -69,11 +81,19 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       discountAmount: z.number().min(0),
       discountLabel: z.string().nullable(),
       deliveryDate: z.string().nullable(),
+      /** 明細の備考（複数行）。見積書 PDF の明細の下に刷る。 */
+      notes: z.string(),
     })
     // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
     .refine((it) => it.priceTierId != null, {
       message: tr("sales.quoteForm.noMatchingPriceList"),
-      path: ["productId"],
+      path: ["itemId"],
+    })
+    // 再研磨の行は研ぐ工具で値段が変わり得る — 工具が決まらないと単価が
+    // 注文請書と食い違う（保存側も同じ検査をする）。
+    .refine((it) => it.orderType !== "REGRIND" || Boolean(it.toolItemId), {
+      message: tr("sales.quoteForm.selectTheToolToRegrind"),
+      path: ["toolItemId"],
     });
 
   return z.object({
@@ -93,8 +113,10 @@ type ItemForm = QuoteFormValues["items"][number];
 const BASE_PATH = "/sales/quotes";
 
 const emptyItem = (): ItemForm => ({
-  productId: "",
+  itemId: "",
   productName: "",
+  toolItemId: null,
+  toolLabel: null,
   orderType: "PRODUCTION",
   quantity: 1,
   unitPrice: 0,
@@ -102,15 +124,22 @@ const emptyItem = (): ItemForm => ({
   discountAmount: 0,
   discountLabel: null,
   deliveryDate: null,
+  notes: "",
 });
 
-/** 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）. */
+/**
+ * 価格表「見積書を作成」からの事前入力（quotes/new?customer=…&product=…）。
+ * `itemId` は**品目 id**（items.id）— 価格表エントリの `itemId` をそのまま
+ * クエリ（`?product=`）に載せている。
+ */
 export interface QuotePrefill {
   customerId?: string;
-  productId?: string;
+  itemId?: string;
   orderType?: string;
   quantity?: number;
   deliveryDate?: string | null;
+  /** 研ぎ直す工具（品目 id）— 工具ごとの価格表から開いたとき（再研磨のみ）。 */
+  toolItemId?: string | null;
 }
 
 function buildInitial(
@@ -128,25 +157,37 @@ function buildInitial(
     notes: "",
     items: [emptyItem()],
   };
-  if (prefill?.customerId && prefill.productId) {
+  if (prefill?.customerId && prefill.itemId) {
     // 価格表から起動 — 単価・値引きを価格表から解決して1行目に流し込む。
     const orderType = prefill.orderType ?? "PRODUCTION";
     const quantity = prefill.quantity ?? 1;
+    const toolItemId = lineToolItemId({
+      orderType,
+      toolItemId: prefill.toolItemId,
+    });
     const resolved = resolveUnitPriceFromEntries(
       entries,
       prefill.customerId,
-      prefill.productId,
+      prefill.itemId,
       orderType,
       quantity,
       tr,
+      new Date(),
+      null,
+      toolItemId,
     );
     base.items = [
       {
         ...emptyItem(),
-        productId: prefill.productId,
+        itemId: prefill.itemId,
         productName:
-          entries.find((e) => e.productId === prefill.productId)?.productName ??
-          prefill.productId,
+          entries.find((e) => e.itemId === prefill.itemId)?.productName ??
+          prefill.itemId,
+        toolItemId,
+        toolLabel: toolItemId
+          ? (entries.find((e) => e.toolItemId === toolItemId)?.toolName ??
+            toolItemId)
+          : null,
         orderType,
         quantity,
         unitPrice: resolved?.unitPrice ?? 0,
@@ -168,8 +209,11 @@ function toFormValues(q: Quote): QuoteFormValues {
     validUntil: q.validUntil,
     notes: q.notes ?? "",
     items: q.items.map((it) => ({
-      productId: it.productId,
+      itemId: it.itemId,
       productName: it.productName,
+      // 複製・編集でも研ぎ直す工具を引き継ぐ（値段もこの工具で引き直る）。
+      toolItemId: it.toolItemId,
+      toolLabel: it.toolLabel,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
@@ -177,6 +221,7 @@ function toFormValues(q: Quote): QuoteFormValues {
       discountAmount: it.discountAmount,
       discountLabel: it.discountLabel,
       deliveryDate: it.deliveryDate,
+      notes: it.notes ?? "",
     })),
   };
 }
@@ -191,7 +236,10 @@ export function QuoteForm({
   taxCatalog,
   taxCategoryByCustomer,
   taxCategoryByProduct,
+  issuingCompany,
 }: {
+  /** 発行会社の欄（作成時のみ。所属拠点が複数の法人にまたがる人だけに出る）。 */
+  issuingCompany?: IssuingCompanyField;
   mode: "create" | "edit";
   /** Edit / 複製: the source quote (server-fetched view-model). */
   quote?: Quote | null;
@@ -215,30 +263,50 @@ export function QuoteForm({
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // 発行会社は作成時にだけ決める（以後は変えられない）。
+  const [ownCompanyId, setOwnCompanyId] = useState<number | null>(
+    issuingCompany?.prefill ?? null,
+  );
   const quoteId = mode === "edit" ? quote?.id : undefined;
+  // 価格は**見積書の発行会社の価格表だけ**から引く（価格表は会社ごとに別々）。
+  // 編集では作成時に決まった会社、作成・複製では選んでいる会社。
+  const pricingCompanyId =
+    mode === "edit" ? (quote?.ownCompanyId ?? null) : ownCompanyId;
+  const companyEntries = useMemo(
+    () => entriesForCompany(entries, pricingCompanyId),
+    [entries, pricingCompanyId],
+  );
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(buildSchema(tr)),
-    initialValues: buildInitial(quote, prefill, entries, tr),
+    initialValues: buildInitial(quote, prefill, companyEntries, tr),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
 
-  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
-  const onCustomerChange = (customerId: string) => {
-    form.setFieldValue("customerId", customerId);
-    form.setFieldValue("customerBranchId", null);
+  // 標準価格（品目の定価）— 当たる価格表が無い行はこちらへ落ちる。画面と
+  // 保存側が同じものを見ていないと「見えている単価」と「保存される単価」が
+  // ずれる。いま値が入るのは再研磨の品目だけ。
+  const standardPrices = useStandardPrices(
+    form.values.items.map((it) => it.itemId),
+  );
+
+  /** 全行の単価・値引きを、指定の顧客 × 価格表で引き直す。 */
+  const reresolveItems = (customerId: string, priceEntries: PriceListEntry[]) =>
     form.setFieldValue(
       "items",
       form.values.items.map((it) => {
-        const r = it.productId
+        const r = it.itemId
           ? resolveUnitPriceFromEntries(
-              entries,
+              priceEntries,
               customerId,
-              it.productId,
+              it.itemId,
               it.orderType,
               it.quantity,
               tr,
+              new Date(),
+              standardPrices[it.itemId] ?? null,
+              lineToolItemId(it),
             )
           : null;
         return {
@@ -250,6 +318,18 @@ export function QuoteForm({
         };
       }),
     );
+
+  /** Changing 顧客 → re-resolve every line's 単価・値引き against the new customer's 価格表. */
+  const onCustomerChange = (customerId: string) => {
+    form.setFieldValue("customerId", customerId);
+    form.setFieldValue("customerBranchId", null);
+    reresolveItems(customerId, companyEntries);
+  };
+
+  /** 発行会社を変えたら、その会社の価格表で引き直す（他社の価格は載せない）。 */
+  const onCompanyChange = (id: number | null) => {
+    setOwnCompanyId(id);
+    reresolveItems(form.values.customerId, entriesForCompany(entries, id));
   };
 
   // ライブ計算も保存時と**同じ関数**を通す（lib/tax-rate.ts / lib/money.ts）。
@@ -263,7 +343,7 @@ export function QuoteForm({
       amount: Math.max(0, it.unitPrice * it.quantity - it.discountAmount),
       taxRate: resolveLineTax(taxCatalog, {
         customerTaxCategoryId,
-        productTaxCategoryId: taxCategoryByProduct?.[it.productId] ?? null,
+        productTaxCategoryId: taxCategoryByProduct?.[it.itemId] ?? null,
         basisDate: liveBasisDate,
       }).rate,
     })),
@@ -274,17 +354,24 @@ export function QuoteForm({
 
   const handleSubmit = (values: QuoteFormValues) => {
     const payload = {
+      ownCompanyId,
       customerBpId: values.customerId,
       customerBranchBpId: values.customerBranchId,
       salesRepId: values.salesRepId,
       validUntil: values.validUntil,
       notes: values.notes,
       items: values.items.map((it) => ({
-        productId: it.productId,
-        orderType: it.orderType as "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER",
+        itemId: it.itemId,
+        orderType: it.orderType as
+          | "PRODUCTION"
+          | "TEST"
+          | "SAMPLE"
+          | "REGRIND"
+          | "OTHER",
+        toolItemId: lineToolItemId(it),
         quantity: it.quantity,
         deliveryDate: it.deliveryDate,
-        notes: null,
+        notes: it.notes.trim() ? it.notes : null,
       })),
     };
     startTransition(async () => {
@@ -361,6 +448,13 @@ export function QuoteForm({
             }
             {...form.getInputProps("customerBranchId")}
           />
+          {mode === "create" && (
+            <IssuingCompanySelect
+              field={issuingCompany}
+              onChange={onCompanyChange}
+              value={ownCompanyId}
+            />
+          )}
           <SalesRepSelect
             customerBpId={form.values.customerId || null}
             initial={
@@ -396,18 +490,25 @@ export function QuoteForm({
                     customerId={form.values.customerId}
                     // 単価が引けないのはたいてい「まだ図面が無い新規品」なので、
                     // 保存できない旨だけを出さずに §10 設計依頼へ逃がす。
-                    designRequestHref={(productId) =>
-                      `/sales/design-requests/new?product=${encodeURIComponent(productId)}`
+                    // `item=` は品目 id（items.id）。製品マスタからの
+                    // `product=`（products.id）とは別の入口。
+                    designRequestHref={(itemId) =>
+                      `/sales/design-requests/new?item=${encodeURIComponent(itemId)}`
                     }
-                    entries={entries}
+                    entries={companyEntries}
                     onChange={(next: ResolverValue) => {
-                      form.setFieldValue(
-                        `items.${ri}.productId`,
-                        next.productId,
-                      );
+                      form.setFieldValue(`items.${ri}.itemId`, next.itemId);
                       form.setFieldValue(
                         `items.${ri}.productName`,
                         next.productName,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.toolItemId`,
+                        next.toolItemId,
+                      );
+                      form.setFieldValue(
+                        `items.${ri}.toolLabel`,
+                        next.toolLabel,
                       );
                       form.setFieldValue(
                         `items.${ri}.orderType`,
@@ -431,6 +532,8 @@ export function QuoteForm({
                         next.discountLabel,
                       );
                     }}
+                    standardPrices={standardPrices}
+                    toolError={form.errors[`items.${ri}.toolItemId`]}
                     value={item}
                   />
                 </Box>
@@ -456,6 +559,15 @@ export function QuoteForm({
                 placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
+              />
+              <Textarea
+                autosize
+                description={tr("sales.quoteForm.lineNotesDescription")}
+                label={tr("common.notes")}
+                maxRows={8}
+                minRows={1}
+                mt="xs"
+                {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Box>
           ))}

@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { StepDueDateBadge } from "./StepDueDateBadge";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 /** 担当者を顔写真つきで並べる上限（超えた分は「ほか N 名」）。 */
@@ -178,8 +179,16 @@ export function StepCard({
         </Group>
       </Group>
 
-      {(step.assignees.length > 0 || hasWorkHours || hasLot) && (
+      {(step.assignees.length > 0 ||
+        hasWorkHours ||
+        hasLot ||
+        step.dueDate != null) && (
         <Group gap="md" mt="xs" pl={28} wrap="wrap">
+          <StepDueDateBadge
+            dueDate={step.dueDate}
+            size="xs"
+            status={step.status}
+          />
           {step.assignees.length > 0 && (
             <Group gap={6} wrap="wrap">
               <Text c="dimmed" size="xs">
@@ -225,6 +234,11 @@ export function StepCard({
 
       {isOutsource && (
         <Group gap="xl" mt="xs" pl={28}>
+          {step.outsourceOrderNumber && (
+            <Text c="dimmed" ff="mono" size="xs">
+              {step.outsourceOrderNumber}
+            </Text>
+          )}
           <Text c="dimmed" size="xs">
             {tr("production.stepCard.requestedOn", {
               date: fmt.date(step.outsourceRequestedAt),

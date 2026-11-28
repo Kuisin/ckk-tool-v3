@@ -23,16 +23,23 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
+import { recordStepProgramsTx } from "./design-programs";
 import { jstDateOnly } from "./format";
 import { missingInspectionSheets } from "./inspection-core";
 import { encodeInventoryNote } from "./inventory-note-core";
+import { resolveWipRecording } from "./wip-recording";
+import type { WipRecordingInput, WipRecordingIssue } from "./wip-state-core";
 import {
   canStartStep,
   computeFinishedQuantity,
+  downstreamStepIds,
   effectiveLotInputMode,
   expectedInput,
   isWorkOrderComplete,
+  REGRIND_RECEIPT_STEP_CODE,
+  regrindFullyReturned,
   resolveReceivedQuantity,
+  START_STEP_CODES,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   type StepLinkState,
@@ -89,7 +96,24 @@ export type StepErrorCode =
   | "INSPECTION_REQUIRED"
   // 検査承認: 合格していない記録を承認しようとした / 承認者ではない
   | "INSPECTION_NOT_PASS"
-  | "NOT_APPROVER";
+  | "NOT_APPROVER"
+  // 仕掛品として在庫に置く分の記録（仕上がり寸法・通ってきた経路）
+  | "WIP_DIAMETER_REQUIRED"
+  | "WIP_LENGTH_REQUIRED"
+  | "WIP_DIAMETER_INVALID"
+  | "WIP_LENGTH_INVALID"
+  | "WIP_PATH_REQUIRED"
+  | "WIP_PATH_INVALID";
+
+/** wip-state-core の不備 → 端末が翻訳して出すコード。 */
+const WIP_ISSUE_CODE: Record<WipRecordingIssue, StepErrorCode> = {
+  finishedDiameterRequired: "WIP_DIAMETER_REQUIRED",
+  finishedLengthRequired: "WIP_LENGTH_REQUIRED",
+  finishedDiameterInvalid: "WIP_DIAMETER_INVALID",
+  finishedLengthInvalid: "WIP_LENGTH_INVALID",
+  pathChoiceRequired: "WIP_PATH_REQUIRED",
+  pathChoiceInvalid: "WIP_PATH_INVALID",
+};
 
 export interface StepActionResult {
   ok: boolean;
@@ -120,7 +144,14 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
       stepLinks: { select: STEP_LINK_STATE_SELECT },
     },
   });
-  const execDeps = await prisma.processStepExecDependency.findMany();
+  const [execDeps, startSteps] = await Promise.all([
+    prisma.processStepExecDependency.findMany(),
+    // 開始工程（出し・受渡し）— 終わるまで他の工程を開始させない（canStartStep）。
+    prisma.processStepCatalog.findMany({
+      where: { code: { in: [...START_STEP_CODES] } },
+      select: { id: true },
+    }),
+  ]);
   const steps: StepState[] = wo.steps.map(toStepState);
   const links: StepLinkState[] = wo.stepLinks;
   const woLinkCtx = await fetchIncomingWoLinks(workOrderId);
@@ -134,6 +165,7 @@ export async function fetchWorkflowCtx(workOrderId: string): Promise<{
         dependsOnStepId: d.dependsOnStepId,
         relation: d.relation,
       })),
+      startStepIds: startSteps.map((c) => c.id),
       ...woLinkCtx,
     },
     workOrder: {
@@ -370,6 +402,9 @@ export async function startStepExecution(
       },
     });
     if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
+    // この工程に出ていた加工プログラムの版を記録する（= 使用済み。Web の
+    // 開始と同じ規則 — 作業セッション行の作業場所の機種まで入れて選ぶ）。
+    await recordStepProgramsTx(tx, stepId, null);
     return c.count;
   });
   if (claimed === 0) {
@@ -505,6 +540,9 @@ export async function resumeStepExecution(
       },
     });
     if (openBefore > 0) await resegmentOpenActuals(tx, actorId, now);
+    // この工程に出ていた加工プログラムの版を記録する（= 使用済み。Web の
+    // 開始と同じ規則 — 作業セッション行の作業場所の機種まで入れて選ぶ）。
+    await recordStepProgramsTx(tx, stepId, null);
     return c.count;
   });
   if (claimed === 0) {
@@ -630,13 +668,19 @@ export async function completeStepExecution(
   actorId: string,
   quantities: StepQuantities | null,
   defectReasons: StepDefectReason[] | null = null,
+  /**
+   * 仕掛品として在庫に置く分の記録（仕上がり寸法・選んだ経路）。品物が工程を
+   * 離れて在庫に入る完了でだけ読む（nextjs-web completeStepExecution と同じ —
+   * 規則は twin の lib/wip-recording.ts）。
+   */
+  wipRecording: WipRecordingInput | null = null,
 ): Promise<StepActionResult> {
   const stepRow = await prisma.workOrderStep.findUnique({
     where: { id: stepId },
     include: {
       workOrder: true,
       outgoingLinks: true,
-      processStep: { select: { quantityTracking: true } },
+      processStep: { select: { quantityTracking: true, code: true } },
       // 検査表が埋まっているかの判定に使う（割当と記録の突き合わせ）。
       inspectionTemplates: { select: { inspectionTemplateId: true } },
       inspectionRecords: { select: { templateId: true } },
@@ -667,6 +711,12 @@ export async function completeStepExecution(
   }
 
   const mode = stepRow.processStep.quantityTracking;
+  // 製品受入（再研磨）: 顧客の工具を受け入れる開始工程。受入数は端末の入力値が
+  // 権威で（届いた本数は予定と違ってよい）、完了時に預り品として入庫する
+  // （web の lib/workflow.ts と同じ規則）。
+  const isRegrindReceipt =
+    stepRow.workOrder.type === "REGRIND" &&
+    stepRow.processStep.code === REGRIND_RECEIPT_STEP_CODE;
   // 完了時点の想定受入数（前工程の良品数 + 流入エッジ — workflow-core.expectedInput）。
   // 開始が前工程の完了より早かった工程（同期可能工程・先行 WO 未完了）は開始時に
   // inputQuantity が null で、完了時に初めて確定する。web の lib/workflow.ts と
@@ -697,6 +747,7 @@ export async function completeStepExecution(
     const authoritativeInput = resolveReceivedQuantity({
       expectedAtCompletion,
       startedWith: stepRow.inputQuantity,
+      clientAuthoritative: isRegrindReceipt,
       client: quantities?.inputQuantity,
     });
     // 区分合計（半製品/廃棄/工程分岐）は**不良リストのみから導出**して権威とする。
@@ -734,6 +785,11 @@ export async function completeStepExecution(
     const semi = sumType("SEMI");
     const scrap = sumType("SCRAP");
     const rework = sumType("REWORK");
+    // 再研磨指示書では半製品の区分を使わない — 完了時に自社の半製品として
+    // 入庫する経路で、顧客の工具が自社在庫に化ける。
+    if (stepRow.workOrder.type === "REGRIND" && semi > 0) {
+      return fail("QUANTITY_INVALID", "再研磨では半製品の区分は使えません"); // i18n-ignore
+    }
     const totalDefects = semi + scrap + rework;
     persisted = {
       inputQuantity: authoritativeInput,
@@ -751,6 +807,8 @@ export async function completeStepExecution(
         defectRework: persisted.outputDefectRework,
       },
       mode,
+      undefined,
+      stepRow.processStep.code,
     );
     if (qIssues.length > 0) {
       return {
@@ -780,6 +838,21 @@ export async function completeStepExecution(
     };
   }
 
+  // 仕掛品として在庫に置く分（半製品の数 / 半製品で終わる分岐の終端）は、
+  // 仕上がり寸法と — 手前に合流があれば — 通ってきた経路を記録する。
+  // 在庫に置かない完了では 3 つとも null になる（入力は捨てる）。
+  const wip = await resolveWipRecording(
+    stepId,
+    {
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      outputSuccess: persisted.outputSuccessQuantity,
+    },
+    wipRecording,
+  );
+  if (wip.issues.length > 0) {
+    return { ok: false, codes: wip.issues.map((i) => WIP_ISSUE_CODE[i]) };
+  }
+
   // 不良の内訳（{種別, 種類, 詳細, 数}）— 有効行のみ。空なら列を触らない。
   const cleanedReasons = (defectReasons ?? [])
     .filter((r) => Number.isFinite(r.count) && r.count > 0)
@@ -791,6 +864,32 @@ export async function completeStepExecution(
     }));
 
   const now = new Date();
+  // 製品受入（再研磨）の完了は預り品の入庫と**同じトランザクション**で行う。
+  // 印（regrindReceiptMovementId）が既にあれば二度目は載せない。伝票番号は
+  // INSERT 時に DB が振る。
+  const postsReceipt =
+    isRegrindReceipt &&
+    stepRow.regrindReceiptMovementId == null &&
+    persisted.inputQuantity > 0;
+  // **全量返却なら下流の未着手工程を畳む**（nextjs-web completeStepExecution と
+  // 同じ規則）。研ぎ直せる物が 1 本も無いので後続は 0 本を受け取るだけで、
+  // 放っておくと意味のない工程を 0 で押していくまで指示書が閉じない。
+  const fullyReturned =
+    isRegrindReceipt &&
+    regrindFullyReturned({
+      inputQuantity: persisted.inputQuantity,
+      outputSuccess: persisted.outputSuccessQuantity,
+      defectSemiFinished: persisted.outputDefectSemiFinished,
+      defectScrap: persisted.outputDefectScrap,
+      defectRework: persisted.outputDefectRework,
+    });
+  // ctx を引くのは全量返却のときだけ（普段の完了で 1 クエリ増やさない）。
+  const foldIds = fullyReturned
+    ? downstreamStepIds(
+        stepId,
+        (await fetchWorkflowCtx(stepRow.workOrderId)).ctx,
+      )
+    : [];
   // 完了クレームは条件付き更新 — 同時完了はどちらか一方だけ成立し、
   // 在庫の二重計上を防ぐ（監査 P0-7/#5）。作業セッションも同 tx で閉じる。
   const claimed = await prisma.$transaction(async (tx) => {
@@ -810,6 +909,11 @@ export async function completeStepExecution(
         outputDefectScrap: persisted.outputDefectScrap,
         outputDefectRework: persisted.outputDefectRework,
         ...(cleanedReasons.length > 0 ? { defectReasons: cleanedReasons } : {}),
+        finishedDiameterMm: wip.value.finishedDiameterMm,
+        finishedLengthMm: wip.value.finishedLengthMm,
+        ...(wip.value.pathStepIds
+          ? { wipPathStepIds: wip.value.pathStepIds }
+          : {}),
         completedAt: now,
         completedBy: actorId,
         sessionLockedBy: null,
@@ -817,6 +921,31 @@ export async function completeStepExecution(
       },
     });
     if (c.count !== 1) return c.count;
+    if (foldIds.length > 0) {
+      // **未着手のものだけ。** 進行中・完了済みの工程は人が手を付けた実績が
+      // あるので畳まない（その場合は指示書は開いたまま — 正しい）。
+      await tx.workOrderStep.updateMany({
+        where: { id: { in: foldIds }, status: "PENDING" },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: now,
+          cancelledBy: actorId,
+          cancelReason: "全量返却のため自動でキャンセルしました", // i18n-ignore
+        },
+      });
+    }
+    if (postsReceipt) {
+      const { onRegrindReceiptTx } = await import("./inventory");
+      await onRegrindReceiptTx(tx, {
+        stepId,
+        workOrderId: stepRow.workOrderId,
+        workOrderNumber: stepRow.workOrder.workOrderNumber,
+        itemId: stepRow.workOrder.productItemId,
+        plantId: stepRow.plantId,
+        quantity: persisted.inputQuantity,
+        box: stepRow.lotText,
+      });
+    }
     // この工程の open な作業セッションを全て閉じる（誰のものでも残さない）。
     // 閉じた作業者の残りセグメントは同時数が減るので張り直す。
     const openRows = await tx.workOrderStepActual.findMany({
@@ -854,6 +983,9 @@ export async function completeStepExecution(
   // （nextjs-web completeStepExecution と同じ規則）。
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   if (isWorkOrderComplete(ctx)) {
+    // 入出庫伝票の番号は INSERT 時に DB が振る。バッチ完了でも
+    // completeStepExecution は 1 指示書ずつ別々の tx で走るので、ここは
+    // **1 指示書 = 伝票 1 枚** になる（バッチ 1 回で 1 枚にはならない）。
     await prisma.$transaction(async (tx) => {
       const flipped = await tx.workOrder.updateMany({
         where: { id: stepRow.workOrderId, status: { not: "COMPLETED" } },

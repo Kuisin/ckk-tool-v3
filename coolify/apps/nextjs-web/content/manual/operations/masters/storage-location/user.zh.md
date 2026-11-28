@@ -5,7 +5,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ---
 这是用于登记「資材倉庫A」（资材仓库A）这类 **存放物品的仓库、堆放场** 以及其中 **货架** 的应用。操作代码是 `MS0E`。
 
-库存会细分到「在哪个保管场所的哪个货架上」来管理。在[库存管理](/manual/zh/operations/production/product-inventory/user)的库存移动中，可以在这里登记的场所之间搬动物品。
+库存会细分到「在哪个保管场所的哪个货架上」来管理。在[库存管理](/manual/zh/operations/inventory/inventory-management/user)的库存移动中，可以在这里登记的场所之间搬动物品。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 
@@ -34,6 +34,17 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 - **货架** … 保管场所中的区划（例 A-1、A-2）。库存按「保管场所 + 货架」的单位计数。
 - **楼层地图** … 据点楼层的图纸。图纸本身在[据点](/manual/zh/operations/masters/plant/user)中登记。
 - **图钉** … 放在图纸上、表示保管场所位置的标记。
+
+用图表示如下。
+
+```mermaid
+flowchart TD
+  plant["据点"] --> loc["保管场所<br/>（例 资材仓库A）"]
+  loc --> shelf["货架<br/>（例 A-1）"]
+  plant --> map["楼层地图<br/>（在据点应用中登记）"]
+  loc -.->|"放置图钉"| map
+  shelf -.-> stock["库存按「保管场所 + 货架」<br/>的单位计数"]
+```
 
 ## 开始之前
 
@@ -109,14 +120,14 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 
 | 项目 | 填什么 |
 |------|--------|
-| [基地 / 楼层](#field-plant) | 位于哪个基地的哪一楼层 |
+| [据点 / 楼层](#field-plant) | 位于哪个据点的哪一楼层 |
 | [编码 / 名称（日文・英文）](#field-code) | 场所的管理编号与名称 |
 | [显示顺序](#field-sort-order) | 选项中的排列顺序 |
 | [有效 / 备注](#field-active) | 取消后保管场所的选项中将不再显示 |
 
-### 基地 / 楼层 [#field-plant]
+### 据点 / 楼层 [#field-plant]
 
-位于哪个基地的哪一楼层。**库存可定位到该场所单位。**
+位于哪个据点的哪一楼层。**库存可定位到该场所单位。**
 
 ### 编码 / 名称（日文・英文） [#field-code]
 
@@ -133,7 +144,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ## 常见问题・遇到麻烦时
 
 **Q. 出现「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」（存在引用该保管场所的库存，无法删除；请用库存移动清空，或将其停用）。**
-A. 该场所还留有库存。请用[库存管理](/manual/zh/operations/production/product-inventory/user)的库存移动把里面的东西移到别的场所清空，或者在编辑界面上关闭「**有効**」（有效）将其停用。删除货架时也一样。
+A. 该场所还留有库存。请用[库存管理](/manual/zh/operations/inventory/inventory-management/user)的库存移动把里面的东西移到别的场所清空，或者在编辑界面上关闭「**有効**」（有效）将其停用。删除货架时也一样。
 
 **Q. 删除保管场所后，里面的货架会怎样？**
 A. 会一起被删除。确认界面上会显示将被删除的货架数量。此操作无法撤销。

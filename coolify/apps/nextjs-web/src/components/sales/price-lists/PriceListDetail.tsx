@@ -12,6 +12,7 @@
 
 import {
   ActionIcon,
+  Alert,
   Anchor,
   Badge,
   Divider,
@@ -34,10 +35,22 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
+  approvePriceEntry,
   deleteDiscountRule,
+  rejectPriceEntry,
+  requestPriceEntryApproval,
   saveDiscountRule,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
+import {
+  ApprovalActionCard,
+  type ApprovalActionState,
+} from "@/components/approvals/ApprovalActionCard";
+import {
+  ApprovalTrailList,
+  type ApprovalTrailView,
+  countTrailRecords,
+} from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -56,10 +69,12 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { quoteDisplayStatus } from "../quotes/model";
+import { CompanySyncPanel } from "./CompanySyncPanel";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
@@ -87,8 +102,16 @@ export function PriceListDetail({
   productOptions,
   auditEntries,
   memos,
+  approval,
+  approvalTrail,
+  counterparts = [],
+  canSync = false,
 }: {
   entry: PriceListEntry;
+  /** 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）— 突き合わせ用。 */
+  counterparts?: PriceListEntry[];
+  /** 価格表の更新権限（「〇〇社の内容で同期」を出すか）。 */
+  canSync?: boolean;
   relatedQuotes: RelatedQuoteRow[];
   customerOptions: Option[];
   productOptions: Option[];
@@ -96,6 +119,9 @@ export function PriceListDetail({
   auditEntries: AuditEntry[];
   /** 社内コメント（document_memos 由来、コメントタブ）。 */
   memos: MemoView[];
+  /** 独自値の追加承認の状態（lib/approvals fetchApprovalState）。 */
+  approval: ApprovalActionState;
+  approvalTrail: ApprovalTrailView[];
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -104,6 +130,11 @@ export function PriceListDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("prices");
   const summary = entrySummary(entry);
+  const lastRejectReason =
+    [...approvalTrail]
+      .flatMap((s) => s.records)
+      .reverse()
+      .find((r) => r.action === "REJECTED")?.comment ?? null;
   const estimateVariants = entry.variants.filter((v) => v.estimateId);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -226,14 +257,80 @@ export function PriceListDetail({
         { label: tr("common.priceList"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={entry.entryId}
       createdAt={fmt.dateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
       title={tr("sales.priceLists.priceListDetails")}
       updatedAt={fmt.dateTime(entry.updatedAt)}
     >
+      {/*
+        独自値の追加承認（承認設定 MS0B）— 価格試算から引き継いでいない価格を
+        持つ価格表だけが通る。依頼は保存のたびに自動で出るので、ここで押せる
+        「依頼」は差し戻されたあとの出し直しだけ。
+      */}
+      {(entry.approvalStatus === "PENDING" ||
+        entry.approvalStatus === "REJECTED") && (
+        <>
+          <ApprovalActionCard
+            approval={approval}
+            canRequest={entry.approvalStatus === "REJECTED"}
+            onApprove={() => approvePriceEntry(entry.entryId)}
+            onReject={(reason) => rejectPriceEntry(entry.entryId, reason)}
+            onRequest={() => requestPriceEntryApproval(entry.entryId)}
+            rejectReason={lastRejectReason}
+            subject={`${tr("common.priceList")} ${docNo(entry.entryId)}`}
+          />
+          <Alert color="orange" variant="light">
+            {tr("sales.priceLists.unapprovedNotUsedForPricing")}
+          </Alert>
+        </>
+      )}
       <SummaryGrid>
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
-        <FieldValue label={tr("common.product")} value={entry.productName} />
+        <FieldValue
+          label={tr("common.product")}
+          value={
+            <Group gap={6} wrap="nowrap">
+              {entry.itemType === "REGRIND" && (
+                <Badge color="orange" size="xs" variant="light">
+                  {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
+                </Badge>
+              )}
+              <span>{entry.productName}</span>
+            </Group>
+          }
+        />
+        {/*
+          対象工具 — 再研磨の価格表だけが持つ任意の欄。工具なしの価格表は
+          「工具を問わない」と出す（どの工具の研ぎ直しにも当たる、と読めるように）。
+        */}
+        {entry.itemType === "REGRIND" && (
+          <FieldValue
+            label={tr("sales.priceLists.targetTool")}
+            value={entry.toolName ?? tr("sales.priceLists.anyTool")}
+          />
+        )}
+        {/*
+          標準価格は**この画面では読むだけ**。持ち主は品目マスタ（再研磨品目
+          MS0H）で、直すのはあちら — 値段の持ち主を 2 か所にしない。ここに
+          出すのは「当たる価格表が無いときいくらで売れるのか」が価格表の画面
+          から見えないと分からないため。
+        */}
+        {entry.standardUnitPrice != null && (
+          <FieldValue
+            label={tr("common.standardPrice")}
+            value={
+              <Group gap={8} wrap="nowrap">
+                <MoneyText value={entry.standardUnitPrice} />
+                {entry.itemType === "REGRIND" && (
+                  <Anchor href="/master/regrind-items" size="xs">
+                    {tr("sales.priceLists.editOnItemMaster")}
+                  </Anchor>
+                )}
+              </Group>
+            }
+          />
+        )}
         <FieldValue
           label={tr("common.orderType")}
           value={
@@ -256,9 +353,32 @@ export function PriceListDetail({
           label={tr("sales.priceLists.unitPriceRange")}
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
         />
+        {entry.approvalStatus && entry.approvalStatus !== "NONE" && (
+          <FieldValue
+            label={tr("master.customValueApproval.title")}
+            value={
+              <StatusBadge
+                entity="PriceListApproval"
+                status={entry.approvalStatus}
+              />
+            }
+          />
+        )}
         <FieldValue label={tr("common.salesRep")} value={entry.salesRepName} />
         <FieldValue label={tr("common.createdBy")} value={entry.createdBy} />
+        {entry.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={entry.legacyNumber}
+          />
+        )}
       </SummaryGrid>
+
+      <CompanySyncPanel
+        canSync={canSync}
+        counterparts={counterparts}
+        entry={entry}
+      />
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
@@ -267,6 +387,11 @@ export function PriceListDetail({
             {tr("sales.priceLists.discountRules")}
           </Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          {countTrailRecords(approvalTrail) > 0 && (
+            <Tabs.Tab value="approval">
+              {tr("sales.priceLists.approvalTab")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="comments">{tr("common.comment")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
@@ -567,6 +692,10 @@ export function PriceListDetail({
         </Tabs.Panel>
 
         {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel pt="md" value="approval">
+          <ApprovalTrailList trail={approvalTrail} />
+        </Tabs.Panel>
+
         <Tabs.Panel keepMounted={false} pt="md" value="comments">
           <MemoPanel
             memos={memos}

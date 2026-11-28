@@ -1,0 +1,294 @@
+// 业务流程 §3 设计 — 从设计委托单 (SA06) 到图纸 (PD06) 版本确定及在工单中的使用。
+// ja / en 结构相同。修改文字时三个文件一起改。
+
+/title/
+设计 — 从设计委托到登记图纸
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_cust>
+label: 客户;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+<role_sales>
+label: 销售;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_design>
+label: 设计;
+text-color: #3730a3;
+background-color: #e0e7ff;
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD06>
+label: PD06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DR>
+label: 设计委托单;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DV>
+label: 图纸版本;
+side: right;
+background-color: #eef2ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<WO>
+label: 工单;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_cust: 咨询形状] <block_neutral>
+label: 咨询;
+desc: 客户咨询特殊形状或研讨新产品，需要图纸。;
+if (触发时机) is (报价时) than #blue
+  [role_sales: 从报价单起草] <block_apply>
+  label: 报价时;
+  props: APP_SA03,DR;
+  desc: 从报价单的“起草设计委托”打开，触发时机=报价时及该报价单已填入。;
+elseif (接单时) than #blue
+  [role_sales: 从订单明细起草] <block_apply>
+  label: 接单时;
+  props: APP_SA05,DR;
+  desc: 从订单明细的“起草设计委托”打开，触发时机=接单时及该订单明细已填入。;
+elseif (独立) than #blue
+  [role_sales: 独立起草] <block_apply>
+  label: 独立;
+  props: APP_SA06,DR;
+  desc: 不关联报价或订单的委托。也可从列表的“新建”、产品主数据、报价的“无价格表”起草。;
+endif
+[role_system: 判定新增或修订] <block_system>
+label: 申请类别;
+desc: 产品 × 订货方的系列已有版本则为“修订”，没有则为“新增”。也可手动切换。;
+if (申请类别) is (修订) than #blue
+  [role_sales: 输入原图与理由] <block_apply>
+  label: 修订;
+  props: APP_SA06;
+  desc: 输入作为基础的版本（空则为最新版）和变更理由（必填）。;
+elseif (新增) than #blue
+endif
+[role_sales: 保存草稿] <block_apply>
+label: 草稿;
+props: APP_SA06,DR;
+desc: 分配申请编号（DSG-），状态为“草稿”。负责人收到通知。草稿期间可修改内容。;
+[role_sales: 提交审批申请] <block_apply>
+label: 审批申请;
+props: APP_SA06;
+desc: 状态变为“审批中”，审批设置（MS0B）第一级的审批人收到通知。;
+if (审批判断) is (退回) than #red
+  [role_appr: 退回委托] <block_reject>
+  label: 已退回;
+  props: APP_CM01;
+  desc: 状态变为“已退回”。;
+  [role_sales: 修改后重新申请] <block_apply>
+  label: 重新申请;
+  props: APP_SA06;
+  desc: 修改内容后再次点击“审批申请”。;
+  [loop]
+else
+  [role_appr: 批准委托] <block_approve>
+  label: 批准;
+  props: APP_CM01;
+  desc: 逐级批准，通过最后一级后变为“未开始”。;
+endif
+[role_system: 通知负责人开工] <block_system>
+label: 未开始;
+desc: 负责人收到“请开始”的通知。;
+if (是否仍需要) is (不再需要) than #red
+  [role_sales: 取消委托] <block_end>
+  label: 已取消;
+  props: APP_SA06,DR;
+  desc: 填写理由后取消。完成前任何状态都可以；审批中时审批申请也一并撤回。流程到此结束。;
+elseif (继续) than #blue
+endif
+[role_design: 开始作业] <block_apply>
+label: 开始;
+props: APP_SA06,DR;
+desc: 状态变为“进行中”，申请人收到通知。之后仍可从“⋯”更改负责人和产品。;
+[role_design: 添加作业文件] <block_neutral>
+label: 作业文件;
+props: APP_SA06;
+desc: 在“文件”标签上传备忘、草图等（可选）。仅在未开始・进行中期间可添加。;
+[role_design: 登记到图纸] <block_apply>
+label: 登记图纸;
+props: APP_PD06,DV;
+desc: 从委托的“登记到图纸”打开，产品和订货方固定为委托的内容。以系列的下一个编号生成草稿版本。;
+[role_design: 完成委托] <block_apply>
+label: 已完成;
+props: APP_SA06,DR;
+desc: 仅当本委托产生了至少 1 个版本时可点击。状态变为“已完成”，申请人（报价时还有报价的销售负责人）收到通知。;
+if (成果检查) is (重画) than #red
+  [role_sales: 退回已完成] <block_reject>
+  label: 返工;
+  props: APP_SA06;
+  desc: 回到“进行中”，完成日被清除。不重新审批。负责人收到通知。;
+  [role_design: 重画后再完成] <block_apply>
+  label: 再次完成;
+  props: APP_PD06,APP_SA06;
+  desc: 登记新版本后再次点击“完成”。之前的版本保留。;
+  [loop]
+else
+endif
+[role_design: 提交版本确定] <block_apply>
+label: 版本确定;
+props: APP_PD06,DV;
+desc: 在画面上确认草稿版本，点击“确定”或“审批申请”。确定前规格和文件都可修改。;
+if (版本审批级) is (有) than #blue
+  if (审批判断) is (退回) than #red
+    [role_appr: 退回版本] <block_reject>
+    label: 已退回;
+    props: APP_CM01;
+    desc: 版本变为“已退回”。;
+    [role_design: 修改后重新申请] <block_apply>
+    label: 重新申请;
+    props: APP_PD06;
+    desc: 修改规格或文件后再次点击“审批申请”。;
+    [loop]
+  else
+    [role_appr: 批准版本] <block_approve>
+    label: 批准;
+    props: APP_CM01;
+    desc: 通过审批设置“图纸版本”的各级后变为“已确定”。;
+  endif
+elseif (无) than #blue
+  [role_design: 直接确定] <block_approve>
+  label: 已确定;
+  props: APP_PD06;
+  desc: 没有审批级时，点击“确定”即可确定。;
+endif
+[role_system: 切换最新图纸] <block_system>
+label: 最新图纸;
+desc: 该系列的“最新”移到此版本。不影响其他订货方的系列。产品主数据的规格也读取此版本。;
+if (工单图纸) is (固定) than #purple
+  [role_prod: 固定使用版本] <block_apply>
+  label: 固定;
+  props: APP_PD02,WO;
+  desc: 只能选择已确定的版本。之后即使修订，现场看到的图纸也不变；被固定的版本不能再修改。;
+elseif (不固定) than #purple
+  [role_system: 每次显示最新] <block_system>
+  label: 自动选择;
+  desc: 订货方系列的最新版 → 没有则为通用系列的最新版。不使用其他客户的系列。;
+endif

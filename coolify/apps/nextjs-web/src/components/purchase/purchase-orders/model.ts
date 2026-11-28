@@ -1,9 +1,10 @@
 /**
  * model.ts — 素材発注書 (PU02) view-model types + pure helpers.
  *
- * Model (app.material_purchase_orders — uuid PK + po_number 文字列 unique):
- *   発注番号 PO-YYYYMM-NNNNN は nextDocumentNumber("PURCHASE") で採番して
- *   文字列保存する。URL id = po_number。
+ * Model (app.material_purchase_orders — uuid PK + doc_ref unique):
+ *   発注番号 PO-FFFF-NNNNN は DB が INSERT 時に払い出す（自社法人 × 会計年度）。
+ *   画面の poNumber は **id の姿**（`CKK~PO-2026-00001`）— URL と Server Action に
+ *   そのまま渡す。表示は docNo / <DocNumber> で番号だけにする。
  *   承認フロー DRAFT→REQUESTED→APPROVED→ORDERED→COMPLETED（+CANCELLED）は
  *   遷移列（requestedAt/By …）+ history Json で記録する（指示書と同型）。
  *
@@ -21,7 +22,10 @@ export type PurchaseStatus =
 
 /** 一覧 (PU02) の1行。 */
 export interface PurchaseOrderRow {
+  /** id の姿（`CKK~PO-2026-00001`）。 */
   poNumber: string;
+  /** 旧番号（PO-YYYYMM-NNNNN）。検索用。 */
+  legacyNumber: string | null;
   supplierName: string;
   itemCount: number;
   totalAmount: number;
@@ -33,8 +37,8 @@ export interface PurchaseOrderRow {
 /** 発注明細（material_purchase_order_items）。 */
 export interface PurchaseOrderItemView {
   id: string;
-  /** 素材の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  materialId: string;
+  /** 選んだ素材の品目 id（items.id）を文字列で保持 — SearchSelect の値と揃える。 */
+  itemId: string;
   materialCode: string;
   materialName: string;
   plantId: string | null;
@@ -62,12 +66,15 @@ export interface PurchaseHistoryView {
 export interface PurchaseOrderView {
   /** DB uuid — 内部参照用。 */
   id: string;
+  /** id の姿（`CKK~PO-2026-00001`）。 */
   poNumber: string;
+  /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
+  legacyNumber: string | null;
   supplierBpId: string;
   supplierName: string;
   /** 作成者の表示名（システム作成は null）。 */
   createdByName: string | null;
-  /** 変換元の購買依頼番号（PU01 から作成された場合のみ）。 */
+  /** 変換元の購買依頼（PU01 から作成された場合のみ）。id の姿（`CKK~PRQ-…`）。 */
   sourceRequestNumber: string | null;
   status: PurchaseStatus;
   totalAmount: number;

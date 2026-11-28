@@ -46,7 +46,9 @@ VIEW v_labor  -- one row per employee per day (use for most questions)
   company, is_active,
   work_minutes / work_hours, overtime_minutes / overtime_hours,
   overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
-  pto_minutes / pto_hours, clock_in_count, plan_start, plan_end
+  pto_minutes / pto_hours, clock_in_count, plan_start, plan_end,
+  scheduled_minutes, holiday_minutes, holiday_night_minutes,
+  absence_part_minutes, absence_leave_minutes  (NULL before 2026-09 layout change)
 TABLE hr_records         -- raw daily rows
 TABLE employees          -- employee_code -> username
 TABLE kot_employees      -- employee_code -> name
@@ -180,7 +182,9 @@ def query_labor_data(sql: str) -> str:
               department, position, company, is_active,
               work_minutes, work_hours, overtime_minutes, overtime_hours,
               overtime_night_minutes, night_allowance_minutes, leave_late_minutes,
-              pto_minutes, pto_hours, clock_in_count, plan_start, plan_end)
+              pto_minutes, pto_hours, clock_in_count, plan_start, plan_end,
+              scheduled_minutes, holiday_minutes, holiday_night_minutes,
+              absence_part_minutes, absence_leave_minutes)
       -- one row per employee per day. *_minutes are minutes, *_hours are hours.
       -- Label people by employee_name. The date column is named `date`.
       -- position = 役職 (係長/課長/部長…): NULL = regular staff, non-NULL = manager/leader.
@@ -245,7 +249,14 @@ def query_business_data(sql: str) -> str:
       v_products(id, name_ja, material_type_name, diameter_mm, length_mm,
         unit, is_active)
       v_product_inventory(product_name, plant_name, storage_location_name,
-        lot_number, quantity, reserved_quantity, is_semi_finished, updated_at)
+        lot_number, quantity, reserved_quantity, is_semi_finished, updated_at,
+        wip_state, aimed_product_name, finished_diameter_mm,
+        finished_length_mm)
+      v_wip_inventory(material_type_name, diameter_mm, length_mm, wip_state,
+        is_unclassified, finished_diameter_mm, finished_length_mm,
+        aimed_product_name, plant_name, storage_location_name, lot_number,
+        quantity, reserved_quantity, available_quantity,
+        source_process_step_name, source_work_order_no, stocked_at, age_days)
       v_material_inventory(material_name, plant_name, storage_location_name,
         quantity, reserved_quantity, unit, updated_at)
       v_delivery_orders(delivery_order_no, type, status, customer_name,

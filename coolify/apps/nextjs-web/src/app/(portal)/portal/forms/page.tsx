@@ -5,7 +5,7 @@
  * users.id への FK なので、別途スキーマ変更が要る）。
  */
 
-import { Card, Group, Stack, Text, Title, UnstyledButton } from "@mantine/core";
+import { Card, Group, Stack, Text, Title } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
@@ -31,10 +31,16 @@ export default async function PortalFormsPage() {
       ) : (
         forms.map((f) => (
           // カード全体を押せるようにする（狭い画面で題名の文字だけを狙わせない）。
-          <UnstyledButton
-            component={Link}
+          // Server Component なので Link を直接使う（`component={Link}` で
+          // クライアントの部品へ関数を渡すと描画時に落ちる）。
+          <Link
             href={`/portal/forms/${encodeURIComponent(f.code)}`}
             key={f.code}
+            style={{
+              color: "inherit",
+              display: "block",
+              textDecoration: "none",
+            }}
           >
             <Card padding="md" radius="md" withBorder>
               <Group gap="sm" justify="space-between" wrap="nowrap">
@@ -51,7 +57,7 @@ export default async function PortalFormsPage() {
                 </Group>
               </Group>
             </Card>
-          </UnstyledButton>
+          </Link>
         ))
       )}
     </Stack>

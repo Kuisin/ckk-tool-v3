@@ -215,7 +215,7 @@ CARDS = [
          table="v_order_lines", date_col="order_date", cur=True,
          q=dict(fields=["order_line_no", "customer_name", "sales_staff", "product_name",
                         "quantity", "amount", "status"],
-                order_by=[("desc", "acceptance_year_month"), ("desc", "acceptance_seq"),
+                order_by=[("desc", "order_line_no"),
                           ("desc", "branch")],
                 limit=20)),
     # 生産進捗（通貨 = 製品の通貨。工程は started_at 基準・通貨対象外）
@@ -242,7 +242,7 @@ CARDS = [
          q=dict(fields=["work_order_no", "lot_number", "product_name", "planned_quantity",
                         "created_by_name", "status", "approval_status"],
                 filters=[("=", "status", "IN_PROGRESS", "PENDING_APPROVAL", "APPROVED")],
-                order_by=[("desc", "year_month"), ("desc", "seq")], limit=20)),
+                order_by=[("desc", "fiscal_year"), ("desc", "seq")], limit=20)),
     # 請求
     dict(key="inv_total", name="請求書 総数", display="scalar",
          table="v_invoices", date_col="created_at", cur=True,

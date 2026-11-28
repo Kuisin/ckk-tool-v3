@@ -325,7 +325,9 @@ export function KioskCardDetailView({
             value={
               <Group gap={4} wrap="nowrap">
                 <Badge color={card.pinSet ? "blue" : "gray"} variant="light">
-                  {card.pinSet ? "設定済" : tr("common.notSet2")}
+                  {card.pinSet
+                    ? tr("settings.kiosk.pinConfigured")
+                    : tr("common.notSet2")}
                 </Badge>
                 {card.pinLocked && (
                   <Badge color="red" variant="light">

@@ -52,18 +52,28 @@ import {
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DefectRecordForm } from "@/components/production/DefectRecordForm";
+import { SeriesMemoReadOnly } from "@/components/production/design-files/SeriesMemoSection";
+import { StepProgramsPanel } from "@/components/production/design-files/StepProgramsPanel";
 import {
   InspectionApprovalPanel,
   InspectionRecordForm,
 } from "@/components/production/InspectionRecordForm";
+import { StepDueDateBadge } from "@/components/production/StepDueDateBadge";
 import { StepPlanActualPanel } from "@/components/production/StepPlanActualPanel";
 import { StepQuantityForm } from "@/components/production/StepQuantityForm";
+import {
+  EMPTY_WIP_DRAFT,
+  WipRecordingFields,
+  wipRecordingCheck,
+} from "@/components/production/WipRecordingFields";
 import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { StepProgramsView } from "@/lib/design-programs";
+import type { SeriesMemoView } from "@/lib/design-series-memo";
 import { missingInspectionSheets } from "@/lib/inspection-core";
 import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
@@ -71,13 +81,23 @@ import { StepInspectionSheetModal } from "./StepInspectionSheetModal";
 
 const BASE_PATH = "/production/work-orders";
 
-export function StepExecutionView({ data }: { data: StepExecutionData }) {
+export function StepExecutionView({
+  data,
+  programs,
+  seriesMemo,
+}: {
+  data: StepExecutionData;
+  /** この工程の加工プログラム（指示書の図面の版から）。 */
+  programs?: StepProgramsView;
+  /** この指示書が使う図面系列のメモ（加工プログラムと同じ規則で選んだ系列）。 */
+  seriesMemo?: SeriesMemoView | null;
+}) {
   const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { step, workOrderNumber } = data;
-  // 書類番号 WO-YYYYMM-NNNNN（内部キーは通し連番の int のまま）。
+  // 書類番号 WOR-FFFF-NNNNN（表示専用。内部キーは通し連番の int のまま）。
   const woLabel = data.workOrderDocNumber;
 
   // 中断 / 巻き戻し 理由モーダル
@@ -104,7 +124,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
-  const qtyLabels = localizedQuantityLabels(tr, step.quantityTracking);
+  const qtyLabels = localizedQuantityLabels(
+    tr,
+    step.quantityTracking,
+    step.code,
+  );
   const lockedByOther =
     step.sessionLockedBy != null && step.sessionLockedBy !== data.actorId;
   const woExecutable =
@@ -180,10 +204,27 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     });
   };
 
+  // 数量管理なし（NONE）の工程でも、「半製品在庫へ」で終わる分岐の終端なら
+  // 良品がそのまま仕掛品として在庫に入る — 仕上がり寸法はここで記録する。
+  const passThroughQuantity =
+    step.inputQuantity ?? data.expectedInputQuantity ?? data.plannedQuantity;
+  const [wipDraft, setWipDraft] = useState(EMPTY_WIP_DRAFT);
+  const passThroughWipCheck = wipRecordingCheck(
+    data.wipRecording,
+    { defectSemiFinished: 0, outputSuccess: passThroughQuantity },
+    wipDraft,
+  );
+
   /** 数量管理なし（NONE）工程の完了 — 数量はサーバーがパススルー生成する。 */
   const handleCompleteWithoutQuantities = () => {
     startTransition(async () => {
-      const result = await completeStep(workOrderNumber, step.id, null);
+      const result = await completeStep(
+        workOrderNumber,
+        step.id,
+        null,
+        undefined,
+        passThroughWipCheck.input,
+      );
       notifyResult(
         result,
         tr("common.stepCompleted"),
@@ -290,6 +331,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 count: data.plannedQuantity,
               })}
             </Text>
+            <StepDueDateBadge dueDate={step.dueDate} status={step.status} />
             {step.plannedWorkHours != null && (
               <Text c="dimmed" size="sm">
                 {tr("production.stepExecution.plannedWorkHours", {
@@ -442,6 +484,14 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                     step.inputQuantity ?? data.expectedInputQuantity ?? "—",
                 })}
               </Text>
+              <WipRecordingFields
+                defectSemiFinished={0}
+                disabled={!canOperate}
+                draft={wipDraft}
+                onChange={setWipDraft}
+                outputSuccess={passThroughQuantity}
+                view={data.wipRecording}
+              />
               {completeBlockedReason && (
                 <Alert
                   color="orange"
@@ -453,7 +503,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               )}
               <Button
                 color="green"
-                disabled={!canOperate || completeBlockedReason != null}
+                disabled={
+                  !canOperate ||
+                  completeBlockedReason != null ||
+                  passThroughWipCheck.issues.length > 0
+                }
                 leftSection={<IconCheck size={16} />}
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
@@ -467,12 +521,26 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             blockedReason={completeBlockedReason}
             defectTypeOptions={data.defectTypeOptions}
             disabled={!canOperate}
+            hideSemi={data.workOrderType === "REGRIND"}
             inputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
             mode={step.quantityTracking}
+            stepCode={step.code}
             stepId={step.id}
+            wipRecording={data.wipRecording}
             workOrderNumber={workOrderNumber}
           />
         ))}
+
+      {/* ── COMPLETED: 仕掛品として在庫に置いた分の仕上がり寸法 ── */}
+      {step.status === "COMPLETED" &&
+        (step.finishedDiameterMm != null || step.finishedLengthMm != null) && (
+          <Paper p="md" radius="md" withBorder>
+            <FieldValue
+              label={`${tr("production.wipRecording.title")} — ${tr("production.wipRecording.finishedSize")}`}
+              value={`φ${step.finishedDiameterMm ?? "—"} × ${step.finishedLengthMm ?? "—"}`}
+            />
+          </Paper>
+        )}
 
       {/* ── COMPLETED: 数量サマリ（読み取り専用） ── */}
       {step.status === "COMPLETED" &&
@@ -642,11 +710,18 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         />
       )}
 
+      {/* ── 加工プログラム（図面の版から。機械一致が先頭） ── */}
+      {programs && <StepProgramsPanel data={programs} />}
+
+      {/* ── 系列メモ（図面の全版で共通。読むだけ — 書き直しは設計図で） ── */}
+      {seriesMemo && <SeriesMemoReadOnly {...seriesMemo} />}
+
       {/* ── 作業計画 / 実績（分割記録・担当者・日付/時刻） ── */}
       <StepPlanActualPanel
         actuals={data.actuals}
         canEditPlans={canEditPlans}
         canOperate={canOperate}
+        dueDate={step.dueDate}
         expectedInputQuantity={step.inputQuantity ?? data.expectedInputQuantity}
         plans={data.plans}
         requiredPlanFields={data.requiredPlanFields}
@@ -672,6 +747,34 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Title order={5}>
               {tr("production.stepExecution.outsourcingSchedule")}
             </Title>
+            {/*
+              預け在庫の状態。依頼日を入れた時点で「外注が持っている」に
+              なり、入荷日で戻る。**日付ではなく伝票の有無が事実** — 日付だけ
+              直しても在庫は動かない（二度計上しないため）ので、どちらが
+              起きているかをここに出す。
+            */}
+            {step.outsourceIssueMovementNo ? (
+              <Text c="dimmed" size="xs">
+                {step.outsourceReturnMovementNo
+                  ? tr("production.stepExecution.custodyReturned", {
+                      issued: step.outsourceIssueMovementNo,
+                      returned: step.outsourceReturnMovementNo,
+                    })
+                  : tr("production.stepExecution.custodyHeld", {
+                      // 計上したのと同じ規則（受入数、無ければ予定数量）。
+                      quantity: step.inputQuantity ?? data.plannedQuantity,
+                      supplier: step.supplierName ?? "—",
+                      movement: step.outsourceIssueMovementNo,
+                    })}
+              </Text>
+            ) : null}
+            {/* 外注依頼の番号（OUT-…）。依頼日を保存すると DB が払い出す。 */}
+            {step.outsourceOrderNumber ? (
+              <Text size="sm">
+                {tr("common.requestNumber")}{" "}
+                <DocNumber>{step.outsourceOrderNumber}</DocNumber>
+              </Text>
+            ) : null}
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable

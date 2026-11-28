@@ -85,6 +85,194 @@ docker rm -f ckk-shots-db              # 後始末
 **書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
 実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
 
+
+### URL に載せる画面状態（e2e-url-state.ts）
+
+`hooks/useUrlState.ts`（中身は nuqs）の通し確認。**日本語入力の変換中に検索欄が
+壊れない**ことを、CDP の `Input.imeSetComposition` で実際の変換を起こして見る
+（Playwright の `keyboard.type` は composition を起こさないので素通りする）。
+ほかに ページのリセット・既定値の省略・共有リンクの `sort` / `tab`・戻る・
+server モードの RSC 再取得。DB には何も書かないので何度流してもよい。
+
+```bash
+APP_URL=http://localhost:3100 pnpm exec tsx e2e-url-state.ts
+```
+
+このフックか nuqs の版を触ったら流すこと。
+
+### クライアントが取りに行く読み取り（e2e-client-reads.ts）
+
+TanStack Query に載せた 4 か所（SearchSelect / F4 / ファイル管理 / 版の確認）の
+通し確認。応答をわざと遅らせて、**打鍵の追い越しで古い結果が残らない**ことと、
+**一度引いた入力がキャッシュから即座に出る**ことを見る。ほかに、置いている間は
+検索しに行かない・F4 は検索ボタンでだけ引く・管理者にアップロードが出る。
+DB には何も書かない。
+
+```bash
+APP_URL=http://localhost:3100 pnpm exec tsx e2e-client-reads.ts
+```
+
+## 全画面の読み込み確認（e2e:pages）
+
+**「全部の画面がエラー無しに開く」を合否で言う**試験（`page-load.spec.ts`）。
+単体試験は純ロジックしか見ず、`pnpm build` は型とバンドルしか見ないので、
+「ページを開いたら RSC が throw する / hydration が割れる / 翻訳鍵が無い /
+移設したパスが 404」は実際に開くまで分からない。`audit-crawl.ts`（診断・報告）と
+同じ巡り方を Playwright の 1 画面 = 1 テストに落としたもの。
+
+```bash
+pnpm e2e:pages                 # 使い捨て DB → シード → build → 起動 → 試験 → 破棄
+pnpm e2e:pages -- --no-build   # .next が最新ならビルドを飛ばす
+pnpm e2e:pages -- --reuse      # APP_URL（既定 :3100）の起動済みスタックに対して試験だけ
+```
+
+巡る対象は 3 種: `src/app/(dashboard)/**/page.tsx` の静的ルート全部、
+`manifest.ts` の撮影パス（固定シードの実データを指す詳細・編集・タブ付き URL）、
+各一覧の先頭行から着く詳細とその `/edit`。1 画面ごとに HTTP 4xx/5xx・/login への
+弾き・pageerror・console.error・本文の `MISSING_MESSAGE` / `[object Object]` /
+`Invalid Date` / `NaN` / `undefined` を見る。データ由来で常に出るノイズ
+（写真の無いデモユーザーの avatar 404 など）は spec の `IGNORE_CONSOLE` に理由付きで置く。
+
+既定の名前・ポートは撮影と**わざと違える**（`ckk-pages-db` / DB :55452 / app :3120）
+— 同じ機械で別のワークツリーが撮影中でも互いのコンテナを消さないため。
+結果は `/tmp/page-load-report.json`（`PAGES_REPORT` で変更可）。
+
+## 機能ごとの通し確認と画面の記録（scenarios）
+
+**1 つの機能が、実際の画面でそう動くこと**を確かめ、**手順ごとの画面を残す**。
+合否だけでなく、人（と AI）が後から目で見て確かめるためのもの。
+
+```bash
+pnpm scenarios                      # 全部を並列に（既定 4 並列）→ .verify-out/scenarios/index.html
+pnpm scenarios --only a,b           # その id だけ（他の前回結果はレポートに残る）
+pnpm scenarios --no-build           # .next が今の変更で作られているとき
+pnpm scenarios --list               # 登録されている id
+pnpm scenarios --inline             # 画像を埋め込んだ 1 ファイル（report.html）も書く
+pnpm scenarios --serve --only <id>  # 走らせずに、その 1 本ぶんの DB とアプリだけ立てて待つ
+```
+
+仕組み（`scripts/scenarios.ts`）:
+
+1. ひな形の DB を 1 つ用意する（使い捨て Postgres + デモシード。起動済みなら使い回す —
+   マイグレーションやシードを変えたら `--fresh`）
+2. シナリオ 1 本ごとに `CREATE DATABASE … TEMPLATE` で**複製**し、その DB に向けた
+   アプリを空きポートで起動して走らせ、終わったら消す
+
+だから各シナリオは**シード直後の状態から始まり、互いに独立**で、並列に走らせても
+何度流しても同じ結果になる（複製は 1 秒かからない）。`pdf: true` のシナリオがあれば
+Gotenberg も起動し、PDF を実際に描いて 1 ページ目を画像にする（要 `pdftotext` / `gs`）。
+`kiosk: true` なら共有端末アプリも同じ DB で起動する。`storage: true` なら
+ファイルの保存先（SeaweedFS）の代わりにメモリだけの Filer もどき（PUT / GET / HEAD /
+DELETE）を 1 本ごとに立てて `SEAWEED_FILER_URL` を渡す — 画像のアップロード
+（社印・ロゴ）から PDF に刷られるまでを通しで確かめられる。無ければ保存先は無く、
+アップロードは失敗する。
+
+書き方（`scenarios/<id>.ts` → 分野ごとの `scenarios/group-*.ts` に登録）:
+
+```ts
+export const markingNumber: Scenario = {
+  id: "marking-number",
+  title: "印字通し番号 — 確定で採番される",
+  feature: "A 印字通し番号 (#974)",
+  user: "staff",                       // staff = demo2 / approver = demo_shot / admin = demo1
+  fixtures: ["scenarios/fixtures/marking-number.sql"],  // この 1 本の DB にだけ流す SQL（任意）
+  steps: [
+    {
+      caption: "注文請書を確定する — 明細ごとに印字番号が振られる",
+      run: async (s) => {
+        await s.goto("/sales/order-acceptances/…");
+        await s.click(s.page.getByRole("button", { name: "確定", exact: true }));
+        await s.shot("確定の確認");                       // 途中の画面を撮る
+        s.check("印字番号は 200000 から", s.sql("select …") === "200000", s.sql("select …"));
+      },
+    },
+  ],
+};
+```
+
+`s` は `Walk`（`click` / `fill` / `pick` / `pickDate` / `menu` / `see` / `switchUser` …）に
+`shot` / `check` / `checkVisible` / `sql` / `sqlRows` / `sqlExec` / `pdf` / `openKiosk` を
+足したもの（`scenarios/scn.ts`）。決まりごと:
+
+- **手順の終わりには自動で 1 枚撮る。** 途中（入力し終えたフォーム・開いたモーダル）を
+  見せたいときだけ `s.shot("ラベル")`。
+- **`s.check` は落ちても止めない**（1 回で問題を全部並べる）。第 3 引数に実測値を渡す。
+  先へ進めないときは throw する（`s.see` は出なければ throw）— 残りの手順は skipped。
+- **確かめる対象の操作は画面で行う。** 準備（別の法人・在庫・進んだ状態の指示書）は
+  fixtures の SQL でよいが、機能そのものを SQL で済ませない。
+- 番号は決め打ちしない（`doc-number.ts` の `docNumber("QOT")` / `docUrl(…)`）。
+- **不具合を見つけたら、正しい挙動を確かめる check のまま残す**（通るように弱めない）。
+- 既存の `e2e-*.ts` は `kind: "script"` で 1 本として登録できる（標準出力の
+  `PASS` / `FAIL` 行と `SHOT_DIR` の画像を拾う）。
+
+出力は `.verify-out/scenarios/<id>/`（`NN.jpg`・`result.json`・`run.log`・`app.log`・
+止まった手順の `step-N-aria.txt`）。CI では動かさない — 直したあと人が流して見る。
+
+## 業務の通し操作と動画（walk:check / docs:videos）
+
+販売 / 購買 / 生産 / 出荷 / 請求 の流れを、マニュアルのプロセス編と同じ順に
+**実際に画面で最後まで行う**（書類を作り、承認を依頼し、別の人が承認し、出荷し、
+請求書を出す）。1 本 = プロセス編の 1 ページ（`walkthroughs/<分野>.ts`）。
+
+同じ 1 本を 2 通りに走らせる:
+
+```bash
+pnpm walk:check                       # 検査 — 待たずに走らせ、止まれば落ちる（約 1 分 + ビルド）
+pnpm docs:videos --out /tmp/videos    # 録画 — 人が追える速さで走らせ、動画を書き出す（約 10 分 + ビルド）
+pnpm docs:videos --only process-sales # 1 本だけ撮り直す（他は前回のものを残す）
+```
+
+どちらも 使い捨て DB を立ててシード → 本番ビルド → 起動 → 実行 → 全部破棄、まで
+1 コマンドで行う（`scripts/walkthroughs.ts`。既定は `ckk-walk-db` / DB :55462 /
+app :3130）。`--reuse` は起動済みのスタックに対して走らせるが、**DB はシード直後で
+あること** — 通し操作は書類を作って先へ進めるので、同じ DB で 2 回目は通らない。
+
+**動画は検査の録画そのもの**なので、「動画では動くのに実際は壊れている」も
+「検査は通るのに動画が古い手順」も起きない。録画用の「間」・カーソル・赤枠は
+`walkthroughs/walk.ts` だけが持ち、各ウォークスルーは操作の内容しか書かない
+（`w.click` / `w.fill` / `w.pick` / `w.menu` / `w.see` / `w.say` / `w.switchUser`）。
+
+| | check | record |
+|---|---|---|
+| どこで | CI の `walkthroughs` ジョブ（**昇格 PR では必ず**）・`pnpm check` | Coolify の `manual-videos-*` アプリ・手元 |
+| 速さ | 待たない | カーソルを動かし、赤枠で示し、一呼吸おく |
+| 残すもの | 落ちたときだけ 画面・動画・トレース（`test-results/walkthroughs/`） | `<id>.webm` / `<id>.vtt`（字幕 = 手順）/ `<id>.jpg` / `manifest.json` |
+
+**動画は git に入れない。** 録画のたびにバイト列が変わるので、入れると撮り直すたびに
+リポジトリが数 MB ずつ育つ。リポジトリにあるのはスクリプトだけで、動画はデプロイ時に
+録る（`coolify/apps/manual-videos/`）。
+
+決まりごと:
+
+- **画面だけで操作する。** SQL で状態を作らない（下の e2e-*.ts は承認や出荷書の作成を
+  `docker exec psql` で済ませているが、動画は実際の押し方を見せるものなので近道を
+  すると嘘になる）。始まりの状態が足りないときはデモシードを直す。
+- **依頼する人と承認する人を分ける。** 担当者 = `demo2`（承認グループに居ない）、
+  承認者 = `demo_shot`。`w.switchUser` は cookie を差し替えるだけでログイン画面を
+  通さない（ログインは 15 分に 5 回失敗で締め出される）。
+- **日付は「今日」か「来月の N 日」**（`w.pickDate`）。固定の年月日を書くと、いつか
+  過去の日付になって検証で弾かれる。
+- **状態が変わったことを確かめてから次へ進む。** 押した直後に画面のどこかにある語
+  （手続き状況の段の名前など）を待つと、サーバーの処理が終わる前に通ってしまう。
+  状態バッジの語（`承認済` を完全一致で、など）か、その状態でしか出ない文を待つ。
+- 5 本は互いに独立（前の 1 本が作った書類を次の 1 本は使わない）。1 本だけ撮り直せる
+  ようにするためと、1 本が落ちても後ろが巻き添えにならないようにするため。
+- 字幕は日本語。利用者に見える文言なので用語は `_specs/i18n-glossary.md` に従う。
+  字幕には 2 種類ある:
+  - **手順の見出し**（`caption`）— 章の題にもなる。「何をするか — なぜ・何が起きるか」
+  - **案内**（`await w.say("…")`）— **操作の前に**呼ぶ。「この欄には何を入れるか」と
+    「別の場合はどうなるか」（価格表に無い製品・ユーザー直送・一部だけ届いた … ）を言う。
+    1 枚 2 行まで。録画では読む時間だけ待ち、check では待たない。
+  案内の中身は**操作方法のページの入力欄の説明**（`### 見出し [#field-x]` の最初の段落）
+  から取る — 動画だけが別のことを言わないように。画面で確かめていないことは書かない。
+- プレビュー（再生する前の画像）は、題と手順の一覧を書いたタイトルカード。録画の
+  途中の画面は使わない（何の動画かが分からない）。`walkthroughs.spec.ts` が録画とは
+  別のコンテキストで描く。
+
+足すとき: `walkthroughs/<id>.ts` を書いて `walkthroughs/index.ts` に登録 →
+`WALK_DEBUG=1` を付けて走らせると、止まった画面の構造（aria スナップショット）が
+端末に出る → マニュアルのページの frontmatter `videos:` に id を足す。
+
 ## 撮影の追加手順
 
 1. `manifest.ts` にエントリを足す（`id` / `docPage` / `path` / 必要なら `steps`）。
@@ -186,12 +374,115 @@ pnpm exec tsx audit-crawl.ts            # 両方。--web / --kiosk で片方だ�
 結果は標準出力の要約と `/tmp/audit-crawl-{web,kiosk}.json`。Gotenberg / SeaweedFS が
 無いので PDF プレビューと図面サムネイルの 502/404 は出る（環境）。
 
-**通し確認 3 本（検査承認 / 出荷+最終検査 / smoke-flows）は「1 回の種に 1 回だけ」。**
+**通し確認 4 本（検査承認 / 出荷+最終検査 / 在庫不足の出荷 / smoke-flows）は
+「1 回の種に 1 回だけ」。**
 2 回目は状態が残って落ちる — 検査承認は 1 回目で承認を消費し、出荷は工程を進め、
-smoke-flows は列設定を保存する。落ちたら中身を疑う前に
-`docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
+在庫不足の出荷は出荷書を出荷済にし、smoke-flows は列設定を保存する。落ちたら
+中身を疑う前に `docker rm -f ckk-shots-db` → `pnpm docs:seed` から作り直すこと。
 `e2e-shipping-and-final-inspection.ts` は `e2e-fixtures.sql`、
-`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql` が**必須**。
+`e2e-kiosk-inspection-approval.ts` は `e2e-kiosk-fixtures.sql`、
+`e2e-ship-shortage.ts` は `e2e-ship-shortage-fixtures.sql` が**必須**。
+**`e2e-regrind.ts` だけは自分で fixtures を流し直す**ので、何度でも続けて回せる
+（前の実行が作った指示書が残っていると受注残が 0 になり、本題と関係ない
+落ち方をするため — 実際に踏んだ）。
+
+### 在庫が足りないまま出荷する（e2e-ship-shortage.ts）
+
+出荷を押したときに出る「在庫が足りません」の確認と、そのまま出したときの
+台帳（マイナス・伝票の備考）を、実際に操作して確かめる。**デモシードには
+在庫の足りない確定済み出荷書が無い**ので、fixtures が 1 通だけ作る
+（品目 9003 × 実在しないロット 9999 × 4 本 — 利用者が dev で踏んだ形）。
+
+```
+SHOT_DB_CONTAINER=ckk-ship-db SHOT_DB_PORT=55443 pnpm docs:seed
+docker exec -i ckk-ship-db psql -U postgres -d ckk -f - < e2e-ship-shortage-fixtures.sql
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3105 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3105 pnpm exec tsx e2e-ship-shortage.ts
+```
+
+見ているのは 13 点 — 足りないときにダイアログが出る / 品目と不足数が出る /
+「在庫を見る」が ST03 を品目つきで指す / やめると出荷されない / 出すと出荷され
+注意が残る / バケットがマイナスになり伝票に「在庫不足のまま出庫」が 1 行立つ /
+足りているときはダイアログが出ず、普通に減る。
+
+### 工程マスタの「使える指示書種別」（e2e-process-step-types.ts）
+
+どの工程をどの種別の指示書に載せられるかは**工程マスタ (MS08) が持つ**
+（`process_step_catalog.allowed_work_order_types`）。単体試験は純関数
+（`stepAllowedForType`）しか見られないので、「マスタを変えたら指示書ビルダーの
+候補が変わる」という一連はここでしか確かめられない。
+
+```
+SHOT_DB_CONTAINER=ckk-wotype-db SHOT_DB_PORT=55492 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3126 で起動（APP_ENV=dev）
+APP_URL=http://localhost:3126 SHOT_DB_CONTAINER=ckk-wotype-db \
+  pnpm exec tsx e2e-process-step-types.ts
+```
+
+見ているのは 8 点 — 一覧が指示書種別で絞れる / 編集画面に 3 つのチェックボックスが
+出る / **開始工程（製品出し（在庫））は選べず理由が出る** / 変更前は再研磨の候補に
+円筒加工が無い / 保存すると行に入る / **設定を変えると再研磨の候補に円筒加工が出る**
+/ 1 つも選ばずには保存できない / 画面にエラーが無い。
+
+**fixtures は自分で流し直す**（先頭で 円筒加工 を既定へ戻す）ので何度でも続けて
+回せる — 戻さないと 2 回目から「変更前」の検査が本題と関係なく落ちる。
+
+**候補の照合はラベルの先頭の語で行う。** 工程の候補は「工程名 + バッジ（同期 /
+社内 / 要: …）」というラベルなので、`getByRole("checkbox", { name, exact: true })`
+は**必ず 0 件になる** — 0 件を「出ていない」と読むと、本当は出ている工程まで
+「出ていない」と判定して試験が嘘をつく（実際に一度そうなった）。
+
+### 再研磨（e2e-regrind.ts）
+
+顧客の工具を預かって研ぎ直す一連（再研磨品目 + 他社製品 → 再研磨の明細 → 指示書 →
+製品受入 → 完了 → 出荷 → 請求単価）を、画面から操作して確かめる。**見たいのは台帳** —
+顧客の物が自社在庫に化けないこと — で、台帳は画面に出ないので 1 手ごとに SQL で裏を取る。
+デモシードには再研磨品目も他社製品も再研磨工程リストも再研磨の明細も無いので
+fixtures が作る。
+
+再研磨の明細は**品目を 2 つ指す**（値段は役務、在庫と出荷は工具）ので、fixtures も
+2 行作る: 再研磨品目 9102（標準価格 ¥1,200 + 顧客の価格表 ¥1,500）と、研ぎ直す
+工具 = 他社製品 9101（値段は持たない）。
+
+```
+SHOT_DB_CONTAINER=ckk-regrind-db SHOT_DB_PORT=55462 pnpm docs:seed
+# nextjs-web を同じ DATABASE_URL で本番ビルドして :3106 で起動
+APP_URL=http://localhost:3106 SHOT_DB_CONTAINER=ckk-regrind-db pnpm exec tsx e2e-regrind.ts
+```
+
+見ているのは 37 点 — 他社製品に製造工程リストのタブが出ない / 再研磨の明細に
+在庫照合が出ない / 明細の売り物が再研磨品目・工具は別の欄 / 指示書の種別が再研磨に
+固定され素材・保管場所の欄が消える / 再研磨工程リストの最新版が入る / 受入の数量欄が
+「受入本数・返却（再研磨不可）」になり半製品が選べない / 受入で預り品バケットに入り
+**自社在庫は 0 のまま** / 完了しても完成品の入庫が 1 行も立たず、返却分だけ預り品から
+落ちる / 詳細に 受入 10・返却 2・完成 8 が出る / 出荷は**所有者バケットから**出る /
+**請求単価が明細の再研磨品目の価格表から引かれる**（出荷明細が指す工具には値段が
+無いので、これは「請求は明細の品目を読む」ことの証明でもある。標準価格 ¥1,200 では
+なく価格表の ¥1,500 が勝つことも同時に見ている）/ 再研磨品目マスタ (MS0H) に条件と
+標準価格が並び、新規作成でコードが RGD- で採番される / 注文請書の明細エディタで
+種別を再研磨にすると欄が「再研磨品目 + 研ぎ直す工具」の 2 つになり、**価格表を
+持たない顧客の行には標準価格が画面に出る**（単価の表示はクライアント側で解決して
+いるので、画面が標準価格を知らないと「価格表なし」と出しながらサーバーは定価で
+保存する — 実際にそうなっていた）。
+
+最後の 2 つ（2026-10-18 追加）は、計画が先送りにしていた 2 つの穴を閉じた分:
+
+- **ST06 で預り品を訂正できる**（K）— 受入の計上後は工程の巻き戻しが禁止なので、
+  訂正口は手動入出庫しか無い。所有者の軸が無いと自社バケットへ落ちるので、
+  **預り品が動くこと**と**自社在庫が動かないこと**を両方見る。この時点で預り品は
+  0（H で全部返した）が行は残るので候補に出る — 数量 0 で候補から消すと
+  「返しきったあとに打ち直す」ができなくなるため、わざと数量で絞っていない。
+- **全量返却で指示書が閉じる**（L）— fixtures を作り直して 2 本目の指示書を建て、
+  受入 10 / 返却 10 で完了する。下流の未着手工程が畳まれ、**受入を完了した時点で**
+  指示書が COMPLETED になることと、理由と実行者（`cancelled_by` — コードベースの
+  他のどこでも書かれていない列）が残ることを見る。畳まないと「意味のない工程を
+  0 で押していく」までこの指示書は閉じない。
+
+**出荷書は下書きで作り、確定を画面から押す** — 請求単価は確定で焼き込まれるので、
+SQL で CONFIRMED にすると H4 が何も確かめていないことになる（実際に一度そうなった）。
+
+**承認は見ていない** — 再研磨でも製造分と同じ経路で固有の分岐が無いため、
+工程を動かすのに要るぶんだけ SQL で APPROVED にする。
 
 ## 通し確認を CI で回す（手動実行）
 

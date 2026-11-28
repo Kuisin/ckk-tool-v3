@@ -1,12 +1,15 @@
 /**
  * data.ts — 指示書 (app.work_orders) の server-side fetch/mapping.
  *
- * URL id = 書類番号 WO-YYYYMM-NNNNN（旧・生 int も受ける — resolveWorkOrderIdParam）。
- * 表示は書類番号、ロット番号（= work_order_number 通し連番 int）は別掲。
+ * URL id = ロット番号（= work_order_number 通し連番 int。法人をまたいで一意）。
+ * 書類番号 WOR-FFFF-NNNNN は DB が払い出す**表示専用**の番号で、同じ番号が
+ * 別の法人にもあり得る — URL に書類番号（旧番号でも）が来たら
+ * resolveWorkOrderIdParam がロット番号の URL へ転送する。
  * 承認履歴は history Json（{action,user,at,notes}）を displayName 解決して返す。
  */
 
 import { type Access, ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
+import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPanel";
 import type {
@@ -29,10 +32,17 @@ import { checkPermission } from "@/lib/authz";
 import { avatarUrl } from "@/lib/avatar";
 import { type Prisma, prisma } from "@/lib/db";
 import {
+  docIdOf,
   formatDocNumber,
+  formatMovementNumber,
+  isLegacyDocNumber,
+  isNewDocNumber,
+  orderLineIdOf,
   orderLineNumberOf,
   parseDocKey,
 } from "@/lib/doc-number";
+import { type PageSearchParams, searchParamsToQuery } from "@/lib/doc-param";
+import { parseDocId } from "@/lib/doc-ref-core";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import {
@@ -44,7 +54,10 @@ import {
   parseStoredSamples,
   samplingSpecFromRow,
 } from "@/lib/inspection-core";
+import { allocationMarkingRange } from "@/lib/marking-number";
 import { sumActualWorkHours } from "@/lib/step-work-hours";
+import { loadWipRecording } from "@/lib/wip-recording";
+import { wipSizeLabel } from "@/lib/wip-stock-core";
 import {
   fetchAllowedWorkLocationIds,
   fetchWorkLocationOptions,
@@ -52,6 +65,7 @@ import {
 } from "@/lib/work-locations";
 import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { shippableQuantity } from "@/lib/work-order-shipping-core";
+import { startWipView } from "@/lib/work-order-wip";
 import { planReadiness, requiredPlanFields } from "@/lib/work-plan-core";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
@@ -59,6 +73,7 @@ import {
   computeFinishedQuantity,
   effectiveLotInputMode,
   expectedInput,
+  regrindQuantities,
 } from "@/lib/workflow-core";
 import { workflowCoreT } from "@/lib/workflow-core-labels";
 
@@ -90,6 +105,32 @@ function parseDefectReasons(value: unknown): StepDefectReasonView[] {
 }
 
 const WO_INCLUDE = {
+  // 在庫の仕掛品から始めた指示書: 開始状態と、投入に選んだバケット。
+  startWipState: { select: { id: true, name: true, stepIds: true } },
+  wipDraws: {
+    select: {
+      inventoryId: true,
+      quantity: true,
+      inventory: {
+        select: {
+          lotNumber: true,
+          finishedDiameterMm: true,
+          finishedLengthMm: true,
+          item: {
+            select: {
+              name: true,
+              diameterMm: true,
+              lengthMm: true,
+              materialType: { select: { code: true, name: true } },
+            },
+          },
+          aimedItem: { select: { name: true } },
+          plant: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { sortOrder: "asc" as const },
+  },
   orderLineLinks: {
     include: {
       orderLine: { include: { acceptance: { include: { customerBp: true } } } },
@@ -97,8 +138,8 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   createdByUser: { select: { displayName: true } },
-  product: true,
-  material: true,
+  productItem: true,
+  materialItem: true,
   storageLocation: {
     select: { id: true, name: true, plant: { select: { name: true } } },
   },
@@ -111,7 +152,8 @@ const WO_INCLUDE = {
         select: {
           id: true,
           name: true,
-          productId: true,
+          kind: true,
+          itemId: true,
           versions: {
             select: { version: true },
             orderBy: { version: "desc" as const },
@@ -139,13 +181,12 @@ const WO_INCLUDE = {
     },
   },
   sourceWorkOrder: {
-    select: { workOrderNumber: true, yearMonth: true, seq: true },
+    select: { workOrderNumber: true, docRef: true },
   },
   copies: {
     select: {
       workOrderNumber: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       status: true,
       createdAt: true,
     },
@@ -159,8 +200,7 @@ const WO_INCLUDE = {
       sourceWorkOrder: {
         select: {
           workOrderNumber: true,
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           status: true,
         },
       },
@@ -174,8 +214,7 @@ const WO_INCLUDE = {
       targetWorkOrder: {
         select: {
           workOrderNumber: true,
-          yearMonth: true,
-          seq: true,
+          docRef: true,
           status: true,
         },
       },
@@ -187,6 +226,8 @@ const WO_INCLUDE = {
       processStep: true,
       plant: true,
       supplierBp: true,
+      // 外注依頼の番号（OUT-…）。依頼日が入ったときに DB が払い出す。
+      outsourceOrder: { select: { docNumber: true } },
       // 担当者（工程リストの「担当」）— 計画の割当ユーザー。写真は小サイズ。
       plans: {
         select: {
@@ -340,11 +381,7 @@ function stepAssignees(
 /** 複数割当の一覧表示ラベル（先頭の明細番号 + ほか n 件）。 */
 function orderLineListLabel(
   links: readonly {
-    orderLine: {
-      acceptanceYearMonth: string;
-      acceptanceSeq: number;
-      branch: number | null;
-    };
+    orderLine: { lineRef: string | null };
   }[],
   tr: Tr,
 ): string | null {
@@ -362,20 +399,15 @@ function orderLineListLabel(
 function mapRow(
   r: {
     workOrderNumber: number;
-    yearMonth: string;
-    seq: number;
-    orderLineLinks: {
-      orderLine: {
-        acceptanceYearMonth: string;
-        acceptanceSeq: number;
-        branch: number | null;
-      };
-    }[];
-    product: { name: unknown };
+    docRef: string;
+    legacyNumber: string | null;
+    orderLineLinks: { orderLine: { lineRef: string | null } }[];
+    productItem: { name: unknown };
     type: string;
     plannedQuantity: number;
     approvalStatus: string;
     status: string;
+    abortedAt: Date | null;
     requestedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -385,13 +417,16 @@ function mapRow(
   return {
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
+    legacyNumber: r.legacyNumber,
     createdAt: r.createdAt.toISOString(),
     orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
-    productName: localized(r.product.name as LocalizedText | null),
+    productName: localized(r.productItem.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     approvalStatus: r.approvalStatus,
     status: r.status,
+    aborted: r.abortedAt != null,
     requestedAt: iso(r.requestedAt),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -445,16 +480,12 @@ export async function fetchWorkOrders(
       orderLineLinks: {
         select: {
           orderLine: {
-            select: {
-              acceptanceYearMonth: true,
-              acceptanceSeq: true,
-              branch: true,
-            },
+            select: { lineRef: true },
           },
         },
         orderBy: { sortOrder: "asc" },
       },
-      product: true,
+      productItem: true,
     },
     orderBy: { workOrderNumber: "desc" },
   });
@@ -464,7 +495,7 @@ export async function fetchWorkOrders(
 /** ストリップ印刷（帯）の 1 件ぶん — 最小限の要約だけ。 */
 export interface WorkOrderStripView {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   docNumber: string;
   productName: string;
   /** 注文明細番号（在庫向けの独立指示書は null）。 */
@@ -473,7 +504,41 @@ export interface WorkOrderStripView {
   type: string;
   plannedQuantity: number;
   materialCode: string | null;
+  /**
+   * 印字番号（先頭の注文明細のもの）。1 本ずつ刻む範囲と明細ごとの番号。
+   * 在庫向け・採番前の明細は null。統合ロットで明細が複数あるときは
+   * `moreLines` に残りの件数を入れる（帯の幅に全部は載らない）。
+   */
+  marking: {
+    first: string;
+    last: string;
+    perLine: string;
+    moreLines: number;
+  } | null;
   createdAt: string;
+}
+
+/**
+ * 帯に載せる印字番号 — 採番済みの先頭明細 + 残り件数。分割した割当なら
+ * 分割の接頭辞で割当数量ぶん（lib/marking-number.ts allocationMarkingRange）。
+ */
+function stripMarking(
+  links: readonly {
+    quantity: number;
+    markingSplit: number | null;
+    orderLine: { quantity: number; markingBase: number | null };
+  }[],
+): WorkOrderStripView["marking"] {
+  const numbered = links.filter((l) => l.orderLine.markingBase != null);
+  const head = numbered[0];
+  if (!head || head.orderLine.markingBase == null) return null;
+  const { split: _split, ...range } = allocationMarkingRange({
+    base: head.orderLine.markingBase,
+    split: head.markingSplit,
+    lineQuantity: head.orderLine.quantity,
+    allocatedQuantity: head.quantity,
+  });
+  return { ...range, moreLines: numbered.length - 1 };
 }
 
 /**
@@ -493,15 +558,17 @@ export async function fetchWorkOrderStrips(
       ...workOrderScopeWhere(authz.access, authz.userId),
     },
     include: {
-      product: true,
-      material: { select: { code: true } },
+      productItem: true,
+      materialItem: { select: { code: true } },
       orderLineLinks: {
         select: {
+          quantity: true,
+          markingSplit: true,
           orderLine: {
             select: {
-              acceptanceYearMonth: true,
-              acceptanceSeq: true,
-              branch: true,
+              lineRef: true,
+              quantity: true,
+              markingBase: true,
               acceptance: {
                 select: { customerBp: { select: { name: true } } },
               },
@@ -536,7 +603,7 @@ export async function fetchWorkOrderStrips(
       return {
         workOrderNumber: r.workOrderNumber,
         docNumber: formatDocNumber("WOR", r),
-        productName: localized(r.product.name as LocalizedText | null),
+        productName: localized(r.productItem.name as LocalizedText | null),
         orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
         customerName:
           customers.length === 0
@@ -549,7 +616,8 @@ export async function fetchWorkOrderStrips(
               : customers[0],
         type: r.type,
         plannedQuantity: r.plannedQuantity,
-        materialCode: r.material?.code ?? null,
+        materialCode: r.materialItem?.code ?? null,
+        marking: stripMarking(r.orderLineLinks),
         createdAt: r.createdAt.toISOString(),
       };
     });
@@ -633,12 +701,38 @@ export async function fetchWorkOrder(
     })),
   );
 
+  // 開始状態の工程名（指示書の工程に載っていない工程も含むので工程マスタから）と、
+  // 投入する仕掛品にこの指示書がいま持っている予約。
+  const [startStepCatalog, wipReservations] = await Promise.all([
+    r.startWipState && r.startWipState.stepIds.length > 0
+      ? prisma.processStepCatalog.findMany({
+          where: { id: { in: r.startWipState.stepIds } },
+          select: { id: true, name: true },
+        })
+      : [],
+    r.wipDraws.length > 0
+      ? prisma.inventoryReservation.groupBy({
+          by: ["inventoryId"],
+          where: {
+            workOrderId: r.id,
+            inventoryType: "PRODUCT",
+            status: "RESERVED",
+            inventoryId: { in: r.wipDraws.map((d) => d.inventoryId) },
+          },
+          _sum: { quantity: true },
+        })
+      : [],
+  ]);
+  const wipReservedOf = new Map(
+    wipReservations.map((x) => [x.inventoryId, Number(x._sum.quantity ?? 0)]),
+  );
+
   const shipmentItems = await prisma.deliveryOrderItem.findMany({
     where: { lotNumber: r.workOrderNumber },
     select: {
       quantity: true,
       deliveryOrder: {
-        select: { yearMonth: true, seq: true, type: true, status: true },
+        select: { docRef: true, type: true, status: true },
       },
     },
   });
@@ -647,6 +741,8 @@ export async function fetchWorkOrder(
     id: r.id,
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
+    companyCode: parseDocId(r.docRef).companyCode,
+    legacyNumber: r.legacyNumber,
     status: r.status,
     approvalStatus: r.approvalStatus,
     requestedAt: iso(r.requestedAt),
@@ -654,7 +750,8 @@ export async function fetchWorkOrder(
     startedAt: iso(r.startedAt),
     completedAt: iso(r.completedAt),
     shipments: shipmentItems.map((it) => ({
-      number: formatDocNumber("DOR", it.deliveryOrder),
+      // 出荷書の id（`CKK~DOR-…`）— リンクにそのまま使う。表示は docNo。
+      number: docIdOf(it.deliveryOrder),
       type: it.deliveryOrder.type,
       status: it.deliveryOrder.status,
       quantity: it.quantity,
@@ -666,7 +763,8 @@ export async function fetchWorkOrder(
     notes: r.notes,
     orderLines: r.orderLineLinks.map((l) => ({
       orderLineId: l.orderLine.id,
-      number: orderLineNumberOf(l.orderLine) ?? "—",
+      // 注文明細の id（`CKK~ORD-…-01`）— リンクにそのまま使う。表示は docNo。
+      number: orderLineIdOf(l.orderLine) ?? "—",
       allocatedQuantity: l.quantity,
       lineQuantity: l.orderLine.quantity,
       deliveryDate: iso(l.orderLine.deliveryDate),
@@ -675,13 +773,15 @@ export async function fetchWorkOrder(
       ),
       status: l.orderLine.status,
       lotNumber: l.orderLine.lotNumber,
+      markingBase: l.orderLine.markingBase,
+      markingSplit: l.markingSplit,
     })),
     createdByName: r.createdByUser?.displayName ?? null,
-    productName: localized(r.product.name as LocalizedText | null),
-    materialId: r.materialId,
-    materialCode: r.material?.code ?? null,
-    materialName: r.material
-      ? localized(r.material.name as LocalizedText | null)
+    productName: localized(r.productItem.name as LocalizedText | null),
+    materialItemId: r.materialItemId,
+    materialCode: r.materialItem?.code ?? null,
+    materialName: r.materialItem
+      ? localized(r.materialItem.name as LocalizedText | null)
       : null,
     storageLocationId: r.storageLocationId,
     allowQuantityVariance: r.allowQuantityVariance,
@@ -691,14 +791,28 @@ export async function fetchWorkOrder(
           r.storageLocation.name as LocalizedText | null,
         )}`
       : null,
-    productId: r.productId,
+    productItemId: r.productItemId,
     routeVersionId: r.routeVersion?.id ?? null,
     routeId: r.routeVersion?.route.id ?? null,
+    routeKind: r.routeVersion?.route.kind ?? null,
     routeName: r.routeVersion
       ? localized(r.routeVersion.route.name as LocalizedText | null)
       : null,
     routeVersion: r.routeVersion?.version ?? null,
     routeLatestVersion: r.routeVersion?.route.versions[0]?.version ?? null,
+    // 再研磨の 3 つの本数（受入 / 返却 / 完成）— 定義は workflow-core.regrindQuantities。
+    regrind:
+      r.type === "REGRIND"
+        ? regrindQuantities(
+            r.steps.map((s) => ({
+              code: s.processStep.code,
+              status: s.status,
+              inputQuantity: s.inputQuantity,
+              outputDefectScrap: s.outputDefectScrap,
+            })),
+            finishedQuantity,
+          )
+        : null,
     prepRouteVersionId: r.prepRouteVersion?.id ?? null,
     prepRouteId: r.prepRouteVersion?.route.id ?? null,
     prepRouteName: r.prepRouteVersion
@@ -716,7 +830,6 @@ export async function fetchWorkOrder(
         workLocationRequired: s.processStep.workLocationRequired,
         planTimeRequired: s.processStep.planTimeRequired,
         planAssigneeRequired: s.processStep.planAssigneeRequired,
-        planQuantityRequired: s.processStep.planQuantityRequired,
         plans: s.plans,
       })),
       { workLocationsConfigured: locationsConfigured },
@@ -746,6 +859,49 @@ export async function fetchWorkOrder(
       status: l.targetWorkOrder.status,
       quantity: l.quantity,
     })),
+    startWip: startWipView({
+      state: r.startWipState,
+      overrideReason: r.wipOverrideReason,
+      workOrderProcessStepIds: r.steps.map((s) => s.processStepId),
+      stepNames: new Map(
+        startStepCatalog.map((c) => [
+          c.id,
+          localized(c.name as LocalizedText | null),
+        ]),
+      ),
+    }),
+    wipDraws: r.wipDraws.map((d) => {
+      const inv = d.inventory;
+      const mt = inv.item.materialType;
+      const size = wipSizeLabel(
+        inv.item.diameterMm == null ? null : Number(inv.item.diameterMm),
+        inv.item.lengthMm == null ? null : Number(inv.item.lengthMm),
+      );
+      const mtLabel = mt
+        ? mt.code || localized(mt.name as LocalizedText | null)
+        : null;
+      return {
+        inventoryId: d.inventoryId,
+        quantity: d.quantity,
+        blankLabel:
+          [mtLabel, size].filter(Boolean).join(" ") ||
+          localized(inv.item.name as LocalizedText | null),
+        finishedDiameterMm:
+          inv.finishedDiameterMm == null
+            ? null
+            : Number(inv.finishedDiameterMm),
+        finishedLengthMm:
+          inv.finishedLengthMm == null ? null : Number(inv.finishedLengthMm),
+        lotNumber: inv.lotNumber,
+        aimedProductName: inv.aimedItem
+          ? localized(inv.aimedItem.name as LocalizedText | null)
+          : null,
+        plantName: inv.plant
+          ? localized(inv.plant.name as LocalizedText | null)
+          : null,
+        reservedQuantity: wipReservedOf.get(d.inventoryId) ?? 0,
+      };
+    }),
     steps: r.steps.map((s) => ({
       id: s.id,
       processStepId: s.processStepId,
@@ -767,6 +923,7 @@ export async function fetchWorkOrder(
       supplierBpId: s.supplierBpId,
       plannedWorkHours:
         s.plannedWorkHours == null ? null : Number(s.plannedWorkHours),
+      dueDate: s.dueDate ? s.dueDate.toISOString().slice(0, 10) : null,
       lotInputMode: s.lotInputMode,
       lotText: s.lotText,
       supplierName: s.supplierBp
@@ -778,6 +935,7 @@ export async function fetchWorkOrder(
       outputDefectSemiFinished: s.outputDefectSemiFinished,
       outputDefectScrap: s.outputDefectScrap,
       outputDefectRework: s.outputDefectRework,
+      outsourceOrderNumber: s.outsourceOrder?.docNumber ?? null,
       outsourceRequestedAt: iso(s.outsourceRequestedAt),
       outsourceExpectedAt: iso(s.outsourceExpectedAt),
       completedAt: iso(s.completedAt),
@@ -835,7 +993,7 @@ export interface StepNavItem {
 
 export interface WorkOrderStepNav {
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   docNumber: string;
   createdAt: string;
   steps: StepNavItem[];
@@ -854,8 +1012,7 @@ export async function fetchWorkOrderStepNav(
     where: { workOrderNumber },
     select: {
       workOrderNumber: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       createdAt: true,
       createdBy: true,
       steps: {
@@ -942,9 +1099,9 @@ export async function fetchStepExecution(
     select: {
       id: true,
       status: true,
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       createdAt: true,
+      type: true,
       plannedQuantity: true,
       createdBy: true,
       steps: { select: { plantId: true } },
@@ -962,6 +1119,11 @@ export async function fetchStepExecution(
       processStep: true,
       plant: true,
       supplierBp: true,
+      // 外注へ出した／戻った入出庫伝票（預け在庫。番号を画面に出して辿れるように）
+      outsourceIssueMovement: { select: { docRef: true } },
+      outsourceReturnMovement: { select: { docRef: true } },
+      // 外注依頼の番号（OUT-…）。依頼日が入ったときに DB が払い出す。
+      outsourceOrder: { select: { docNumber: true } },
       // この工程に割り当てられた検査表テンプレート（工程単位）
       inspectionTemplates: {
         include: {
@@ -1024,7 +1186,6 @@ export async function fetchStepExecution(
         workLocationRequired: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
-        planQuantityRequired: true,
       },
     }),
   ]);
@@ -1221,12 +1382,14 @@ export async function fetchStepExecution(
     concurrentCount: a.concurrentCount,
   }));
 
+  const wipRecording = await loadWipRecording(step.id);
   return {
     actorId,
     workOrderNumber,
     workOrderDocNumber: formatDocNumber("WOR", wo),
     workOrderCreatedAt: wo.createdAt.toISOString(),
     workOrderStatus: wo.status,
+    workOrderType: wo.type,
     plannedQuantity: wo.plannedQuantity,
     step: {
       id: step.id,
@@ -1253,6 +1416,7 @@ export async function fetchStepExecution(
         : null,
       plannedWorkHours:
         step.plannedWorkHours == null ? null : Number(step.plannedWorkHours),
+      dueDate: step.dueDate ? step.dueDate.toISOString().slice(0, 10) : null,
       status: step.status,
       inputQuantity: step.inputQuantity,
       outputSuccessQuantity: step.outputSuccessQuantity,
@@ -1273,9 +1437,33 @@ export async function fetchStepExecution(
       outsourceReceivedAt: dateOnly(step.outsourceReceivedAt),
       outsourceCost:
         step.outsourceCost != null ? Number(step.outsourceCost) : null,
+      outsourceOrderNumber: step.outsourceOrder?.docNumber ?? null,
+      finishedDiameterMm:
+        step.finishedDiameterMm != null
+          ? Number(step.finishedDiameterMm)
+          : null,
+      finishedLengthMm:
+        step.finishedLengthMm != null ? Number(step.finishedLengthMm) : null,
+      outsourceIssueMovementNo: step.outsourceIssueMovement
+        ? formatMovementNumber(step.outsourceIssueMovement)
+        : null,
+      outsourceReturnMovementNo: step.outsourceReturnMovement
+        ? formatMovementNumber(step.outsourceReturnMovement)
+        : null,
     },
     canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),
+    wipRecording: wipRecording
+      ? {
+          ...wipRecording,
+          stepNames: Object.fromEntries(
+            Object.entries(wipRecording.stepNames).map(([id, name]) => [
+              id,
+              localized(name as LocalizedText | null, locale),
+            ]),
+          ),
+        }
+      : null,
     templates,
     templateOptions,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),
@@ -1302,7 +1490,6 @@ export async function fetchStepExecution(
         workLocationRequired: stepCatalog?.workLocationRequired,
         planTimeRequired: stepCatalog?.planTimeRequired,
         planAssigneeRequired: stepCatalog?.planAssigneeRequired,
-        planQuantityRequired: stepCatalog?.planQuantityRequired,
       },
       { workLocationsConfigured: allOptions.length > 0 },
     ),
@@ -1373,8 +1560,8 @@ export interface InspectionTemplateOption {
   value: string; // String(内部 id)
   label: string;
   relatedProcessStepId: number | null;
-  /** 対象製品。null = どの製品にも使える（汎用）。 */
-  productId: number | null;
+  /** 対象製品の**品目 id（items.id）**。null = どの製品にも使える（汎用）。 */
+  itemId: number | null;
 }
 
 /**
@@ -1394,7 +1581,7 @@ export async function fetchInspectionTemplateOptions(): Promise<
       value: String(r.id),
       label: `${r.code} v${r.version} ${localized(r.name as LocalizedText | null)}`,
       relatedProcessStepId: r.relatedProcessStepId,
-      productId: r.productId,
+      itemId: r.itemId,
     }));
 }
 
@@ -1417,38 +1604,94 @@ export async function fetchSupplierOptions(): Promise<Option[]> {
   }));
 }
 
-// ── URL id 解決（書類番号 / 旧・生 int の両対応） ────────────────────────────
+// ── URL id 解決（ロット番号 / 書類番号の両対応） ────────────────────────────
 
 /**
  * URL の [id] を内部の指示書番号（通し連番 int = ロット番号）へ解決する。
- * 新形式 WO-YYYYMM-NNNNN と、旧形式の生 int（監査・通知に残る過去リンク）を
- * 両方受ける。見つからない・不正は null → 呼び出し側の notFound に乗せる。
+ *
+ * 正規の URL は**ロット番号**（法人をまたいで一意な int）。書類番号で来た URL
+ * （古いブックマーク・通知メール・手入力）は、その指示書のロット番号の URL へ
+ * **転送**する（戻らない）:
+ *
+ *   `CKK~WOR-2026-00001` / `CKK/WOR-…`（法人付き）… doc_ref で 1 件に決まる
+ *   `WOR-2026-00001`（番号だけ）… doc_number で引く
+ *   `WOR-202607-00001`（旧番号）… legacy_number で引く
+ *
+ * 番号だけ・旧番号は別の法人に同じものがあり得る。work_orders は多態参照の
+ * type ではないので法人を選ぶ画面（/doc/choose）は使えない — **2 件以上当たった
+ * ときは一覧をその番号で絞って開く**（一覧に両方の行がロット番号つきで並ぶ）。
+ *
+ * 見つからない・不正は null → 呼び出し側の notFound に乗せる。
+ *
+ * @param suffix ロット番号のあとに続くパス（`/edit`・`/steps/<id>`）。転送先に付ける。
+ *   **null = 転送しない**（レイアウト用 — 続きのパスを知らないので、転送は
+ *   同じ URL を解決するページ側に任せ、ここは当たった先頭のロット番号を返す）
+ * @param searchParams ページの searchParams。渡すとロット番号の URL への転送に
+ *   クエリ（`?tab=` など）を引き継ぐ。一覧への転送（2 件以上）には付けない —
+ *   詳細画面のクエリは一覧では意味を持たない。
  */
 export async function resolveWorkOrderIdParam(
   id: string,
+  suffix: string | null = "",
+  searchParams?: PageSearchParams,
 ): Promise<number | null> {
-  const decoded = decodeURIComponent(id);
+  let decoded = id;
+  try {
+    decoded = decodeURIComponent(id);
+  } catch {
+    // 壊れた符号化はそのまま扱う（下でどれにも当たらず null になる）
+  }
+  if (/^\d+$/.test(decoded)) {
+    const n = Number(decoded);
+    return Number.isSafeInteger(n) && n >= 1 ? n : null;
+  }
+  const base = "/production/work-orders";
   const key = parseDocKey(decoded, "WOR");
+  let lots: number[];
   if (key) {
     const row = await prisma.workOrder.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
       select: { workOrderNumber: true },
     });
-    return row?.workOrderNumber ?? null;
+    lots = row ? [row.workOrderNumber] : [];
+  } else {
+    // 番号だけ、または旧番号（法人付きでも — 旧番号は doc_ref に入っていない）。
+    const { number } = parseDocId(decoded);
+    const where = isNewDocNumber(number, "WOR")
+      ? { docNumber: number }
+      : isLegacyDocNumber(number, "WOR")
+        ? { legacyNumber: number }
+        : null;
+    if (!where) return null;
+    const rows = await prisma.workOrder.findMany({
+      where,
+      select: { workOrderNumber: true },
+      orderBy: { workOrderNumber: "asc" },
+      take: 5,
+    });
+    lots = rows.map((r) => r.workOrderNumber);
+    if (lots.length > 1 && suffix !== null) {
+      redirect(`${base}?q=${encodeURIComponent(number)}`);
+    }
   }
-  const n = Number(decoded);
-  return Number.isInteger(n) && n >= 1 ? n : null;
+  if (lots.length === 0) return null;
+  if (suffix === null) return lots[0];
+  const query = await searchParamsToQuery(searchParams);
+  redirect(`${base}/${lots[0]}${suffix}${query ? `?${query}` : ""}`);
 }
 
 // ── 注文明細参照（?orderLine= プリセレクト・ビルダーの選択情報） ────────────────
 
 export interface OrderLineRef {
+  /** 注文種別（ORDER_TYPE）。REGRIND の明細は再研磨の指示書にしか載らない。 */
+  orderType?: string;
   id: string;
   number: string;
   label: string;
   customerName: string;
   productName: string;
-  productId: number;
+  /** 明細の製品 — **品目 id（items.id）**。旧 products.id とは別の id 空間。 */
+  itemId: number;
   quantity: number;
   status: string;
   /**
@@ -1468,7 +1711,7 @@ export async function fetchOrderLineRef(
       where: { id: orderLineId },
       include: {
         acceptance: { include: { customerBp: true } },
-        product: true,
+        item: true,
       },
     }),
     // 手配済みは実効値 — 完了済み指示書で不良が多く、割当より少なく
@@ -1478,7 +1721,7 @@ export async function fetchOrderLineRef(
   if (!r) return null;
   const number = orderLineNumberOf(r);
   if (!number) return null; // 未確定の明細は指示書の対象にならない
-  const productName = localized(r.product?.name as LocalizedText | null);
+  const productName = localized(r.item?.name as LocalizedText | null);
   const allocatedQuantity = allocatedMap.get(orderLineId) ?? 0;
   return {
     id: r.id,
@@ -1488,9 +1731,10 @@ export async function fetchOrderLineRef(
       r.acceptance.customerBp?.name as LocalizedText | null,
     ),
     productName,
-    productId: r.productId ?? 0,
+    itemId: r.itemId ?? 0,
     quantity: r.quantity,
     status: r.status,
+    orderType: r.orderType,
     allocatedQuantity,
     remainingQuantity: Math.max(0, r.quantity - allocatedQuantity),
   };

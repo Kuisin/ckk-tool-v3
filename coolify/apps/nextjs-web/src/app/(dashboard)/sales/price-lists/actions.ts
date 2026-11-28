@@ -4,8 +4,8 @@
  * Server Actions — 価格表 (sales.price_list_entries + variants + tiers +
  * discounts).
  *
- * Entries are keyed (year_month, seq) — 価格表番号 PRC-YYYYMM-NNNNN はキーから
- * 導出され URL id にも使う。自然キー（顧客, 製品）は UNIQUE として保持し、
+ * 価格表番号（PRC-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。URL id と
+ * Server Action の引数は法人コード付きの番号（CKK~PRC-2026-00001）。自然キー（顧客, 製品）は UNIQUE として保持し、
  * 識別（重複防止）にのみ使う。注文種別ごとの価格は price_list_variants で、
  * tiers/discounts は variant_id でぶら下がる。
  *
@@ -17,16 +17,19 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
-import { requiresEndDate } from "@/components/sales/price-lists/model";
-import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
-import { prisma } from "@/lib/db";
 import {
-  type DocKey,
-  formatPriceListNumber,
-  parseDocKey,
-} from "@/lib/doc-number";
-import { allocateDocumentKey } from "@/lib/numbering";
+  sameCounterpartKey,
+  syncVariantsFrom,
+} from "@/components/sales/price-lists/company-sync";
+import type { PriceListEntry } from "@/components/sales/price-lists/model";
+import { requiresEndDate } from "@/components/sales/price-lists/model";
+import { actOnCurrentStep } from "@/lib/approvals";
+import { recordAudit } from "@/lib/audit";
+import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
+import { prisma } from "@/lib/db";
+import { resolveIssuingCompany } from "@/lib/doc-company";
+import { type DocKey, docIdOf, docNo, parseDocKey } from "@/lib/doc-number";
+import { priceListItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -34,7 +37,12 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
+import { syncPriceEntryApproval } from "./approval";
+import {
+  type EstimateSource,
+  fetchEstimateSourcesForProduct,
+  fetchPriceEntry,
+} from "./data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -51,7 +59,7 @@ async function entriesInScope(
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const rows = await prisma.priceListEntry.findMany({
-    where: { OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })) },
+    where: { docRef: { in: keys.map((k) => k.docRef) } },
     select: { createdBy: true },
   });
   return rows.every((r) =>
@@ -59,19 +67,41 @@ async function entriesInScope(
   );
 }
 
-const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
+const orderTypeSchema = z.enum([
+  "PRODUCTION",
+  "TEST",
+  "SAMPLE",
+  "REGRIND",
+  "OTHER",
+]);
 
-// 自然キー（新規作成・コピー先の識別に使用）
+/**
+ * 自然キー（新規作成・コピー先の識別に使用）— 顧客 × 品目 × 対象工具（任意）。
+ *
+ * 画面が選ぶのは**品目**（items.id、`itemType: "PRODUCT"`）。
+ * DB の UNIQUE は (customer_bp_id, product_id) のままなので、保存の直前に
+ * 品目 → products.id を橋渡しして両方の列を埋める（品目統合 第 2 段 C —
+ * 価格表の識別は作成後不変という約束があり、鍵の差し替えは別の判断）。
+ */
 function identitySchema(tr: Tr) {
   return z.object({
     customerBpId: z
       .string()
       .min(1, tr("sales.orderAcceptances.selectACustomer")),
     // UI からは文字列（Select 値）で届く — DB は内部 id（int）
-    productId: z
+    itemId: z
       .union([z.string(), z.number()])
       .transform((v) => Number(v))
       .pipe(z.number().int().min(1)),
+    /**
+     * 対象工具（任意・再研磨の品目だけ）。null / 空 = 工具を問わない価格表。
+     * 識別の一部 — 同じ顧客 × 役務に、工具なしの 1 本と工具ごとの複数本が並ぶ。
+     */
+    toolItemId: z
+      .union([z.string(), z.number(), z.null()])
+      .optional()
+      .transform((v) => (v == null || v === "" ? null : Number(v)))
+      .pipe(z.number().int().min(1).nullable()),
   });
 }
 
@@ -89,6 +119,35 @@ const tierSchema = z.object({
   priceOverride: z.number().min(0).nullable(),
 });
 
+/**
+ * 値引きルール 1 件（中身だけ）。**他社の価格表からのコピー・同期でだけ**送る —
+ * 通常の編集フォームは値引きを持たず（値引きは詳細画面のモーダルで 1 件ずつ）、
+ * 送らなければ既存の値引きには触らない。
+ */
+const discountContentSchema = z.object({
+  label: z.string().min(1),
+  discountType: z.enum(["RATE", "AMOUNT"]),
+  value: z.number().gt(0),
+  minQuantity: z.number().int().min(1),
+  maxQuantity: z.number().int().nullable(),
+  validFrom: z.string().min(1),
+  validUntil: z.string().nullable(),
+  isActive: z.boolean(),
+});
+
+function discountData(d: z.infer<typeof discountContentSchema>) {
+  return {
+    label: d.label,
+    discountType: d.discountType,
+    value: d.value,
+    minQuantity: d.minQuantity,
+    maxQuantity: d.maxQuantity,
+    validFrom: new Date(d.validFrom),
+    validUntil: d.validUntil ? new Date(d.validUntil) : null,
+    isActive: d.isActive,
+  };
+}
+
 function variantSchema(tr: Tr) {
   return z.object({
     /** price_list_variants.id — null = 新規バリアント。 */
@@ -98,17 +157,22 @@ function variantSchema(tr: Tr) {
     validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
     validUntil: z.string().nullable(),
     isActive: z.boolean(),
-    /** 基準単価ソースの価格試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
+    /** 基準単価ソースの価格試算の id（手動設定は null。新規バリアントのみ有効）。 */
     estimateNumber: z.string().nullable(),
     tiers: z
       .array(tierSchema)
       .min(1, tr("sales.priceListTypeForm.addAtLeastOneTier")),
+    /**
+     * 値引きルール一式（任意）。**送ったときだけ**このバリアントの値引きを
+     * まるごと置き換える（他社の価格表からのコピー・同期）。省略 = 触らない。
+     */
+    discounts: z.array(discountContentSchema).optional(),
   });
 }
 
 export type PriceVariantInput = z.input<ReturnType<typeof variantSchema>>;
 
-/** クライアントから受け取る自然キー（productId は文字列でも可）。 */
+/** クライアントから受け取る自然キー（itemId は文字列でも可）。 */
 export type EntryIdentityPayload = z.input<ReturnType<typeof identitySchema>>;
 
 function keyOf(entryNumber: string): DocKey | null {
@@ -116,11 +180,11 @@ function keyOf(entryNumber: string): DocKey | null {
 }
 
 function whereKey(key: DocKey) {
-  return { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } };
+  return { docRef: key.docRef };
 }
 
 function variantWhere(key: DocKey) {
-  return { entryYearMonth: key.yearMonth, entrySeq: key.seq };
+  return { entry: { docRef: key.docRef } };
 }
 
 function revalidate(entryNumber?: string) {
@@ -165,9 +229,10 @@ function validateVariants(
 async function resolveEstimateSource(
   tr: Tr,
   estimateNumber: string,
-  productId: number,
+  itemId: number,
 ): Promise<
-  { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
+  | { ok: true; key: DocKey; estimateId: string; needsLock: boolean }
+  | { ok: false; error: string }
 > {
   const key = parseDocKey(estimateNumber, "EST");
   if (!key)
@@ -177,21 +242,38 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true, productId: true },
+    select: { id: true, status: true, itemId: true, kind: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
+  // 原価試算は見積単価を出さない — 基準単価のソースにはできない。
+  if (estimate.kind === "COST") {
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.costEstimateNotUsable"),
+    };
+  }
   if (estimate.status === "DRAFT") {
     return {
       ok: false,
       error: tr("sales.priceListsActions.onlyConfirmedEstimateUsable"),
     };
   }
-  // 別製品にリンクされた価格試算は基準単価ソースにできない（製品未リンクは可）。
-  if (estimate.productId != null && estimate.productId !== productId) {
-    return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
+  // この製品にリンクされた価格試算だけが基準単価ソースになる（_specs/feature
+  // §1 / 画面の候補 fetchEstimateSourcesForProduct と同じ規則）。製品未リンクの
+  // 価格試算は、どの製品の単価として算出したのかが分からないので受けない。
+  if (estimate.itemId !== itemId) {
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.estimateNotLinkedToProduct"),
+    };
   }
-  return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
+  return {
+    ok: true,
+    key,
+    estimateId: estimate.id,
+    needsLock: estimate.status === "CONFIRMED",
+  };
 }
 
 function tierData(t: z.infer<typeof tierSchema>, sortOrder: number) {
@@ -208,14 +290,17 @@ function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
   return tiers.map((t, i) => tierData(t, i));
 }
 
-/** 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。 */
+/**
+ * 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。
+ * `itemId` は品目 id（items.id）。
+ */
 export async function fetchEstimateSources(
-  productId: string | number,
+  itemId: string | number,
 ): Promise<ActionResult<EstimateSource[]>> {
   const tr = await getTranslations();
   const authz = await checkPermission("price_list", "READ");
   if (!authz.ok) return actionError(authz.error);
-  const id = Number(productId);
+  const id = Number(itemId);
   if (!Number.isInteger(id) || id <= 0) return actionOk([]);
   try {
     return actionOk(await fetchEstimateSourcesForProduct(id));
@@ -230,13 +315,44 @@ export async function fetchEstimateSources(
   }
 }
 
+/**
+ * 価格表作成フォーム用 — 選んだ品目の種別。再研磨の品目のときだけ
+ * 「対象工具」の欄を出すために読む（判定の正は保存側の priceListItemError）。
+ */
+export async function fetchPriceListItemType(
+  itemId: string | number,
+): Promise<"PRODUCT" | "REGRIND" | null> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return null;
+  const id = Number(itemId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const row = await prisma.item.findUnique({
+    where: { id },
+    select: { itemType: true },
+  });
+  if (row?.itemType === "REGRIND") return "REGRIND";
+  if (row?.itemType === "PRODUCT") return "PRODUCT";
+  return null;
+}
+
 // ── 新規作成（顧客×製品 + バリアント一式） ───────────────────────────────────
 
 function createInputSchema(tr: Tr) {
   return z.object({
     identity: identitySchema(tr),
+    /**
+     * 発行会社（自社法人 id）。拠点を持たない書類なので作成フォームで決める。
+     * 未指定は初期値（所属拠点の法人が 1 つならそれ、でなければ既定の法人）。
+     * 選べる法人かどうかはサーバーが検証する（lib/doc-company-core.ts）。
+     */
+    ownCompanyId: z.number().int().positive().nullable().optional(),
     /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
     salesRepId: z.string().nullable().optional(),
+    /**
+     * 他社の価格表からコピーして作ったときの元（`TSP~PRC-…`）。監査に残すだけで、
+     * 中身は variants が運ぶ（元の価格表は読み直さない — 画面で見た内容を保存する）。
+     */
+    copiedFromEntryId: z.string().nullable().optional(),
     variants: z
       .array(variantSchema(tr))
       .min(1, tr("sales.priceListTypeForm.addAtLeastOneOrderTypePrice")),
@@ -247,9 +363,33 @@ export type PriceEntryCreateInput = z.input<
   ReturnType<typeof createInputSchema>
 >;
 
+/**
+ * 価格表を作ってよい品目か（他社製品・素材は不可。再研磨の品目は再研磨の
+ * バリアントだけ、製品に再研磨のバリアントは作らない）。判定は
+ * `lib/sales-item-guard.ts` が唯一の定義元。
+ */
+async function entryItemError(
+  tr: Tr,
+  itemId: number,
+  orderTypes: readonly string[],
+  toolItemId: number | null = null,
+): Promise<string | null> {
+  return priceListItemError(itemId, orderTypes, tr, toolItemId);
+}
+
+/**
+ * 保存結果に添える承認の様子（独自値の追加承認）。画面は依頼したことを
+ * 知らせ、依頼に失敗したときは理由を出す（保存自体は成功している）。
+ */
+export interface PriceEntrySaveResult {
+  entryId: string;
+  approvalRequested: boolean;
+  approvalError?: string;
+}
+
 export async function createPriceEntry(
   payload: PriceEntryCreateInput,
-): Promise<ActionResult<{ entryId: string }>> {
+): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
@@ -262,41 +402,55 @@ export async function createPriceEntry(
   const v = parsed.data;
   const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
+  const itemError = await entryItemError(
+    tr,
+    v.identity.itemId,
+    v.variants.map((x) => x.orderType),
+    v.identity.toolItemId,
+  );
+  if (itemError) return actionError(itemError);
   try {
     // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
     const locks: { number: string; key: DocKey }[] = [];
-    const estimateKeys = new Map<string, DocKey>();
+    // 価格試算の id（画面から来た値）→ 行の uuid（バリアントの estimate_id）。
+    const estimateIds = new Map<string, string>();
     for (const variant of v.variants) {
       if (!variant.estimateNumber) continue;
       const source = await resolveEstimateSource(
         tr,
         variant.estimateNumber,
-        v.identity.productId,
+        v.identity.itemId,
       );
       if (!source.ok) return actionError(source.error);
-      estimateKeys.set(variant.estimateNumber, source.key);
+      estimateIds.set(variant.estimateNumber, source.estimateId);
       if (source.needsLock) {
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
     }
-    const key = await allocateDocumentKey("PRICE_LIST");
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.identity.customerBpId,
       null,
     );
-    await prisma.$transaction([
+    const issuing = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
+    if (!issuing.ok) {
+      return actionError(tr("common.issuingCompanyNotAllowed"));
+    }
+    const company = issuing.data;
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const [created] = await prisma.$transaction([
       prisma.priceListEntry.create({
         data: {
-          yearMonth: key.yearMonth,
-          seq: key.seq,
-          ...v.identity,
+          ...company,
+          customerBpId: v.identity.customerBpId,
+          itemId: v.identity.itemId,
+          toolItemId: v.identity.toolItemId,
           salesRepId,
           createdBy: authz.userId,
           variants: {
             create: v.variants.map((variant) => {
-              const estKey = variant.estimateNumber
-                ? estimateKeys.get(variant.estimateNumber)
+              const estimateId = variant.estimateNumber
+                ? estimateIds.get(variant.estimateNumber)
                 : undefined;
               return {
                 orderType: variant.orderType,
@@ -306,13 +460,20 @@ export async function createPriceEntry(
                   ? new Date(variant.validUntil)
                   : null,
                 isActive: variant.isActive,
-                estimateYearMonth: estKey?.yearMonth ?? null,
-                estimateSeq: estKey?.seq ?? null,
+                estimateId: estimateId ?? null,
                 tiers: { create: tierCreates(variant.tiers) },
+                ...(variant.discounts?.length
+                  ? {
+                      discounts: {
+                        create: variant.discounts.map(discountData),
+                      },
+                    }
+                  : {}),
               };
             }),
           },
         },
+        select: { docRef: true },
       }),
       ...locks.map((l) =>
         prisma.estimate.update({
@@ -321,17 +482,21 @@ export async function createPriceEntry(
         }),
       ),
     ]);
-    const entryId = formatPriceListNumber(key);
+    const key: DocKey = { docRef: created.docRef };
+    const entryId = docIdOf(key);
     await recordAudit({
       action: "CREATE",
       tableName: "price_list_entries",
       recordId: entryId,
       after: {
         customerBpId: v.identity.customerBpId,
-        productId: v.identity.productId,
+        itemId: v.identity.itemId,
+        toolItemId: v.identity.toolItemId,
+        ownCompanyId: company.ownCompanyId ?? null,
+        copiedFrom: v.copiedFromEntryId ? docNo(v.copiedFromEntryId) : null,
         orderTypes: v.variants.map((x) => x.orderType),
         estimateSources: v.variants
-          .map((x) => x.estimateNumber)
+          .map((x) => docNo(x.estimateNumber))
           .filter(Boolean),
       },
     });
@@ -341,13 +506,19 @@ export async function createPriceEntry(
         tableName: "estimates",
         recordId: l.number,
         before: { status: "CONFIRMED" },
-        after: { status: "REGISTERED", priceListEntry: entryId },
+        after: { status: "REGISTERED", priceListEntry: docNo(entryId) },
       });
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
     revalidatePath("/sales/trial-estimates");
+    // 独自値の追加承認（価格試算から引き継いでいない価格があれば依頼する）。
+    const approval = await syncPriceEntryApproval(key);
     revalidate(entryId);
-    return actionOk({ entryId });
+    return actionOk({
+      entryId,
+      approvalRequested: approval.requested,
+      approvalError: approval.error,
+    });
   } catch (e) {
     const code =
       typeof e === "object" && e !== null && "code" in e
@@ -382,7 +553,7 @@ export type PriceEntryUpdateInput = z.input<
 
 export async function updatePriceEntry(
   payload: PriceEntryUpdateInput,
-): Promise<ActionResult<{ entryId: string }>> {
+): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const parsed = updateInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
@@ -402,6 +573,18 @@ export async function updatePriceEntry(
   const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
   try {
+    const entryItem = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { itemId: true },
+    });
+    if (entryItem) {
+      const itemError = await entryItemError(
+        tr,
+        entryItem.itemId,
+        v.variants.map((x) => x.orderType),
+      );
+      if (itemError) return actionError(itemError);
+    }
     const existing = await prisma.priceListVariant.findMany({
       where: variantWhere(key),
       select: { id: true, orderType: true },
@@ -443,20 +626,22 @@ export async function updatePriceEntry(
     // 価格試算はこの価格表の製品にリンクされたものだけ（別製品の単価を混ぜない）。
     const entry = await prisma.priceListEntry.findUnique({
       where: whereKey(key),
-      select: { productId: true },
+      select: { id: true, itemId: true },
     });
-    if (!entry) return actionError(tr("sales.priceListsActions.updateFailed"));
+    if (!entry?.itemId)
+      return actionError(tr("sales.priceListsActions.updateFailed"));
     const locks: { number: string; key: DocKey }[] = [];
-    const estimateKeys = new Map<string, DocKey>();
+    // 価格試算の id（画面から来た値）→ 行の uuid（バリアントの estimate_id）。
+    const estimateIds = new Map<string, string>();
     for (const variant of v.variants) {
       if (variant.id || !variant.estimateNumber) continue;
       const source = await resolveEstimateSource(
         tr,
         variant.estimateNumber,
-        entry.productId,
+        entry.itemId,
       );
       if (!source.ok) return actionError(source.error);
-      estimateKeys.set(variant.estimateNumber, source.key);
+      estimateIds.set(variant.estimateNumber, source.estimateId);
       if (source.needsLock) {
         locks.push({ number: variant.estimateNumber, key: source.key });
       }
@@ -524,17 +709,36 @@ export async function updatePriceEntry(
                 ]
               : [],
           ),
+          // 値引き一式が送られたとき（他社の価格表との同期）だけ置き換える。
+          // 値引きはどこからも参照されていないので、消して作り直してよい。
+          ...(variant.discounts
+            ? [
+                prisma.priceListDiscount.deleteMany({
+                  where: { variantId: variant.id },
+                }),
+                ...(variant.discounts.length
+                  ? [
+                      prisma.priceListDiscount.createMany({
+                        data: variant.discounts.map((d) => ({
+                          variantId: variant.id,
+                          ...discountData(d),
+                        })),
+                      }),
+                    ]
+                  : []),
+              ]
+            : []),
         ]),
       // 新規バリアント
       ...v.variants
         .filter((x) => !x.id)
         .map((variant) => {
-          const estKey = variant.estimateNumber
-            ? estimateKeys.get(variant.estimateNumber)
+          const estimateId = variant.estimateNumber
+            ? estimateIds.get(variant.estimateNumber)
             : undefined;
           return prisma.priceListVariant.create({
             data: {
-              ...variantWhere(key),
+              entryId: entry.id,
               orderType: variant.orderType,
               baseUnitPrice: variant.baseUnitPrice,
               validFrom: new Date(variant.validFrom),
@@ -542,9 +746,11 @@ export async function updatePriceEntry(
                 ? new Date(variant.validUntil)
                 : null,
               isActive: variant.isActive,
-              estimateYearMonth: estKey?.yearMonth ?? null,
-              estimateSeq: estKey?.seq ?? null,
+              estimateId: estimateId ?? null,
               tiers: { create: tierCreates(variant.tiers) },
+              ...(variant.discounts?.length
+                ? { discounts: { create: variant.discounts.map(discountData) } }
+                : {}),
             },
           });
         }),
@@ -571,12 +777,18 @@ export async function updatePriceEntry(
         tableName: "estimates",
         recordId: l.number,
         before: { status: "CONFIRMED" },
-        after: { status: "REGISTERED", priceListEntry: v.entryNumber },
+        after: { status: "REGISTERED", priceListEntry: docNo(v.entryNumber) },
       });
       revalidatePath(`/sales/trial-estimates/${l.number}`);
     }
+    // 独自値が変わっていれば承認をやり直す（変わっていなければ今の承認のまま）。
+    const approval = await syncPriceEntryApproval(key);
     revalidate(v.entryNumber);
-    return actionOk({ entryId: v.entryNumber });
+    return actionOk({
+      entryId: v.entryNumber,
+      approvalRequested: approval.requested,
+      approvalError: approval.error,
+    });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("sales.priceListsActions.updateFailed"), tr),
@@ -596,7 +808,7 @@ export async function copyPriceEntry(payload: {
   targetIdentity: EntryIdentityPayload;
   validFrom: string;
   validUntil: string | null;
-}): Promise<ActionResult<{ entryId: string }>> {
+}): Promise<ActionResult<PriceEntrySaveResult>> {
   const tr = await getTranslations();
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -612,8 +824,17 @@ export async function copyPriceEntry(payload: {
   });
   if (!source)
     return actionError(tr("sales.priceListsActions.sourceEntryNotFound"));
+  // 対象工具は、コピー先が同じ品目（= 同じ研ぎ直しの役務）のときだけ引き継ぐ。
+  // 別の品目へ移すなら工具の意味も変わるので、明示されない限り外す。
+  const targetItemId = Number(payload.targetIdentity.itemId);
+  const toolItemId =
+    payload.targetIdentity.toolItemId !== undefined
+      ? payload.targetIdentity.toolItemId
+      : targetItemId === source.itemId
+        ? source.toolItemId
+        : null;
   return createPriceEntry({
-    identity: payload.targetIdentity,
+    identity: { ...payload.targetIdentity, toolItemId },
     variants: source.variants.map((variant) => ({
       id: null,
       orderType: variant.orderType,
@@ -668,13 +889,9 @@ export async function changePriceEntryPeriod(payload: {
   try {
     const variant = await prisma.priceListVariant.findUnique({
       where: { id: payload.variantId },
-      select: { entryYearMonth: true, entrySeq: true, orderType: true },
+      select: { entry: { select: { docRef: true } }, orderType: true },
     });
-    if (
-      !variant ||
-      variant.entryYearMonth !== key.yearMonth ||
-      variant.entrySeq !== key.seq
-    ) {
+    if (!variant || variant.entry.docRef !== key.docRef) {
       return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (requiresEndDate(variant.orderType) && !payload.validUntil) {
@@ -853,13 +1070,9 @@ export async function saveDiscountRule(
   try {
     const variant = await prisma.priceListVariant.findUnique({
       where: { id: v.variantId },
-      select: { entryYearMonth: true, entrySeq: true },
+      select: { entry: { select: { docRef: true } } },
     });
-    if (
-      !variant ||
-      variant.entryYearMonth !== key.yearMonth ||
-      variant.entrySeq !== key.seq
-    ) {
+    if (!variant || variant.entry.docRef !== key.docRef) {
       return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (v.id) {
@@ -944,4 +1157,214 @@ export async function deleteDiscountRule(
       ),
     );
   }
+}
+
+// ── 独自値の追加承認（承認設定 MS0B） ────────────────────────────────────────
+
+/**
+ * 承認依頼をもう一度出す — 差し戻された価格表を直さずに出し直すとき、または
+ * 保存時に依頼が作れなかったとき。直して保存すれば同じことが起きる。
+ */
+export async function requestPriceEntryApproval(
+  entryNumber: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const approval = await syncPriceEntryApproval(key);
+    if (approval.error) return actionError(approval.error);
+    if (approval.status === "NONE")
+      return actionError(tr("sales.priceListsActions.noApprovalNeeded"));
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("common.approvalRequestFailed"), tr),
+    );
+  }
+}
+
+/** 承認 — 全段通過で APPROVED（以後、価格の解決に使われる）。 */
+export async function approvePriceEntry(
+  entryNumber: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  // 承認グループ所属（本人 or 代理）は actOnCurrentStep が検証する。
+  const authz = await checkApprovalDocAccess("price_list");
+  if (!authz.ok) return actionError(authz.error);
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const prior = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { approvalStatus: true },
+    });
+    if (!prior) return actionError(tr("sales.priceListsActions.notFound"));
+    if (prior.approvalStatus !== "PENDING")
+      return actionError(tr("sales.priceListsActions.notPendingApproval"));
+    const acted = await actOnCurrentStep({
+      targetType: "price_list_entries",
+      targetId: entryNumber,
+      action: "APPROVED",
+    });
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    // 途中の段は PENDING のまま進む。全段を通ってはじめて APPROVED。
+    if (acted.flowCompleted) {
+      await prisma.priceListEntry.update({
+        where: whereKey(key),
+        data: { approvalStatus: "APPROVED" },
+      });
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "price_list_entries",
+        recordId: entryNumber,
+        before: { approvalStatus: "PENDING" },
+        after: { approvalStatus: "APPROVED" },
+      });
+    }
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+/** 差し戻し（理由必須）— 価格表は承認されるまで価格の解決に使われない。 */
+export async function rejectPriceEntry(
+  entryNumber: string,
+  reason: string,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkApprovalDocAccess("price_list");
+  if (!authz.ok) return actionError(authz.error);
+  const trimmed = reason.trim();
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
+  const key = keyOf(entryNumber);
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  try {
+    const prior = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { approvalStatus: true },
+    });
+    if (!prior) return actionError(tr("sales.priceListsActions.notFound"));
+    if (prior.approvalStatus !== "PENDING")
+      return actionError(tr("sales.priceListsActions.notPendingApproval"));
+    const acted = await actOnCurrentStep({
+      targetType: "price_list_entries",
+      targetId: entryNumber,
+      action: "REJECTED",
+      comment: trimmed,
+    });
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.couldNotApprove"));
+    await prisma.priceListEntry.update({
+      where: whereKey(key),
+      data: { approvalStatus: "REJECTED" },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: entryNumber,
+      before: { approvalStatus: "PENDING" },
+      after: { approvalStatus: "REJECTED", rejectReason: trimmed },
+    });
+    revalidate(entryNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
+  }
+}
+
+// ── 他社の価格表（相手方）からのコピー・同期 ────────────────────────────────────
+
+/**
+ * 作成フォームの「他社の価格表からコピー」— 相手方 1 件の中身を読む。
+ * 読む権限とスコープは詳細画面と同じ（fetchPriceEntry）。
+ */
+export async function fetchPriceEntryForCopy(
+  entryNumber: string,
+): Promise<PriceListEntry | null> {
+  // 作る人のための読み取り — 作成権限を持つ人だけ（読む権限とスコープは
+  // fetchPriceEntry がもう一度見る）。
+  const authz = await checkPermission("price_list", "CREATE");
+  if (!authz.ok) return null;
+  const key = keyOf(entryNumber);
+  if (!key) return null;
+  return fetchPriceEntry(key);
+}
+
+/**
+ * 「〇〇社の内容で同期」— 相手方（同じ顧客 × 品目 × 工具の、別の発行会社の
+ * 価格表）の中身（注文種別ごとの基準単価・有効期間・状態、数量段階、
+ * 値引きルール）をこの価格表へ書き込む。
+ *
+ * **通常の保存（updatePriceEntry）を通す** — 段階の id の差分更新、価格試算の
+ * 検証、独自値の追加承認（承認設定 MS0B）がそのまま効く。同期だからといって
+ * 承認を素通りさせない。番号・発行会社・営業担当・状態（価格表全体の有効/無効）
+ * はこの価格表のまま。
+ */
+export async function syncPriceEntryFromCounterpart(payload: {
+  entryNumber: string;
+  counterpartEntryNumber: string;
+}): Promise<ActionResult<PriceEntrySaveResult>> {
+  const tr = await getTranslations();
+  const key = keyOf(payload.entryNumber);
+  const sourceKey = keyOf(payload.counterpartEntryNumber);
+  if (!(key && sourceKey))
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
+  const authz = await checkPermission("price_list", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await entriesInScope(authz.access, authz.userId, [key, sourceKey]))) {
+    return actionError(tr("common.scopeDenied"));
+  }
+  const [target, source] = await Promise.all([
+    fetchPriceEntry(key),
+    fetchPriceEntry(sourceKey),
+  ]);
+  if (!(target && source))
+    return actionError(tr("sales.priceListsActions.sourceEntryNotFound"));
+  // 相手方であること — 同じ顧客 × 品目 × 工具で、発行会社が違う。
+  if (
+    !sameCounterpartKey(target, source) ||
+    target.ownCompanyId === source.ownCompanyId
+  ) {
+    return actionError(tr("sales.priceListsActions.notACounterpart"));
+  }
+  const result = await updatePriceEntry({
+    entryNumber: target.entryId,
+    isActive: target.isActive,
+    salesRepId: target.salesRepId,
+    variants: syncVariantsFrom(target, source).map((v) => ({
+      ...v,
+      orderType: v.orderType as PriceVariantInput["orderType"],
+    })),
+  });
+  if (result.ok) {
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "price_list_entries",
+      recordId: target.entryId,
+      after: {
+        syncedFrom: docNo(source.entryId),
+        syncedFromCompany: source.ownCompanyCode,
+      },
+    });
+  }
+  return result;
 }

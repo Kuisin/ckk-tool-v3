@@ -2,9 +2,9 @@
  * model.ts — 設計依頼書 (SA06) view-model types + pure helpers.
  *
  * Model (app.design_requests — uuid PK):
- *   依頼番号 DSG-YYYYMM-NNNNN は nextDocumentNumber("DESIGN") で採番し
- *   request_number に保存する（URL id も依頼番号）。
- *   トリガ: 見積時（QUOTE — 見積書 複合キー参照）/ 受注時（SALES_ORDER —
+ *   依頼番号 DSG-FFFF-NNNNN は DB が払い出す（自社法人 × 会計年度の連番）。
+ *   URL id は法人コード付きの番号（CKK~DSG-2026-00001）。
+ *   トリガ: 見積時（QUOTE — 見積書 uuid 参照）/ 受注時（SALES_ORDER —
  *   注文明細 uuid 参照）。トリガと参照元は作成後変更不可。
  *
  * 状態は 2 つの軸が重なっている:
@@ -104,6 +104,7 @@ export function describeDetection(
  * 「この書類に紐づく設計依頼」を出すためだけの形。
  */
 export interface DesignRequestLink {
+  /** 設計依頼の id（`CKK~DSG-2026-00001`）。表示は <DocNumber> / docNo()。 */
   requestNumber: string;
   status: DesignRequestStatus;
   /** 依頼内容の先頭（一覧で何の依頼か分かる程度）。 */
@@ -137,19 +138,24 @@ export interface DesignRequestHistoryView {
 }
 
 export interface DesignRequest {
-  /** URL id = 依頼番号 DSG-YYYYMM-NNNNN（request_number に保存済み）。 */
+  /**
+   * 設計依頼の id（法人コード + 番号 `CKK~DSG-2026-00001`）— URL id と Server
+   * Action の引数。表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   requestNumber: string;
+  /** 旧番号（DSG-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   /** DB uuid — 内部参照用。 */
   uuid: string;
   trigger: DesignRequestTrigger;
-  /** 見積時: 見積元の見積書番号 QOT-…（導出）。受注時・未設定は null。 */
+  /** 見積時: 見積元の見積書の id（`CKK~QOT-…`）。受注時・未設定は null。 */
   quoteNumber: string | null;
-  /** 受注時: 参照する注文明細の uuid / 導出番号 ORD-…-NN。 */
+  /** 受注時: 参照する注文明細の uuid / id（`CKK~ORD-…-NN`）。 */
   orderLineId: string | null;
   orderLineNumber: string | null;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string | null;
+  /** 対象製品（品目, items.id）を文字列で保持 — SearchSelect の値と揃える。 */
+  itemId: string | null;
   productName: string | null;
   /** 依頼内容。 */
   description: string | null;
@@ -182,6 +188,11 @@ export interface DesignRequest {
   customerBpId: string | null;
   customerName: string | null;
   files: DesignRequestFile[];
+  /**
+   * この依頼から出来た版（design_versions）。ファイルの無い仕様だけの版も
+   * 含む — 「成果物があるか」はファイルではなく版で見る（completeDesign と同じ）。
+   */
+  versions: { id: string; version: number; status: string }[];
   createdAt: string;
   updatedAt: string;
 }

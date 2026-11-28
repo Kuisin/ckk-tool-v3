@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 import { createReceiptsFromDelivery } from "@/app/(dashboard)/purchase/material-receipts/intake/actions";
+import { OpenPoWarning } from "@/components/purchase/material-receipts/OpenPoWarning";
 import {
   CancelButton,
   PrimaryButton,
@@ -67,8 +68,8 @@ interface EditableLine extends PurchaseIntakeLine {
   include: boolean;
   plantId: string | null;
   receivedAt: string;
-  /** 突合が入れていた素材 id（学習の比較元 — 人が選び直した行だけ覚える）。 */
-  draftMaterialId: string | null;
+  /** 突合が入れていた品目 id（学習の比較元 — 人が選び直した行だけ覚える）。 */
+  draftItemId: string | null;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -93,13 +94,13 @@ export function MaterialReceiptIntake({
   const receive = (value: unknown) => {
     const next = value as MaterialDeliveryDraft;
     setDraft(next);
-    setAutoMatched(next.lines.map((l) => l.materialId != null));
+    setAutoMatched(next.lines.map((l) => l.itemId != null));
     setSupplierBpId(next.supplierBpId);
     setLines(
       next.lines.map((l) => ({
         ...l,
-        // 学習の比較元（人が選び直したかどうか）— 画面の materialId は書き換わる
-        draftMaterialId: l.materialId,
+        // 学習の比較元（人が選び直したかどうか）— 画面の itemId は書き換わる
+        draftItemId: l.itemId,
         include: true,
         plantId: null,
         // 入荷日の既定は**納品書の日付**（無ければ今日）。紙に書いてある日を
@@ -119,7 +120,10 @@ export function MaterialReceiptIntake({
     setLines((cur) => cur.map((l) => ({ ...l, ...patch })));
 
   const selected = lines.filter((l) => l.include);
-  const blocked = selected.filter((l) => !l.materialId);
+  const blocked = selected.filter((l) => !l.itemId);
+  // 同じ素材の「発注済み・未入荷あり」があるときの確認（1 件登録と同じ）。
+  const [openPoConflict, setOpenPoConflict] = useState(false);
+  const [acknowledgeOpenPo, setAcknowledgeOpenPo] = useState(false);
 
   const submit = () => {
     if (!draft) return;
@@ -141,13 +145,22 @@ export function MaterialReceiptIntake({
       });
       return;
     }
+    if (openPoConflict && !acknowledgeOpenPo) {
+      notifications.show({
+        title: tr("purchase.materialReceipts.openPo.title"),
+        message: tr("purchase.materialReceipts.openPo.acknowledge"),
+        color: "orange",
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await createReceiptsFromDelivery({
+        acknowledgeOpenPo,
         supplierBpId,
         extractedSupplierName: draft.supplierName,
         draftSupplierBpId: draft.supplierBpId,
         lines: selected.map((l) => ({
-          materialId: l.materialId as string,
+          itemId: l.itemId as string,
           plantId: l.plantId,
           quantity: l.quantity,
           receivedAt: l.receivedAt,
@@ -156,7 +169,7 @@ export function MaterialReceiptIntake({
             .join(" / "),
           materialText: l.materialText,
           materialCode: l.materialCode,
-          draftMaterialId: l.draftMaterialId,
+          draftItemId: l.draftItemId,
         })),
       });
       if (!result.ok) {
@@ -294,6 +307,15 @@ export function MaterialReceiptIntake({
 
           <Divider my="md" />
 
+          <OpenPoWarning
+            acknowledged={acknowledgeOpenPo}
+            candidates={selected
+              .filter((l) => l.itemId)
+              .map((l) => ({ itemId: l.itemId as string, supplierBpId }))}
+            onAcknowledgedChange={setAcknowledgeOpenPo}
+            onConflictsChange={setOpenPoConflict}
+          />
+
           {lines.length === 0 ? (
             <Alert
               color="orange"
@@ -326,7 +348,7 @@ export function MaterialReceiptIntake({
                       line={line}
                       onPick={(pick) =>
                         setLine(index, {
-                          materialId: pick.materialId,
+                          itemId: pick.itemId,
                           materialLabel: pick.materialLabel,
                         })
                       }

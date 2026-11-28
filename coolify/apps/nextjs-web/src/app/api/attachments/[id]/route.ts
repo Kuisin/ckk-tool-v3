@@ -15,8 +15,14 @@ import {
   fetchAttachmentFile,
   isInlineSafe,
 } from "@/lib/attachments";
-import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
+import {
+  checkPermission,
+  requirePermissionResponse,
+  sessionUserId,
+} from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { docRefNumber } from "@/lib/doc-ref-core";
+import { documentInScope } from "@/lib/document-scope";
 import { fetchResponse, formAccess } from "@/lib/forms";
 import { responseInScope } from "@/lib/share-grants-core";
 import { contentTypeForKey, getObject } from "@/lib/storage";
@@ -52,7 +58,25 @@ async function gate(
     // form:READ は全業務ロールが持つので、権限コードだけでは他人の申請の
     // 添付が UUID を知っていれば誰でも取れてしまう。
     if (row.ownerType === "form_responses") {
-      return await formResponseGate(row.ownerId);
+      // owner_id は法人コード付きの参照 — 回答は番号で引く。
+      return await formResponseGate(docRefNumber(row.ownerId));
+    }
+    // 権限コードだけでなく、その書類が**行スコープ内**かも見る（M-4）。
+    // 証憑の UUID を知る他拠点・他担当の利用者が、範囲外の書類の添付を
+    // 読む・消すのを塞ぐ。拒否は 404（403 は書類の存在を漏らす）。
+    if (code) {
+      const authz = await checkPermission(code, action);
+      if (
+        authz.ok &&
+        !(await documentInScope(
+          authz.access,
+          authz.userId,
+          row.ownerType,
+          row.ownerId,
+        ))
+      ) {
+        return new Response("Not found", { status: 404 });
+      }
     }
     return null;
   } catch {

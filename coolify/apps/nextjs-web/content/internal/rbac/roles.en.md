@@ -31,12 +31,25 @@ A permission answers "**who** (role) may do **what** (action) to **which area**
 When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 = ALL).
 
+How roles turn into effective permissions, as a diagram:
+
+```mermaid
+flowchart TD
+  u["User"] --> r1["Role A"]
+  u --> r2["Role B"]
+  r1 --> g1["Permission code × action<br/>scope PLANT"]
+  r2 --> g2["Same code × action<br/>scope ALL"]
+  g1 --> m["Union of all<br/>the roles' permissions"]
+  g2 --> m
+  m --> e["The user's permissions<br/>widest scope (ALL) wins"]
+```
+
 ## Roles
 
 | Role | rolename | Purpose |
 |---|---|---|
 | Administrator | `admin` | Everything. The only role that passes the privileged-access gates without an approval |
-| Manager | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
+| Manager (approver) | `manager` | Read and export across every area — for cross-department approvers (whether they can approve is decided by MS0B group membership) |
 | Sales manager | `sales_manager` | Full control of sales data + read everywhere |
 | Sales | `sales` | Create and edit sales data, **own records only** (OWN) |
 | Sales assistant | `sales_assistant` | Read-only across sales data. No create, edit or approve |
@@ -49,7 +62,8 @@ When several roles grant the same code, the **widest scope wins** (PLANT + ALL
 | Shipping manager | `shipping_manager` | Full control of shipping data + read everywhere |
 | Shipping | `shipping` | Shipping orders and delivery notes (shipping + inventory are **own plants only**) |
 | Accounting manager | `accounting_manager` | Full control of billing + read everywhere |
-| Accounting | `accounting` | Invoices, monthly closing, Yayoi CSV |
+| Accounting | `accounting` | Invoices, monthly closing, accounting CSV |
+| Master data editor | `master_editor` | Master data only. Holds no business-document grants, so pair it with a department role |
 | Viewer | `viewer` | Read-only across every area (executives, audit) |
 | Staff | `staff` | Transitional catch-all — everything except system and kiosk. **Replace with department roles in production** |
 
@@ -94,7 +108,7 @@ list that they cannot approve their own request.
 | `delivery_order` | Delivery order | SH01 Delivery orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
 | `invoice` | Invoice | BL01 Invoices |
-| `billing_closing` | Billing closing | BL02 Billing closing (the Yayoi CSV export is E) |
+| `billing_closing` | Billing closing | BL02 Billing closing (the accounting CSV export is E) |
 | `master` | Master data | All 12 master apps, MS01 and MS04–MS0E |
 | `form` | Forms | **The app itself needs no permission** (CM02 opens for anyone). C / U are needed to create or edit a form |
 | `internal_page` | Internal documents | CM03 Internal documents |
@@ -133,6 +147,7 @@ to show only what concerns you, so the door is left open.
 | **Shipping**<br/>`shipping` | — | — | R | — | R | — | — | — |
 | **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | R | R | R |
 | **Accounting**<br/>`accounting` | R | R | R | — | R | — | — | — |
+| **Master data editor**<br/>`master_editor` | — | — | — | — | — | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R |
 | **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE |
 
@@ -155,6 +170,7 @@ to show only what concerns you, so the door is left open.
 | **Shipping**<br/>`shipping` | R | — | RU<br/>PLANT | RCUDE<br/>PLANT | RCUDE | — | — | R | — | — | — |
 | **Accounting manager**<br/>`accounting_manager` | R | R | R | R | R | RCUDE | RCUDE | R | R | R | R |
 | **Accounting**<br/>`accounting` | — | — | — | R | R | RCUDE | RCUE | R | — | — | — |
+| **Master data editor**<br/>`master_editor` | — | — | — | — | — | — | — | RCUD | — | — | — |
 | **Viewer**<br/>`viewer` | R | R | R | R | R | R | R | R | R | R | R |
 | **Staff**<br/>`staff` | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | RCUDE | — |
 
@@ -205,6 +221,17 @@ time (the clock starts on **first use**, not on approval).
   also the only anti-lockout path, which is why no self-approval exists. The
   bypass is recorded in the audit row as `bypass:"admin"`, so it stays
   distinguishable from an approved run.
+
+How a privileged operation becomes runnable, as a diagram:
+
+```mermaid
+flowchart TD
+  op["Want to run an operation<br/>on a privileged code"] --> q{"Administrator<br/>(system ◎)?"}
+  q -->|"Yes"| by["Runs straight through<br/>audit row has bypass: admin"]
+  q -->|"No"| rq["Request in SY0G<br/>Privileged access"]
+  rq --> ap["Someone else approves"]
+  ap --> use["Works only for the approved period<br/>clock starts on first use"]
+```
 
 None of this is granted to business roles: `system`, `kiosk` and the five
 privileged codes are all excluded from the bulk grant in `roles-seed.sql`.

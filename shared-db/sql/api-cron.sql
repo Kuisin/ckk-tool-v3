@@ -30,6 +30,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_token_retention';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_idempotency_cleanup';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'api_access_log_retention';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'webhook_delivery_retention';
 
 -- 失効・期限切れのトークンは 90 日残す。「そのトークンで誰が何を読んだか」を
 -- api_access_logs から辿るとき、トークン行が先に消えていると
@@ -54,4 +55,14 @@ $job$);
 SELECT cron.schedule('api_idempotency_cleanup', '*/30 * * * *', $job$
   DELETE FROM app.api_idempotency_keys
    WHERE created_at < now() - interval '24 hours'
+$job$);
+
+-- 外向き Webhook の配送記録は 30 日。「あの注文の通知は届いたか」を問い合わせ
+-- られる期間で、本文は業務データの写しなので長く持たない。送信待ち（PENDING）は
+-- 消さない — 再試行の窓は最長でも 2 日で、それより古い PENDING は残骸だが、
+-- 消すかどうかの判断はアプリ側（打ち切り処理）に任せ、cron は終わった行だけ刈る。
+SELECT cron.schedule('webhook_delivery_retention', '45 18 * * *', $job$
+  DELETE FROM app.webhook_deliveries
+   WHERE status <> 'PENDING'
+     AND created_at < now() - interval '30 days'
 $job$);

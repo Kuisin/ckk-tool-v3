@@ -36,6 +36,16 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 
 購買依頼は、次の順番で進みます。いまどこにいるかは、画面の色つきバッジでわかります。
 
+```mermaid
+flowchart TD
+  draft("下書き"):::gray -->|"承認依頼"| req("承認依頼中"):::yellow
+  req -->|"承認"| appr("承認済"):::blue
+  appr -->|"発注書に変える"| ord("発注済"):::violet
+  req -->|"差し戻し"| rej("差し戻し"):::red
+  rej -.->|"直して出しなおす"| req
+  appr -.->|"取り下げ"| can("キャンセル"):::red
+```
+
 1. **下書き** … あなたが作っただけの状態です。何度でも直せます。
 2. **承認依頼中** … 上長の返事待ちです。この間は直せません。
 3. **承認済** … 認められました。発注書に変えられます。
@@ -81,7 +91,9 @@ screenshots: [purchase-request-list-01, purchase-request-new-01, purchase-reques
 1. 依頼の画面を開きます。
 2. 画面の上のほうに出ている「**承認依頼が必要です**」というカードの「**承認依頼**」を押します。
 
-状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/production/approval/user)の画面にも並びます。
+状態が「**承認依頼中**」に変わり、承認する人に依頼が届きます。同じ依頼は[承認管理](/manual/ja/operations/general/my-tasks/user)の画面にも並びます。
+
+> ⚠️ 承認の段は[承認設定](/manual/ja/operations/masters/approval-setting/user)（`MS0B`）で決まります。購買依頼の承認フローに段が 1 つも無いと、承認依頼は出せません（「**購買依頼の承認フローが未設定です**」のように表示されます）。管理者に承認設定を頼んでください。
 
 ![承認依頼中の購買依頼](../../../assets/screenshots/purchase-request-detail-02.png)
 

@@ -117,15 +117,9 @@ export function MaterialNumberingTabs({
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="xs">
-          {tr("master.materialNumbering.materialTypeCode")}{" "}
-          <DocNumber>
-            {tr("master.materialNumbering.manufacturerGrade2ShapeKind4")}
-          </DocNumber>
-          、素材コード ={" "}
-          <DocNumber>
-            {tr("master.materialNumbering.materialTypeFinishDia103")}
-          </DocNumber>
-          {tr("master.materialNumbering.codesAreEmbeddedInCompositeCodes")}
+          {tr.rich("master.materialNumbering.codeStructureNote", {
+            doc: (chunks) => <DocNumber>{chunks}</DocNumber>,
+          })}
         </Text>
       </Alert>
 

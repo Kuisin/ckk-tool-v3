@@ -59,10 +59,15 @@ import {
   opsForType,
   validateConditions,
 } from "@/lib/approval-conditions";
-import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
+import {
+  type ApprovalMode,
+  defaultStepName,
+  validateFlowSteps,
+} from "@/lib/approval-flow";
 import type { ApprovalTargetType } from "@/lib/approval-targets";
 import { approvalModeOptions } from "@/lib/enum-labels";
-import type { Locale } from "@/lib/i18n";
+import { localizedDraft } from "@/lib/format";
+import type { Locale, Tr } from "@/lib/i18n";
 import type { GroupOption } from "./ApprovalFlowEditor";
 
 /** 一覧に出すルール（サーバーで直列化した形）。 */
@@ -109,10 +114,9 @@ interface StepDraft {
 let seq = 0;
 const nextKey = () => `rule-row-${++seq}`;
 
-const emptyStep = (index: number): StepDraft => ({
+const emptyStep = (index: number, locale: string, tr: Tr): StepDraft => ({
   key: nextKey(),
-  nameJa: `第${index}承認`, // i18n-ignore — DB データ（多言語 JSON 名称欄）の既定値。対象外（_specs/i18n-glossary.md §1）
-  nameTranslations: {},
+  ...defaultStepName(index, locale, tr),
   groupId: null,
   mode: "ANY",
 });
@@ -174,7 +178,7 @@ export function ApprovalFlowRulesSection({
     setNameJa("");
     setNameTranslations({});
     setConditions([]);
-    setSteps([emptyStep(1)]);
+    setSteps([emptyStep(1, locale, tr)]);
     setEditing({ id: null });
   };
 
@@ -334,8 +338,9 @@ export function ApprovalFlowRulesSection({
         <Stack gap="sm">
           {rules.length === 0 && (
             <Text c="dimmed" size="sm">
-              条件付きフローはありません。すべての{targetLabel}
-              が既定フローで進みます。
+              {tr("master.approvalFlows.noConditionalFlows", {
+                target: targetLabel,
+              })}
             </Text>
           )}
           {rules.map((rule, i) => (
@@ -344,10 +349,14 @@ export function ApprovalFlowRulesSection({
                 <Stack gap={4} style={{ minWidth: 0 }}>
                   <Group gap="xs" wrap="wrap">
                     <Badge color="indigo" size="sm" variant="light">
-                      優先 {i + 1}
+                      {tr("master.approvalFlows.priorityBadge", { n: i + 1 })}
                     </Badge>
                     <Text fw={600} size="sm">
-                      {rule.nameJa}
+                      {localizedDraft(
+                        rule.nameJa,
+                        rule.nameTranslations,
+                        locale,
+                      )}
                     </Text>
                     {!rule.isActive && (
                       <Badge color="gray" size="xs" variant="light">
@@ -365,9 +374,18 @@ export function ApprovalFlowRulesSection({
                     )}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    段:{" "}
-                    {rule.steps.map((s) => s.nameJa).join(" → ") ||
-                      tr("common.notSet")}
+                    {tr("master.approvalFlows.stepsLine", {
+                      steps:
+                        rule.steps
+                          .map((s) =>
+                            localizedDraft(
+                              s.nameJa,
+                              s.nameTranslations,
+                              locale,
+                            ),
+                          )
+                          .join(" → ") || tr("common.notSet"),
+                    })}
                   </Text>
                 </Stack>
                 <Group gap={4} wrap="nowrap">
@@ -423,7 +441,13 @@ export function ApprovalFlowRulesSection({
                         ),
                         message: tr(
                           "master.approvalFlowRulesSection.deleteConfirmMessage",
-                          { name: rule.nameJa },
+                          {
+                            name: localizedDraft(
+                              rule.nameJa,
+                              rule.nameTranslations,
+                              locale,
+                            ),
+                          },
                         ),
                         confirmLabel: tr("common.delete"),
                         onConfirm: () =>
@@ -481,7 +505,7 @@ export function ApprovalFlowRulesSection({
             </Text>
             {conditions.length === 0 && (
               <Text c="dimmed" size="xs">
-                条件なし — すべての{targetLabel}に一致します（キャッチオール）。
+                {tr("master.approvalFlows.catchAll", { target: targetLabel })}
               </Text>
             )}
             {conditions.map((c) => {
@@ -579,7 +603,7 @@ export function ApprovalFlowRulesSection({
                   wrap={isMobile ? "wrap" : "nowrap"}
                 >
                   <Badge color="blue" mb={6} size="sm" variant="light">
-                    第{i + 1}段
+                    {tr("master.approvalFlows.stepNumber", { n: i + 1 })}
                   </Badge>
                   <Box flex={1} miw={0}>
                     <LocalizedTextInput
@@ -682,7 +706,10 @@ export function ApprovalFlowRulesSection({
             ))}
             <GhostButton
               onClick={() =>
-                setSteps((prev) => [...prev, emptyStep(prev.length + 1)])
+                setSteps((prev) => [
+                  ...prev,
+                  emptyStep(prev.length + 1, locale, tr),
+                ])
               }
             >
               {tr("common.addAStep")}

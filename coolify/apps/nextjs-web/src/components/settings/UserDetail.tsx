@@ -14,6 +14,7 @@
 
 import {
   Alert,
+  Anchor,
   Badge,
   Group,
   MultiSelect,
@@ -26,6 +27,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
@@ -517,10 +519,13 @@ export function UserDetail({
   canEditRoles: boolean;
   /** true = 変更依頼を出して承認を待つ（管理者以外）。 */
   requiresApproval: boolean;
-  /** この人の認証イベント（成功・失敗の両方。直近 30 日）。 */
-  loginAttempts: LoginAttemptRow[];
-  /** この人が Web で使った端末の台帳。 */
-  userDevices: UserDeviceRow[];
+  /**
+   * この人の認証イベント（成功・失敗の両方。直近 30 日）。
+   * null = 閲覧者が personal_data を持たない（行は読み込んでいない）。
+   */
+  loginAttempts: LoginAttemptRow[] | null;
+  /** この人が Web で使った端末の台帳。null の意味は loginAttempts と同じ。 */
+  userDevices: UserDeviceRow[] | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -660,24 +665,47 @@ export function UserDetail({
         )}
       </Paper>
 
-      {/* ログイン履歴 — 成功・失敗の両方。失敗が続いていれば異常に気づける。 */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          {tr("settings.userDetail.loginHistoryLast30Days")}
-        </Title>
-        <LoginAttemptList
-          emptyMessage={tr("settings.userDetail.thereAreNoLoginRecordsIn")}
-          rows={loginAttempts}
-        />
-      </Paper>
+      {loginAttempts === null || userDevices === null ? (
+        // ログイン履歴・登録端末は個人データ（personal_data）。持たない人には
+        // 行を渡していないので、ここは案内だけ（SY0D の入口と同じ権限）。
+        <Paper p="md" radius="md" withBorder>
+          <Title mb="sm" order={5}>
+            {tr("settings.userDetail.loginHistoryLast30Days")}
+          </Title>
+          <Text c="dimmed" size="sm">
+            {tr("settings.userDetail.loginHistoryNeedsPersonalData")}
+          </Text>
+          <Anchor
+            component={Link}
+            href="/settings/login-history"
+            mt="xs"
+            size="sm"
+          >
+            {tr("settings.userDetail.openLoginHistory")}
+          </Anchor>
+        </Paper>
+      ) : (
+        <>
+          {/* ログイン履歴 — 成功・失敗の両方。失敗が続いていれば異常に気づける。 */}
+          <Paper p="md" radius="md" withBorder>
+            <Title mb="sm" order={5}>
+              {tr("settings.userDetail.loginHistoryLast30Days")}
+            </Title>
+            <LoginAttemptList
+              emptyMessage={tr("settings.userDetail.thereAreNoLoginRecordsIn")}
+              rows={loginAttempts}
+            />
+          </Paper>
 
-      {/* 登録端末 — 「いつもの端末か」の目安。端末の同定ではない。 */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          {tr("settings.userDetail.registeredDevicesWeb")}
-        </Title>
-        <UserDeviceList devices={userDevices} />
-      </Paper>
+          {/* 登録端末 — 「いつもの端末か」の目安。端末の同定ではない。 */}
+          <Paper p="md" radius="md" withBorder>
+            <Title mb="sm" order={5}>
+              {tr("settings.userDetail.registeredDevicesWeb")}
+            </Title>
+            <UserDeviceList devices={userDevices} />
+          </Paper>
+        </>
+      )}
     </DetailShell>
   );
 }

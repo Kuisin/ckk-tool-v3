@@ -7,11 +7,18 @@ import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDe
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
+import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { loadChargeItemOptions } from "@/lib/charge-items";
 import { prisma } from "@/lib/db";
 import { listMemos } from "@/lib/document-memos";
+import { type LocalizedText, localized } from "@/lib/format";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
+import {
+  fetchWorkOrderAbortView,
+  loadAbortForm,
+} from "@/lib/work-order-aborts";
 import {
   fetchPendingFlowChange,
   fetchRejectedAppliedFlowChange,
@@ -44,14 +51,17 @@ export async function generateMetadata({
 /** 指示書 詳細 (PD22). URL id = 指示書番号（通し連番 int = ロット番号）。 */
 export default async function ProductionWorkOrdersDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(id, "", searchParams);
   if (workOrderNumber == null) notFound();
+  const locale = await getServerLocale();
 
   const [
     workOrder,
@@ -78,7 +88,7 @@ export default async function ProductionWorkOrdersDetailPage({
   const woDesign = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: {
-      productId: true,
+      productItemId: true,
       designFileId: true,
       orderLineLinks: {
         select: {
@@ -102,9 +112,9 @@ export default async function ProductionWorkOrdersDetailPage({
   const designCustomerBpId = woCustomers.length === 1 ? woCustomers[0] : null;
   const designFile = woDesign?.designFileId
     ? await fetchDesignFileById(woDesign.designFileId)
-    : woDesign?.productId
+    : woDesign?.productItemId
       ? await fetchLatestViewableDesignFile(
-          Number(woDesign.productId),
+          woDesign.productItemId,
           designCustomerBpId,
         )
       : null;
@@ -120,12 +130,56 @@ export default async function ProductionWorkOrdersDetailPage({
     workOrder.id,
   );
 
+  // 打ち切り（進行中の指示書を止め、品を仕掛品として在庫へ戻す）。
+  // 申請の状態はカードに、申請フォームの材料は「打ち切り」メニューに渡す。
+  const abort = await fetchWorkOrderAbortView(workOrder.id);
+  const abortApproval =
+    abort?.status === "PENDING"
+      ? await fetchApprovalState("work_order_aborts", abort.id)
+      : null;
+  const abortForm =
+    workOrder.status === "IN_PROGRESS"
+      ? await loadAbortForm(workOrder.id, locale)
+      : null;
+
+  // 追加料金（送料など。ここは**予定**で、請求されるのは出荷書側の行）。
+  const [chargeRows, chargeItems, chargeAuthz] = await Promise.all([
+    prisma.workOrderCharge.findMany({
+      where: { workOrderId: workOrder.id },
+      orderBy: { sortOrder: "asc" },
+      include: { chargeItem: { select: { name: true } } },
+    }),
+    loadChargeItemOptions(locale),
+    checkPermission("work_order", "UPDATE"),
+  ]);
+
   return (
     <WorkOrderDetail
+      abort={abort}
+      abortApproval={abortApproval}
+      abortForm={chargeAuthz.ok ? abortForm : null}
       approval={approval}
       approvalTrail={approvalTrail}
       auditEntries={auditEntries}
+      canEditCharges={
+        chargeAuthz.ok &&
+        workOrder.status !== "COMPLETED" &&
+        workOrder.status !== "CANCELLED"
+      }
       catalogOptions={catalogOptions}
+      chargeItems={chargeItems}
+      charges={chargeRows.map((c) => ({
+        id: c.id,
+        chargeItemId: c.chargeItemId,
+        chargeItemLabel: localized(
+          c.chargeItem.name as LocalizedText | null,
+          locale,
+        ),
+        description: c.description ?? "",
+        quantity: c.quantity,
+        unitPrice: Number(c.unitPrice),
+        amount: Number(c.amount),
+      }))}
       designFile={designFile}
       designPinned={woDesign?.designFileId != null}
       flowChange={pendingFlowChange}

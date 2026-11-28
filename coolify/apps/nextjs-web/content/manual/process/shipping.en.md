@@ -13,9 +13,15 @@ screenshots:
 
 A page covering the flow from sending out finished products, through issuing the delivery note, until it is delivered. It is where you check "what stage things are at now, and who does what next", the dispatch / stock storage **branch**, and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-shipping
+```
+
 ## Overall flow
 
-![Diagram of the whole shipping flow (swimlanes including the dispatch / stock storage branch)](../assets/diagrams/process-shipping.en.svg)
+![Shipping — from delivery order to delivery](../assets/diagrams/flow-shipping.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#shipping).
 
 ## Stage-by-stage roles and apps
 
@@ -48,16 +54,29 @@ Shipping after confirming reduces stock, and the order line's state changes to�
 
 ### 4–5. Delivery note
 
-**You do not make a delivery note — it is already made automatically the moment the delivery order is confirmed.** How many copies are made is decided by the order acceptance's delivery method.
+**You do not make a delivery note — it is already made automatically the moment the delivery order is confirmed.** How many copies are made is decided by the delivery method of the lines on the delivery order (every line on a delivery order shares the same delivery method, so there is exactly one for the whole document).
 
 - **Standard delivery** … **one copy**, addressed to the customer, with prices shown
 - **Direct to end user** … **a set of two**. The one **without** prices shown goes to the end user (the party who receives it enclosed with the goods), and the one **with** prices shown goes to the customer (the party in the billing relationship)
 
 Splitting into two for direct delivery is so that no path exists at all by which a priced document reaches the end user. Opening or downloading a direct-delivery delivery note with prices shown puts a confirmation in between, and a warning also appears at the top of the screen. **A delivery order for stock storage does not make a delivery note** (since it is outside the billing flow).
 
-The destination (end user) is decided from the order acceptance's end user field (choosing direct to end user on the order acceptance makes the end user required). Only order lines with **the same end user** can be bundled into one delivery order, and this is also a condition that lets the automatic creation settle on a single destination.
+How many delivery notes are made, as a diagram:
 
-The delivery note that is made is **issued at that moment**, and there is no action on the delivery note side to correct its content (the delivery method, end user, whether prices are shown, quantity and unit price are all carried over from the order acceptance and the delivery order). If there is a mistake, start over from the correct order acceptance and delivery order. The PDF can be viewed right away. Once it arrives, set it to「納品済」(delivered). A shipment that has got this far becomes the subject of [Billing flow](/manual/en/process/billing) (steps … [Standard flow §10](/manual/en/process/default-flow#stage-10)).
+```mermaid
+flowchart TD
+  conf["Confirm the delivery order"] --> kind{"Type"}
+  kind -->|"Stock storage"| none["No delivery note is made"]
+  kind -->|"Dispatch"| method{"Delivery method"}
+  method -->|"Standard delivery"| one["One copy<br/>to the customer, with prices shown"]
+  method -->|"Direct to end user"| two["A set of two"]
+  two --> eu["Without prices shown<br/>→ end user"]
+  two --> cu["With prices shown<br/>→ customer"]
+```
+
+The destination (end user) is decided from the order line's own end user field (choosing direct to end user on the line makes the end user required). Only order lines with **the same end user** can be bundled into one delivery order, and this is also a condition that lets the automatic creation settle on a single destination.
+
+The delivery note that is made is **issued at that moment**, and there is no action on the delivery note side to correct its content (the delivery method, end user, whether prices are shown, quantity and unit price are all carried over from the order line and the delivery order). If there is a mistake, start over from the correct order acceptance and delivery order. The PDF can be viewed right away. Once it arrives, set it to「納品済」(delivered) (this is refused until the delivery order is「出荷済」(shipped)). A shipment that has got this far becomes the subject of [Billing flow](/manual/en/process/billing) (steps … [Standard flow §10](/manual/en/process/default-flow#stage-10)).
 
 ![Delivery note tab of a confirmed delivery order. The two automatically-created copies are listed](../assets/screenshots/flow-delivery-note-01.png)
 
@@ -76,13 +95,13 @@ The delivery note that is made is **issued at that moment**, and there is no act
 Only order lines with the same customer, the same ship-to and the same delivery method can be bundled into one delivery order. Make a separate delivery order for the ones that do not meet the conditions.
 
 **Cannot choose the lot you want to send**
-That product's stock may not be at the chosen from site. Check the site, or look up which site has stock in [Inventory](/manual/en/operations/production/product-inventory/user).
+That product's stock may not be at the chosen from site. Check the site, or look up which site has stock in [Inventory](/manual/en/operations/inventory/inventory-management/user).
 
 **Stock does not decrease**
 Check whether the delivery order has stopped at「確定」(confirmed). Stock decreases when the shipment is recorded.
 
 **Don't want amounts on the delivery note**
-Whether prices are shown is decided by the order acceptance's delivery method and cannot be changed on the delivery note side. For direct to end user, one copy without amounts is made automatically for the end user, so hand over that one. Standard delivery gets just one copy, with prices shown.
+Whether prices are shown is decided by the delivery method of the lines on the delivery order and cannot be changed on the delivery note side. For direct to end user, one copy without amounts is made automatically for the end user, so hand over that one. Standard delivery gets just one copy, with prices shown.
 
 **No delivery note has been made**
 Check whether the delivery order has been confirmed (the delivery note is made at the same time as confirmation). A delivery order of type「在庫保管」(stock storage) does not make a delivery note.
@@ -93,6 +112,6 @@ Delivery may not be complete yet, or the delivery order's type may be「在庫�
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Shipping** on the left
+- How to operate each app and what each field means … **Operations › Shipping** on the left
 - Previous flow … [Production flow](/manual/en/process/production)
 - Next flow … [Billing flow](/manual/en/process/billing)

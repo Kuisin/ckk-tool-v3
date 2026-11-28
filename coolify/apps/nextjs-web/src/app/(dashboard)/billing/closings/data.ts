@@ -2,7 +2,7 @@
  * data.ts — 締日処理 (BL02) のサーバーサイド取得・請求対象出荷の収集。
  *
  * 請求対象 = SHIPPED × DISPATCH の出荷書のうち「未請求」のもの。
- * 未請求判定は invoice_items の由来キー（delivery_order_year_month/seq）に
+ * 未請求判定は invoice_items の由来（delivery_order_id）に
  * その出荷書が現れないこと（STOCK_STORAGE は請求フロー外なので対象外）。
  * 請求期間は顧客ごとに **(前回締日, 今回締日]**（境界は JST 0 時 —
  * model.ts billingWindowFor）。暦月で切ると締日より後の出荷がどの締めにも
@@ -15,22 +15,39 @@ import {
   addDays,
   type BillingClosing,
   type BillingClosingDetail,
-  billingPeriodStart,
   billingPeriodStartFrom,
-  billingWindowFor,
+  type ClosingKind,
   type ClosingShipmentRow,
   type ClosingStatus,
-  inBillingWindow,
   jstMidnightOf,
+  scheduledClosingDates,
 } from "@/components/billing/closings/model";
+import { resolveDueDate } from "@/lib/billing-terms-core";
+import { chargesTotal } from "@/lib/charge-core";
 import { prisma } from "@/lib/db";
-import { formatDocNumber } from "@/lib/doc-number";
+import { docIdOf, docIdOrNull, docNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { lineAmountYen } from "@/lib/money";
 
 // ── 締日処理行のマッピング ───────────────────────────────────────────────────
 
-const CLOSING_INCLUDE = { customerBp: true };
+const CLOSING_INCLUDE = {
+  customerBp: {
+    include: {
+      // 支払条件（支払サイト・支払日）と請求先 — 支払期日と宛先の根拠。
+      customerAttrs: {
+        select: {
+          paymentTermsDays: true,
+          paymentDay: true,
+          billingBpId: true,
+          billingBp: { select: { name: true } },
+        },
+      },
+    },
+  },
+  // 生成した請求書（リンク用）。番号は関連から読む（旧キー列は読まない）。
+  invoice: { select: { docRef: true } },
+};
 
 type ClosingRow = NonNullable<Awaited<ReturnType<typeof findClosingRow>>>;
 
@@ -47,15 +64,11 @@ function mapClosing(r: ClosingRow): BillingClosing {
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     closingDate: r.closingDate.toISOString(),
+    kind: r.kind as ClosingKind,
     status: r.status as ClosingStatus,
     totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
-    invoiceNumber:
-      r.invoiceYearMonth && r.invoiceSeq != null
-        ? formatDocNumber("INV", {
-            yearMonth: r.invoiceYearMonth,
-            seq: r.invoiceSeq,
-          })
-        : null,
+    // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+    invoiceNumber: docIdOrNull(r.invoice),
     processedAt: r.processedAt?.toISOString() ?? null,
     notes: r.notes,
     createdAt: r.createdAt.toISOString(),
@@ -76,22 +89,37 @@ export async function fetchClosings(): Promise<BillingClosing[]> {
 const SHIPMENT_INCLUDE = {
   // 顧客はヘッダが権威。単価は明細行が参照する注文明細ごとに異なり得る。
   customerBp: { include: { customerAttrs: true } },
+  // 発行元の自社法人（MS0I）を決める材料 — 出荷元拠点 → 明細の担当拠点。
+  // 請求書は法人ごとに分けて作る（lib/invoice-generation.ts prepareInvoices）。
+  fromPlant: { select: { ownCompanyId: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
     include: {
-      product: true,
+      // 品目統合 第 2 段 C — 品名・課税区分は品目側から読む。
+      item: true,
       // acceptance は営業担当の導出用（出荷書は担当を保存しない）と、
       // 税率の基準日（注文日）の取得用。
       orderLine: {
         include: {
           acceptance: { select: { salesRepId: true, orderDate: true } },
+          assignedPlant: { select: { ownCompanyId: true } },
         },
       },
     },
   },
   deliveryNotes: {
-    select: { yearMonth: true, seq: true },
-    orderBy: [{ yearMonth: "asc" as const }, { seq: "asc" as const }],
+    select: { id: true, docRef: true },
+    orderBy: [
+      { fiscalYear: "asc" as const },
+      { docSeq: "asc" as const },
+      { id: "asc" as const },
+    ],
+  },
+  // 追加料金（送料など）。製品明細と同じく請求書へ写る — 締日画面の予定額と
+  // 発行される請求書が同じものを数えるよう、ここで一緒に読む。
+  charges: {
+    orderBy: { sortOrder: "asc" as const },
+    include: { chargeItem: { select: { name: true, taxCategoryId: true } } },
   },
 };
 
@@ -112,17 +140,15 @@ export async function fetchUninvoicedShipments(range: { gte: Date; lt: Date }) {
         shippedAt: { gte: range.gte, lt: range.lt },
       },
       include: SHIPMENT_INCLUDE,
-      orderBy: [{ yearMonth: "asc" }, { seq: "asc" }],
+      orderBy: [{ fiscalYear: "asc" }, { docSeq: "asc" }, { id: "asc" }],
     }),
     prisma.invoiceItem.findMany({
-      where: { deliveryOrderYearMonth: { not: null } },
-      select: { deliveryOrderYearMonth: true, deliveryOrderSeq: true },
+      where: { deliveryOrderId: { not: null } },
+      select: { deliveryOrderId: true },
     }),
   ]);
-  const invoicedSet = new Set(
-    invoiced.map((r) => `${r.deliveryOrderYearMonth}-${r.deliveryOrderSeq}`),
-  );
-  return rows.filter((r) => !invoicedSet.has(`${r.yearMonth}-${r.seq}`));
+  const invoicedSet = new Set(invoiced.map((r) => r.deliveryOrderId));
+  return rows.filter((r) => !invoicedSet.has(r.id));
 }
 
 /**
@@ -144,6 +170,10 @@ export async function resolveBillingPeriodStart(
         customerBpId,
         closingDate: { lt: closingDate },
         status: { in: ["PROCESSED", "EXPORTED"] },
+        // 手動請求（BL11）は「臨時」なので期間の境目を動かさない。含めると
+        // 手動で一部だけ請求した日が次の定期締めの開始日になり、その前に
+        // 出荷した未請求分がどの締めにも拾われなくなる。
+        kind: "SCHEDULED",
       },
       orderBy: { closingDate: "desc" },
       select: { closingDate: true },
@@ -197,18 +227,19 @@ export function billableUnitPrice(it: {
 export function shipmentAmount(s: BillableShipment): number {
   // 行ごとに円へ丸めてから足す（lib/money.ts の方針）— 締日処理が作る請求書の
   // 明細と同じ丸め方なので、締日画面の予定額と発行後の請求額がずれない。
-  return s.items.reduce(
-    (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
-    0,
+  // **追加料金（送料など）も足す** — 請求書には明細として載るので、ここで
+  // 数えないと締日画面の予定額だけが少なく出る。
+  return (
+    s.items.reduce(
+      (sum, it) => sum + lineAmountYen(billableUnitPrice(it), it.quantity),
+      0,
+    ) + chargesTotal(s.charges.map((c) => ({ amount: Number(c.amount) })))
   );
 }
 
 function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
   return {
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: s.yearMonth,
-      seq: s.seq,
-    }),
+    deliveryOrderNumber: docIdOf(s),
     shippedAt: s.shippedAt?.toISOString() ?? null,
     quantity: s.items.reduce((sum, it) => sum + it.quantity, 0),
     amount: shipmentAmount(s),
@@ -219,49 +250,43 @@ function mapShipmentRow(s: BillableShipment): ClosingShipmentRow {
 
 /** 処理済み締日の対象出荷 — 生成請求書の明細由来から復元する。 */
 async function fetchShipmentsFromInvoice(
-  invoiceYearMonth: string,
-  invoiceSeq: number,
+  invoiceId: string,
 ): Promise<ClosingShipmentRow[]> {
   const items = await prisma.invoiceItem.findMany({
-    where: { invoiceYearMonth, invoiceSeq },
+    where: { invoiceId },
     orderBy: { sortOrder: "asc" },
+    select: {
+      quantity: true,
+      amount: true,
+      deliveryOrderId: true,
+      deliveryOrder: { select: { docRef: true, shippedAt: true } },
+    },
   });
-  // 出荷書キーごとに数量・金額を集計する。
-  const byKey = new Map<
+  // 出荷書ごとに数量・金額を集計する（鍵は出荷書の uuid）。
+  const byOrder = new Map<
     string,
-    { yearMonth: string; seq: number; quantity: number; amount: number }
+    {
+      deliveryOrderNumber: string;
+      shippedAt: Date | null;
+      quantity: number;
+      amount: number;
+    }
   >();
   for (const it of items) {
-    if (!it.deliveryOrderYearMonth || it.deliveryOrderSeq == null) continue;
-    const key = `${it.deliveryOrderYearMonth}-${it.deliveryOrderSeq}`;
-    const cur = byKey.get(key) ?? {
-      yearMonth: it.deliveryOrderYearMonth,
-      seq: it.deliveryOrderSeq,
+    if (!it.deliveryOrderId || !it.deliveryOrder) continue;
+    const cur = byOrder.get(it.deliveryOrderId) ?? {
+      deliveryOrderNumber: docIdOf(it.deliveryOrder),
+      shippedAt: it.deliveryOrder.shippedAt,
       quantity: 0,
       amount: 0,
     };
     cur.quantity += it.quantity;
     cur.amount += Number(it.amount);
-    byKey.set(key, cur);
+    byOrder.set(it.deliveryOrderId, cur);
   }
-  const keys = [...byKey.values()];
-  if (keys.length === 0) return [];
-  const orders = await prisma.deliveryOrder.findMany({
-    where: {
-      OR: keys.map((k) => ({ yearMonth: k.yearMonth, seq: k.seq })),
-    },
-    select: { yearMonth: true, seq: true, shippedAt: true },
-  });
-  const shippedAtByKey = new Map(
-    orders.map((o) => [`${o.yearMonth}-${o.seq}`, o.shippedAt]),
-  );
-  return keys.map((k) => ({
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: k.yearMonth,
-      seq: k.seq,
-    }),
-    shippedAt:
-      shippedAtByKey.get(`${k.yearMonth}-${k.seq}`)?.toISOString() ?? null,
+  return [...byOrder.values()].map((k) => ({
+    deliveryOrderNumber: k.deliveryOrderNumber,
+    shippedAt: k.shippedAt?.toISOString() ?? null,
     quantity: k.quantity,
     amount: k.amount,
   }));
@@ -284,11 +309,30 @@ export async function fetchClosing(
             row.closingDate,
           )
         ).map(mapShipmentRow)
-      : row.invoiceYearMonth && row.invoiceSeq != null
-        ? await fetchShipmentsFromInvoice(row.invoiceYearMonth, row.invoiceSeq)
+      : row.invoiceId != null
+        ? await fetchShipmentsFromInvoice(row.invoiceId)
         : [];
 
-  return { ...closing, shipments };
+  const attrs = row.customerBp.customerAttrs;
+  return {
+    ...closing,
+    shipments,
+    // 請求先が顧客本人と同じなら出さない（全顧客の 99% は null）。
+    billingPartyName:
+      attrs?.billingBpId && attrs.billingBpId !== row.customerBpId
+        ? localized(attrs.billingBp?.name as LocalizedText | null)
+        : null,
+    paymentTermsDays: attrs?.paymentTermsDays ?? null,
+    paymentDay: attrs?.paymentDay ?? null,
+    // 画面に出す期日も請求書に刷る期日も同じ関数を通す
+    // （別々に計算すると、生成前に見えていた期日と請求書が食い違う）。
+    dueDate: resolveDueDate(row.closingDate, {
+      paymentTermsDays: attrs?.paymentTermsDays,
+      paymentDay: attrs?.paymentDay,
+    })
+      .toISOString()
+      .slice(0, 10),
+  };
 }
 
 // ── runClosing 用: 顧客ごとの締日確定 ────────────────────────────────────────
@@ -298,48 +342,99 @@ export interface CustomerClosingCandidate {
   customerName: string;
   closingDate: Date;
   totalAmount: number;
+  /** 対象になる出荷書の番号（`DOR-2026-00001` — 人に見せる姿）。 */
   shipmentNumbers: string[];
 }
 
+/** 実質的に下限なしとして扱う日付（未請求出荷は epoch より後にしか存在しない）。 */
+const EPOCH = new Date(0);
+
 /**
- * 対象月の未請求出荷を顧客ごとにまとめ、締日（BpCustomerAttrs.closingDay、
- * 既定 = 月末）と合計金額を確定する。顧客の請求期間は (前回締日, 今回締日]
- * — 締日より後の出荷は翌月の締めに入る（billingWindowFor）。
+ * **指定日までに締日が到来し、まだ請求されていない未請求出荷**を顧客ごとに
+ * まとめる。締日（BpCustomerAttrs.closingDay、既定 = 月末）は顧客ごとに違う
+ * ので、1 回の呼び出しで「何か月ぶんも走らせ忘れていた顧客」を一度に拾う —
+ * 月次だった旧 collectClosingCandidates（1 回の呼び出しで 1 顧客 1 締日しか
+ * 見なかった）が「月初 3 日だけ前月も見る」その場しのぎを要求していた原因。
+ *
+ * 顧客ごとに、
+ *   1. 最初の締日候補の窓の始点は resolveBillingPeriodStart で決める
+ *      （前回実際に処理した締日があればその翌日 — 締日設定を変えた月でも
+ *      隙間を作らない、従来の processClosing と同じ規約）。
+ *   2. 以降の締日候補は 1 か月ずつ後ろへ鎖状につながる（scheduledClosingDates
+ *      が生成する隣り合う締日は必ず暦 1 か月差なので、窓の終わりと次の窓の
+ *      始まりが一致する）。
+ * 出荷が 1 件も無い締日候補は行を作らない（従来どおり）。
  */
-export async function collectClosingCandidates(
-  year: number,
-  month: number,
+export async function collectClosingCandidatesUpTo(
+  targetDate: Date,
 ): Promise<CustomerClosingCandidate[]> {
-  // 全顧客の請求期間の和集合を 1 回で引く: 最も早い前回締日（1 日）の翌日 〜
-  // 最も遅い締日（月末）の翌日。顧客ごとの絞り込みは下のループで行う。
-  const gte = jstMidnightOf(billingPeriodStart(year, month, 1));
-  const { lt } = billingWindowFor(year, month, 31);
-  const shipments = await fetchUninvoicedShipments({ gte, lt });
+  const lt = jstMidnightOf(addDays(targetDate, 1));
+  const shipments = await fetchUninvoicedShipments({ gte: EPOCH, lt });
 
-  const byCustomer = new Map<string, CustomerClosingCandidate>();
+  const byCustomer = new Map<string, BillableShipment[]>();
   for (const s of shipments) {
-    const customer = s.customerBp;
-    const window = billingWindowFor(
-      year,
-      month,
-      customer.customerAttrs?.closingDay ?? null,
-    );
-    // 前回締日以前（前回の締め）・締日より後（翌月の締め）は今回に含めない。
-    if (!s.shippedAt || !inBillingWindow(s.shippedAt, window)) continue;
-    const closingDate = window.closingDate;
-
-    const cur = byCustomer.get(customer.id) ?? {
-      customerBpId: customer.id,
-      customerName: localized(customer.name as LocalizedText | null),
-      closingDate,
-      totalAmount: 0,
-      shipmentNumbers: [],
-    };
-    cur.totalAmount += shipmentAmount(s);
-    cur.shipmentNumbers.push(
-      formatDocNumber("DOR", { yearMonth: s.yearMonth, seq: s.seq }),
-    );
-    byCustomer.set(customer.id, cur);
+    if (!s.shippedAt) continue;
+    const list = byCustomer.get(s.customerBpId);
+    if (list) list.push(s);
+    else byCustomer.set(s.customerBpId, [s]);
   }
-  return [...byCustomer.values()];
+
+  const candidates: CustomerClosingCandidate[] = [];
+  for (const [customerBpId, custShipments] of byCustomer) {
+    const customer = custShipments[0].customerBp;
+    const closingDay = customer.customerAttrs?.closingDay ?? null;
+    const customerName = localized(customer.name as LocalizedText | null);
+
+    // scheduledClosingDates の fromDate は「どの月から数え始めるか」だけを
+    // 決める下限 — 実際の窓の始点（gte）は resolveBillingPeriodStart /
+    // 前候補の締日+1日 が別に決める（下のループ）。
+    const earliestShippedAt = custShipments.reduce(
+      (min, s) => (s.shippedAt && s.shippedAt < min ? s.shippedAt : min),
+      custShipments[0].shippedAt as Date,
+    );
+    const scanFrom = new Date(
+      Date.UTC(
+        earliestShippedAt.getUTCFullYear(),
+        earliestShippedAt.getUTCMonth(),
+        1,
+      ),
+    );
+    const dates = scheduledClosingDates(scanFrom, targetDate, closingDay);
+
+    let previousClosingDate: Date | null = null;
+    for (const closingDate of dates) {
+      const windowStart = previousClosingDate
+        ? addDays(previousClosingDate, 1)
+        : await resolveBillingPeriodStart(customerBpId, closingDate);
+      const gte = jstMidnightOf(windowStart);
+      const windowLt = jstMidnightOf(addDays(closingDate, 1));
+      const inWindow = custShipments.filter(
+        (s) => s.shippedAt && s.shippedAt >= gte && s.shippedAt < windowLt,
+      );
+      if (inWindow.length > 0) {
+        candidates.push({
+          customerBpId,
+          customerName,
+          closingDate,
+          totalAmount: inWindow.reduce((sum, s) => sum + shipmentAmount(s), 0),
+          shipmentNumbers: inWindow.map((s) => docNumberOf(s)),
+        });
+      }
+      previousClosingDate = closingDate;
+    }
+  }
+  return candidates;
+}
+
+// ── 手動請求（BL11）用: 顧客の未請求出荷を締日窓に依らず全件 ──────────────────
+
+/** 締日窓を無視して、その顧客の未請求出荷を全件返す（手動請求の選択肢）。 */
+export async function fetchUninvoicedShipmentsForCustomer(
+  customerBpId: string,
+): Promise<BillableShipment[]> {
+  const rows = await fetchUninvoicedShipments({
+    gte: EPOCH,
+    lt: jstMidnightOf(addDays(new Date(), 1)),
+  });
+  return rows.filter((r) => r.customerBpId === customerBpId);
 }

@@ -1,10 +1,10 @@
 /**
  * data.ts — 注文請書 intake (SA04) のサーバーサイド取得・マッピング。
  *
- * app.order_acceptances は (year_month, seq) の複合キー — 表示番号
- * ORD-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
- * 注文確定後は同じ (year_month, seq) の order_lines 枝番 1..N を持つため、
- * 詳細では確定済み注文明細番号も併せて返す。
+ * 注文請書の番号（ORD-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。
+ * DTO の number は id の姿（CKK~ORD-2026-00001 — URL と Server Action の引数）。
+ * 注文確定後は order_lines が枝番 1..N を持つ（明細番号 line_number / 参照
+ * line_ref は DB が導出する）ため、詳細では確定済み注文明細の id も併せて返す。
  * Prisma Decimal はここで Number() へ、日付は ISO 文字列へ変換して渡す。
  */
 
@@ -18,29 +18,37 @@ import type {
   OrderAcceptanceView,
 } from "@/components/sales/order-acceptances/model";
 import { checkPermission } from "@/lib/authz";
+import { loadCustomerProductCodes } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatDocNumber,
-  formatOrderLineNumber,
+  docIdOf,
+  docIdOrNull,
   formatProductNumber,
+  orderLineIdOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { matchCustomer, suggestProducts } from "@/lib/intake";
 import { normalizeExtraction } from "@/lib/intake-core";
 import { reviewIntake } from "@/lib/intake-review";
+import { toolLabel } from "@/lib/tool-label";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
+/**
+ * 品目ラベル: 名称 + 品目コード（レガシーはコード未採番 → 名称のみ）。
+ * コードは **items.code をそのまま** — 製品は PRD-…、再研磨品目は RGD-… で、
+ * (year_month, seq) から組み立てられるのは製品だけ。
+ */
 function productLabel(p: {
   name: unknown;
+  code?: string | null;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const code = p.code ?? formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null);
   return code ? `${name} ${code}` : name;
 }
@@ -64,10 +72,11 @@ export async function fetchOrderAcceptances(): Promise<
       customerBp: { select: { name: true } },
       _count: { select: { items: true } },
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map((r) => ({
-    number: formatDocNumber("ORD", r),
+    number: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     status: r.status,
     source: r.source,
     sourceFilename: r.sourceFile?.filename ?? null,
@@ -90,23 +99,44 @@ export async function fetchOrderAcceptance(
   const authz = await checkPermission("order_acceptance", "READ");
   if (!authz.ok) return null;
   const r = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     include: {
       sourceFile: { select: { filename: true, mimeType: true } },
       customerBp: { select: { name: true } },
       customerBranchBp: { select: { name: true } },
-      shipToBp: { select: { name: true } },
-      endUserBp: { select: { name: true } },
-      assignedPlant: { select: { code: true, name: true } },
-      shippingWorkLocation: {
-        select: { name: true, group: { select: { name: true } } },
-      },
       salesRep: { select: { id: true, displayName: true } },
       createdByUser: { select: { displayName: true } },
+      // キャンセル → 作り直し の紐付け（両向き）。
+      replacedBy: {
+        select: { docRef: true },
+        orderBy: [{ fiscalYear: "asc" }, { docSeq: "asc" }, { id: "asc" }],
+      },
+      replaces: { select: { docRef: true } },
+      // 元の見積書（番号は子の旧列ではなく、見積書の行から読む）。
+      quote: { select: { docRef: true } },
       items: {
         orderBy: { sortOrder: "asc" },
         include: {
-          product: { select: { name: true, yearMonth: true, seq: true } },
+          // 品目統合 第 2 段 C — 表示は品目側から読む。
+          item: {
+            select: { name: true, code: true, yearMonth: true, seq: true },
+          },
+          // 再研磨の明細が指す工具（他社製品も含む）。売り物の品目とは別の欄。
+          toolItem: {
+            select: {
+              name: true,
+              code: true,
+              isExternalProduct: true,
+              makerName: true,
+            },
+          },
+          // 配送（§8）— 明細ごとに持つ。
+          shipToBp: { select: { name: true } },
+          endUserBp: { select: { name: true } },
+          assignedPlant: { select: { code: true, name: true } },
+          shippingWorkLocation: {
+            select: { name: true, group: { select: { name: true } } },
+          },
           // 明細に割り当てられた指示書（分割・統合の割当数を表に出す）。
           workOrderLinks: {
             orderBy: { sortOrder: "asc" },
@@ -127,50 +157,73 @@ export async function fetchOrderAcceptance(
 
   // 確定済みの注文明細（枝番 1..N）。未確定行は公開番号を持たない。
   const orderLines = await prisma.orderLine.findMany({
-    where: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
-      branch: { not: null },
-    },
+    where: { acceptanceId: r.id, branch: { not: null } },
     orderBy: { branch: "asc" },
-    select: { branch: true },
+    select: { lineRef: true },
   });
 
   // 製品が決まっていない行は、読み取った品名から候補を出す（1 クエリでまとめて）。
+  // 顧客が決まっていれば、その顧客の品番表（MS04 の「顧客品番」）を先に当てる。
+  // 突合（lib/intake / lib/product-match / app.match_aliases）が返す id は
+  // 品目統合 第 3 段から **items.id** なので、画面が扱う id と同じ空間 —
+  // 以前ここに置いていた旧 id からの読み替えは要らなくなった。
   const productSuggestions = await suggestProducts(
     r.items
-      .filter((it) => it.productId == null && it.productText)
+      .filter((it) => it.itemId == null && it.productText)
       .map((it) => it.productText as string),
+    { customerCodes: await loadCustomerProductCodes(r.customerBpId) },
   );
+  const toItemSuggestions = (text: string | null) =>
+    text ? (productSuggestions.get(text.trim()) ?? []) : [];
 
   const items: OrderAcceptanceItemView[] = r.items.map((it) => ({
     id: it.id,
     // 確定済みの行は注文明細番号（枝番）を持つ — 明細表から SA25 へリンクする。
-    lineNumber:
-      it.branch != null
-        ? formatOrderLineNumber({ ...key, branch: it.branch })
-        : null,
+    // id の姿（CKK~ORD-…-NN）。未確定の行は null。
+    lineNumber: orderLineIdOf(it),
     workOrders: it.workOrderLinks.map((l) => ({
       workOrderNumber: l.workOrder.workOrderNumber,
       quantity: l.quantity,
       status: l.workOrder.status,
     })),
-    productId: it.productId != null ? String(it.productId) : null,
-    productLabel: it.product ? productLabel(it.product) : null,
-    productName: it.product
-      ? localized(it.product.name as LocalizedText | null)
+    itemId: it.itemId != null ? String(it.itemId) : null,
+    productLabel: it.item ? productLabel(it.item) : null,
+    productName: it.item
+      ? localized(it.item.name as LocalizedText | null)
       : null,
     productText: it.productText,
     productSuggestions:
-      (it.productId == null && it.productText
-        ? productSuggestions.get(it.productText.trim())
-        : null) ?? [],
+      it.itemId == null ? toItemSuggestions(it.productText) : [],
     orderType: it.orderType,
+    toolItemId: it.toolItemId != null ? String(it.toolItemId) : null,
+    toolLabel: it.toolItem ? toolLabel(it.toolItem) : null,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
     notes: it.notes,
+    // 配送（§8）— 明細ごとに持つ。
+    shipToBpId: it.shipToBpId,
+    shipToName: it.shipToBp
+      ? localized(it.shipToBp.name as LocalizedText | null)
+      : null,
+    deliveryMethod: it.deliveryMethod,
+    endUserBpId: it.endUserBpId,
+    endUserName: it.endUserBp
+      ? localized(it.endUserBp.name as LocalizedText | null)
+      : null,
+    assignedPlantId:
+      it.assignedPlantId != null ? String(it.assignedPlantId) : null,
+    assignedPlantName: it.assignedPlant
+      ? `${it.assignedPlant.code} ${localized(it.assignedPlant.name as LocalizedText | null)}`
+      : null,
+    shippingWorkLocationId:
+      it.shippingWorkLocationId != null
+        ? String(it.shippingWorkLocationId)
+        : null,
+    shippingWorkLocationName: it.shippingWorkLocation
+      ? `${localized(it.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(it.shippingWorkLocation.name as LocalizedText | null)}`
+      : null,
   }));
 
   // 顧客が決まっていない取込は、その場でもう一度突合して**候補**を出す
@@ -197,7 +250,7 @@ export async function fetchOrderAcceptance(
         customerCandidateCount: customerSuggestions.length,
         orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
         items: items.map((it) => ({
-          productId: it.productId,
+          itemId: it.itemId,
           productText: it.productText,
           productCandidateCount: it.productSuggestions.length,
           quantity: it.quantity,
@@ -206,9 +259,8 @@ export async function fetchOrderAcceptance(
       },
       tr,
     ),
-    number: formatDocNumber("ORD", r),
-    yearMonth: r.yearMonth,
-    seq: r.seq,
+    number: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     status: r.status,
     source: r.source,
     sourceFilename: r.sourceFile?.filename ?? null,
@@ -221,27 +273,8 @@ export async function fetchOrderAcceptance(
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
-    shipToBpId: r.shipToBpId,
-    shipToName: r.shipToBp
-      ? localized(r.shipToBp.name as LocalizedText | null)
-      : null,
-    deliveryMethod: r.deliveryMethod,
-    endUserBpId: r.endUserBpId,
-    endUserName: r.endUserBp
-      ? localized(r.endUserBp.name as LocalizedText | null)
-      : null,
-    assignedPlantId:
-      r.assignedPlantId != null ? String(r.assignedPlantId) : null,
-    assignedPlantName: r.assignedPlant
-      ? `${r.assignedPlant.code} ${localized(r.assignedPlant.name as LocalizedText | null)}`
-      : null,
-    shippingWorkLocationId:
-      r.shippingWorkLocationId != null
-        ? String(r.shippingWorkLocationId)
-        : null,
-    shippingWorkLocationName: r.shippingWorkLocation
-      ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
-      : null,
+    // 出荷先・配送方法・エンドユーザー・担当拠点・出荷作業場所は
+    // items（明細）が持つ（§8）。
     customerProvidesDeliveryNote: r.customerProvidesDeliveryNote,
     customerSuggestions: customerSuggestions.map((c) => ({
       id: c.id,
@@ -252,19 +285,15 @@ export async function fetchOrderAcceptance(
     salesRepName: r.salesRep?.displayName ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
     customerOrderRef: r.customerOrderRef,
-    quoteNumber:
-      r.quoteYearMonth && r.quoteSeq != null
-        ? formatDocNumber("QOT", {
-            yearMonth: r.quoteYearMonth,
-            seq: r.quoteSeq,
-          })
-        : null,
+    quoteNumber: docIdOrNull(r.quote),
+    replacesNumber: docIdOrNull(r.replaces),
+    replacedByNumbers: r.replacedBy.map(docIdOf),
     orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,
     items,
-    orderLineNumbers: orderLines.map((l) =>
-      formatOrderLineNumber({ ...key, branch: l.branch as number }),
-    ),
+    orderLineNumbers: orderLines
+      .map(orderLineIdOf)
+      .filter((n): n is string => n != null),
     completedAt: r.completedAt?.toISOString() ?? null,
     archivedAt: r.archivedAt?.toISOString() ?? null,
     createdAt: r.createdAt.toISOString(),
@@ -296,28 +325,25 @@ export async function fetchPlantOptions(): Promise<
  * 1 見積書から複数回受注することがあるので配列。キャンセル済みは出さない
  * （設計依頼の fetchLinks と同じ方針 — 起票し直した跡が並ぶだけのため）。
  */
-export async function fetchOrderAcceptancesForQuote(key: {
-  yearMonth: string;
-  seq: number;
-}): Promise<AcceptanceLink[]> {
+export async function fetchOrderAcceptancesForQuote(
+  key: DocKey,
+): Promise<AcceptanceLink[]> {
   const rows = await prisma.orderAcceptance.findMany({
     where: {
-      quoteYearMonth: key.yearMonth,
-      quoteSeq: key.seq,
+      quote: { docRef: key.docRef },
       status: { not: "CANCELLED" },
     },
     select: {
-      yearMonth: true,
-      seq: true,
+      docRef: true,
       status: true,
       updatedAt: true,
       _count: { select: { items: true } },
     },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
     take: 20,
   });
   return rows.map((r) => ({
-    number: formatDocNumber("ORD", { yearMonth: r.yearMonth, seq: r.seq }),
+    number: docIdOf(r),
     status: r.status as OrderAcceptanceStatus,
     orderLineCount: r._count.items,
     updatedAt: r.updatedAt.toISOString(),

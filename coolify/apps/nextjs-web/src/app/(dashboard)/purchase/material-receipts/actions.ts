@@ -15,8 +15,10 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { findOpenPoConflicts, openPoErrorMessage } from "@/lib/open-po-guard";
+import type { OpenPoLine } from "@/lib/open-po-guard-core";
 import {
   type ActionResult,
   actionError,
@@ -28,9 +30,8 @@ const BASE_PATH = "/purchase/material-receipts";
 
 function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     supplierBpId: z.string().nullable(),
     plantId: z.string().nullable(),
     quantity: z
@@ -41,12 +42,33 @@ function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
       .string()
       .min(1, tr("purchase.materialReceipts.enterAReceivedDate")),
     notes: z.string(),
+    /**
+     * 「発注済み・未入荷あり」の同じ素材があっても、別の購入として登録すると
+     * 利用者が確かめたか（lib/open-po-guard-core.ts）。
+     */
+    acknowledgeOpenPo: z.boolean().optional().default(false),
   });
 }
 
-export type MaterialReceiptInput = z.infer<
+export type MaterialReceiptInput = z.input<
   ReturnType<typeof receiptInputSchema>
 >;
+
+/** 画面が確認を出すための照会: 同じ素材の「発注済み・未入荷あり」の発注書。 */
+export async function checkOpenPurchaseOrders(
+  candidates: { itemId: string; supplierBpId: string | null }[],
+): Promise<ActionResult<OpenPoLine[]>> {
+  const authz = await checkPermission("material_receipt", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  return actionOk(
+    await findOpenPoConflicts(
+      candidates.map((c) => ({
+        itemId: Number(c.itemId),
+        supplierBpId: c.supplierBpId,
+      })),
+    ),
+  );
+}
 
 /** 直接調達の入荷登録 — 作成 + 在庫入庫 + 監査。 */
 export async function createMaterialReceipt(
@@ -63,21 +85,32 @@ export async function createMaterialReceipt(
   }
   const v = parsed.data;
   const plantId = v.plantId ? Number(v.plantId) : null;
+  // 発注した素材を直接調達として入れると、あとで発注書の「入荷完了」で
+  // 二重に入庫する。確認なしでは保存しない（画面も同じ確認を出す）。
+  if (!v.acknowledgeOpenPo) {
+    const conflicts = await findOpenPoConflicts([
+      { itemId: Number(v.itemId), supplierBpId: v.supplierBpId },
+    ]);
+    if (conflicts.length > 0) {
+      return actionError(openPoErrorMessage(conflicts, tr));
+    }
+  }
   // 入荷先拠点は自分の拠点集合の中（読み取り側 data.ts と同じ PLANT ∪ OWN 規則）。
   if (!targetPlantsInScope(authz.access, authz.userId, [plantId])) {
     return actionError(tr("common.scopeDenied"));
   }
   try {
-    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない
+    const itemId = Number(v.itemId);
+    // 単位は素材（品目）の単位で固定 — 「本」の台帳へ「kg」を足させない
     // （lib/inventory ensureMaterialInventory も同じ理由で不一致を拒む）。
-    const material = await prisma.material.findUnique({
-      where: { id: Number(v.materialId) },
+    const item = await prisma.item.findUnique({
+      where: { id: itemId, itemType: "MATERIAL" },
       select: { unit: true },
     });
-    if (!material) return actionError(tr("common.targetRecordNotFound"));
-    if (v.unit !== material.unit) {
+    if (!item) return actionError(tr("common.targetRecordNotFound"));
+    if (v.unit !== item.unit) {
       return actionError(
-        tr("purchase.materialReceipts.unitMismatch", { unit: material.unit }),
+        tr("purchase.materialReceipts.unitMismatch", { unit: item.unit }),
       );
     }
     const actor = await getCurrentActorId();
@@ -86,7 +119,7 @@ export async function createMaterialReceipt(
     const receipt = await prisma.$transaction(async (tx) => {
       const created = await tx.materialReceipt.create({
         data: {
-          materialId: Number(v.materialId),
+          itemId,
           supplierBpId: v.supplierBpId,
           // 直接調達 — 発注明細には紐付けない。
           purchaseOrderItemId: null,
@@ -99,7 +132,15 @@ export async function createMaterialReceipt(
         },
         select: { id: true },
       });
-      await onMaterialReceipt(created.id, tx);
+      // 伝票は入荷行を作ってから起こす — そうしないと source_id に入れる id が
+      // まだ無い（1 件の入荷はその入荷行そのものが出どころ）。
+      const openMovement = movementOpener(tx, {
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_receipts",
+        sourceId: created.id,
+        plantId,
+      });
+      await onMaterialReceipt(created.id, tx, openMovement);
       return created;
     });
 
@@ -108,7 +149,7 @@ export async function createMaterialReceipt(
       tableName: "material_receipts",
       recordId: receipt.id,
       after: {
-        materialId: Number(v.materialId),
+        itemId,
         supplierBpId: v.supplierBpId,
         plantId,
         quantity: v.quantity,
@@ -120,7 +161,7 @@ export async function createMaterialReceipt(
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/${receipt.id}`);
     // 在庫台帳（数量）が動くため在庫ページも再検証する。
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
     // 在庫ガード（lib/inventory）の業務エラーは構造化ノート（鍵 + パラメータ）

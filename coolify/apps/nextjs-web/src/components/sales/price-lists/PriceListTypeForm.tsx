@@ -30,7 +30,10 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCalendar,
+  IconCopy,
+  IconPencil,
   IconPlus,
+  IconRestore,
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -39,32 +42,51 @@ import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
   searchCustomerOptions,
-  searchProductOptions,
+  searchPriceListItemOptions,
+  searchProductItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPriceEntry,
   fetchEstimateSources,
+  fetchPriceEntryForCopy,
+  fetchPriceListItemType,
   type PriceVariantInput,
   updatePriceEntry,
 } from "@/app/(dashboard)/sales/price-lists/actions";
 import type { EstimateSource } from "@/app/(dashboard)/sales/price-lists/data";
-import { GhostButton } from "@/components/ui/buttons";
+import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { customerF4, productF4 } from "@/components/ui/f4-presets";
+import { customerF4, productItemF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { IssuingCompanySelect } from "@/components/ui/IssuingCompanySelect";
 import { openConfirm } from "@/components/ui/modals";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import type { IssuingCompanyField } from "@/lib/doc-company";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import {
+  DEFAULT_SCALE_PRESET,
+  type ScalePresetRow,
+  scalePresetRanges,
+} from "@/lib/price-scale-preset";
+import { notifyPriceEntryApproval } from "./approval-notice";
+import {
+  type DiscountContent,
+  sameCounterpartKey,
+  syncVariantsFrom,
+} from "./company-sync";
+import {
+  appendTierRange,
   type EntryIdentity,
   type PriceListEntry,
   requiresEndDate,
+  setTierEnd,
 } from "./model";
 
 /**
@@ -73,26 +95,31 @@ import {
  * `ReturnType` から導出する）。
  */
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
-  const tierSchema = z.object({
-    /** 保存済みの段階の id（新規は null）— 更新時に行を残すために送る. */
-    id: z.string().nullable(),
-    minQuantity: z
-      .number()
-      .int()
-      .min(1, tr("sales.priceListTypeForm.atLeast1")),
-    maxQuantity: z.number().int().nullable(),
-    /** 数量倍率（×1.01 など）. */
-    multiplier: z
-      .number()
-      .min(0.01, tr("sales.priceListTypeForm.multiplierMustBePositive")),
-    /** 手動上書き単価（null = 基準単価 × 倍率）. */
-    priceOverride: z.number().min(0).nullable(),
-  });
+  const tierSchema = z
+    .object({
+      /** 保存済みの段階の id（新規は null）— 更新時に行を残すために送る. */
+      id: z.string().nullable(),
+      minQuantity: z
+        .number()
+        .int()
+        .min(1, tr("sales.priceListTypeForm.atLeast1")),
+      maxQuantity: z.number().int().nullable(),
+      /** 数量倍率（×1.01 など）. */
+      multiplier: z
+        .number()
+        .min(0.01, tr("sales.priceListTypeForm.multiplierMustBePositive")),
+      /** 手動上書き単価（null = 基準単価 × 倍率）. */
+      priceOverride: z.number().min(0).nullable(),
+    })
+    .refine((t) => t.maxQuantity == null || t.maxQuantity >= t.minQuantity, {
+      path: ["maxQuantity"],
+      message: tr("sales.priceListTypeForm.maxBelowMin"),
+    });
 
   const variantFormSchema = z.object({
     /** 保存済みバリアントの id（新規は null）. */
     id: z.string().nullable(),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
     /** 基準単価ソースの価格試算番号（null = 手動設定）. */
     sourceEstimate: z.string().nullable(),
     /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
@@ -115,7 +142,13 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
       customerId: z
         .string()
         .min(1, tr("sales.orderAcceptances.selectACustomer")),
-      productId: z.string().min(1, tr("common.selectAProduct")),
+      /** 対象製品 — 値は品目 id（items.id）。 */
+      itemId: z.string().min(1, tr("common.selectAProduct")),
+      /**
+       * 対象工具（品目 id）— 再研磨の品目の価格表だけが持てる任意の欄。
+       * null = 工具を問わない価格表。識別の一部で、作成後は変えない。
+       */
+      toolItemId: z.string().nullable(),
       /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
       salesRepId: z.string().nullable(),
       isActive: z.boolean(),
@@ -159,7 +192,20 @@ const emptyTier = (): TierForm => ({
   priceOverride: null,
 });
 
-const emptyVariant = (orderType: VariantForm["orderType"]): VariantForm => ({
+/** 数量スケールのプリセット → 段階（単価の上書きなし = 全行が自動計算）。 */
+const tiersFromPreset = (preset: readonly ScalePresetRow[]): TierForm[] =>
+  scalePresetRanges(preset).map((r) => ({
+    id: null,
+    minQuantity: r.minQuantity,
+    maxQuantity: r.maxQuantity,
+    multiplier: r.multiplier,
+    priceOverride: null,
+  }));
+
+const emptyVariant = (
+  orderType: VariantForm["orderType"],
+  preset: readonly ScalePresetRow[],
+): VariantForm => ({
   id: null,
   orderType,
   sourceEstimate: null,
@@ -168,20 +214,24 @@ const emptyVariant = (orderType: VariantForm["orderType"]): VariantForm => ({
   validFrom: null,
   validUntil: null,
   isActive: true,
-  tiers: [emptyTier()],
+  tiers: tiersFromPreset(preset),
 });
 
 function buildInitial(args: {
   entry?: PriceListEntry | null;
   estimateBases: Record<string, number>;
   lockedCustomerId?: string;
+  /** 品目 id（items.id）。 */
   lockedProductId?: string;
+  /** 新しいバリアントの数量段階の初期値。 */
+  scalePreset: readonly ScalePresetRow[];
 }): FormValues {
   const entry = args.entry;
   if (entry) {
     return {
       customerId: entry.customerId,
-      productId: entry.productId,
+      itemId: entry.itemId,
+      toolItemId: entry.toolItemId ?? null,
       salesRepId: entry.salesRepId,
       isActive: entry.isActive,
       variants: entry.variants.map((v) => {
@@ -210,10 +260,11 @@ function buildInitial(args: {
   }
   return {
     customerId: args.lockedCustomerId ?? "",
-    productId: args.lockedProductId ?? "",
+    itemId: args.lockedProductId ?? "",
+    toolItemId: null,
     salesRepId: null,
     isActive: true,
-    variants: [emptyVariant("PRODUCTION")],
+    variants: [emptyVariant("PRODUCTION", args.scalePreset)],
   };
 }
 
@@ -226,7 +277,11 @@ export function PriceListTypeForm({
   customerOption,
   productOption,
   existingEntries,
+  scalePreset = DEFAULT_SCALE_PRESET,
+  issuingCompany,
 }: {
+  /** 発行会社の欄（作成時のみ。所属拠点が複数の法人にまたがる人だけに出る）。 */
+  issuingCompany?: IssuingCompanyField;
   mode: "create" | "edit";
   /** Edit: the entry (server-fetched view-model). */
   entry?: PriceListEntry | null;
@@ -240,11 +295,17 @@ export function PriceListTypeForm({
   productOption?: Option | null;
   /** All current (顧客, 製品) identities — duplicate warnings. */
   existingEntries: EntryIdentity[];
+  /** 数量スケールのプリセット（SY02）。新しいバリアントの数量段階の初期値。 */
+  scalePreset?: readonly ScalePresetRow[];
 }) {
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const entryId = entry?.entryId;
+  // 発行会社は作成時にだけ決める（以後は変えられない）。
+  const [ownCompanyId, setOwnCompanyId] = useState<number | null>(
+    issuingCompany?.prefill ?? null,
+  );
 
   // 顧客/製品 are locked when editing or prefilled from an existing link.
   const lockCustomerProduct =
@@ -257,25 +318,133 @@ export function PriceListTypeForm({
       estimateBases,
       lockedCustomerId,
       lockedProductId,
+      scalePreset,
     }),
   });
 
   // ── 製品にリンクされた価格試算（基準単価ソース候補）────────────────────────────
   const [sources, setSources] = useState<EstimateSource[]>([]);
-  const productId = form.values.productId;
+  const itemId = form.values.itemId;
+
+  // ── 品目の種別 — 再研磨の品目のときだけ「対象工具」を出す ──────────────────────
+  const [itemType, setItemType] = useState<"PRODUCT" | "REGRIND" | null>(
+    entry?.itemType ?? null,
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 品目が変わったときだけ読み直す（form は useForm の安定参照）
   useEffect(() => {
-    if (!productId) {
+    if (mode === "edit") return; // 識別は不変 — 種別も entry のまま
+    if (!itemId) {
+      setItemType(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPriceListItemType(itemId).then((t) => {
+      if (cancelled) return;
+      setItemType(t);
+      // 製品に切り替えたら工具は外す（工具は再研磨の価格表だけが持つ）。
+      if (t !== "REGRIND") form.setFieldValue("toolItemId", null);
+      // 注文種別を品目に合わせる。再研磨の品目が持てるのは「再研磨」だけなので、
+      // 既定の「本番」のままだと保存が必ず弾かれる（毎回手で直すことになる）。
+      // 触るのは種別が 1 つだけのとき — 複数並べたあとは人が決めたものを動かさない。
+      const variants = form.getValues().variants;
+      const only = variants.length === 1 ? variants[0] : undefined;
+      if (only && t === "REGRIND" && only.orderType !== "REGRIND") {
+        form.setFieldValue("variants.0.orderType", "REGRIND");
+      } else if (only && t === "PRODUCT" && only.orderType === "REGRIND") {
+        form.setFieldValue("variants.0.orderType", "PRODUCTION");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, mode]);
+  const isRegrindItem = itemType === "REGRIND";
+
+  // ── 他社の価格表からコピー ──────────────────────────────────────────────────
+  // 価格表は発行会社ごとに別々。同じ顧客 × 品目（× 工具）を別の会社が既に
+  // 持っているなら、その中身（注文種別・基準単価・期間・数量段階・値引き）を
+  // コピーして作ることを勧める。番号はこの会社で新しく採番され、独自値の
+  // 承認も通常どおり効く（保存は createPriceEntry 1 本）。
+  const [copied, setCopied] = useState<{
+    entryId: string;
+    company: string;
+    discounts: Record<string, DiscountContent[]>;
+  } | null>(null);
+  const identityKey = {
+    customerId: form.values.customerId,
+    itemId: form.values.itemId,
+    toolItemId: isRegrindItem ? form.values.toolItemId || null : null,
+  };
+  // 識別を変えたらコピーの印は外す（値引きは別の価格表のものになるため）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 識別（顧客・品目・工具）が変わったときだけ
+  useEffect(() => {
+    setCopied(null);
+  }, [identityKey.customerId, identityKey.itemId, identityKey.toolItemId]);
+  const copyCandidates =
+    mode === "create" && identityKey.customerId && identityKey.itemId
+      ? existingEntries.filter(
+          (e) =>
+            sameCounterpartKey(
+              { ...e, customerId: e.customerBpId },
+              identityKey,
+            ) &&
+            (ownCompanyId == null || e.ownCompanyId !== ownCompanyId),
+        )
+      : [];
+  const copyFrom = (candidate: EntryIdentity) =>
+    startTransition(async () => {
+      const source = await fetchPriceEntryForCopy(candidate.entryId);
+      if (!source) {
+        notifications.show({
+          title: tr("common.error2"),
+          message: tr("sales.priceListCompanySync.copyFailed"),
+          color: "red",
+        });
+        return;
+      }
+      const rows = syncVariantsFrom(null, source);
+      form.setFieldValue(
+        "variants",
+        rows.map((v) => {
+          const estimateBase = v.estimateNumber
+            ? (sources.find((x) => x.number === v.estimateNumber)?.unitPrice ??
+              null)
+            : null;
+          return {
+            id: null,
+            orderType: v.orderType as VariantForm["orderType"],
+            sourceEstimate: v.estimateNumber,
+            customBase:
+              estimateBase == null || estimateBase !== v.baseUnitPrice,
+            baseUnitPrice: v.baseUnitPrice,
+            validFrom: v.validFrom,
+            validUntil: v.validUntil,
+            isActive: v.isActive,
+            tiers: v.tiers.map((t) => ({ ...t, id: null })),
+          };
+        }),
+      );
+      setCopied({
+        entryId: source.entryId,
+        company: source.ownCompanyCode,
+        discounts: Object.fromEntries(
+          rows.map((v) => [v.orderType, v.discounts]),
+        ),
+      });
+    });
+  useEffect(() => {
+    if (!itemId) {
       setSources([]);
       return;
     }
     let cancelled = false;
-    fetchEstimateSources(productId).then((result) => {
+    fetchEstimateSources(itemId).then((result) => {
       if (!cancelled) setSources(result.ok ? result.data : []);
     });
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [itemId]);
 
   /** バリアントの基準単価ロック値（価格試算ソース選択時のみ）。 */
   const baseOf = (v: VariantForm): number | null => {
@@ -344,6 +513,19 @@ export function PriceListTypeForm({
     }
   };
 
+  /** 数量段階をプリセットへ戻す（手で足した範囲・カスタム単価は消える）。 */
+  const resetTiersToPreset = (vi: number) =>
+    openConfirm({
+      title: tr("sales.priceLists.resetToPresetTitle"),
+      message: tr("sales.priceLists.resetToPresetMessage"),
+      confirmLabel: tr("sales.priceLists.resetToPreset"),
+      onConfirm: () =>
+        form.setFieldValue(
+          `variants.${vi}.tiers`,
+          tiersFromPreset(scalePreset),
+        ),
+    });
+
   const handleSubmit = (raw: FormValues) => {
     const variants: PriceVariantInput[] = raw.variants.map((v) => {
       const estimateBase = baseOf(v);
@@ -360,6 +542,10 @@ export function PriceListTypeForm({
         isActive: v.isActive,
         estimateNumber: v.sourceEstimate,
         tiers: v.tiers,
+        // 他社の価格表からコピーしたときだけ、その値引きルールも一緒に作る。
+        ...(mode === "create" && copied?.discounts[v.orderType]?.length
+          ? { discounts: copied.discounts[v.orderType] }
+          : {}),
       };
     });
     startTransition(async () => {
@@ -372,9 +558,12 @@ export function PriceListTypeForm({
               variants,
             })
           : await createPriceEntry({
+              ownCompanyId,
+              copiedFromEntryId: copied?.entryId ?? null,
               identity: {
                 customerBpId: raw.customerId,
-                productId: raw.productId,
+                itemId: raw.itemId,
+                toolItemId: isRegrindItem ? raw.toolItemId || null : null,
               },
               salesRepId: raw.salesRepId,
               variants,
@@ -388,6 +577,7 @@ export function PriceListTypeForm({
               : tr("sales.priceLists.thePriceListWasCreated"),
           color: "green",
         });
+        notifyPriceEntryApproval(result.data, tr);
         // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.entryId}`);
       } else {
@@ -404,14 +594,18 @@ export function PriceListTypeForm({
     mode === "create"
       ? (existingEntries.find(
           (e) =>
+            // 価格表は会社ごと — 重複は同じ発行会社の中でだけ。
+            (ownCompanyId == null || e.ownCompanyId === ownCompanyId) &&
             e.customerBpId === form.values.customerId &&
-            e.productId === form.values.productId,
+            e.itemId === form.values.itemId &&
+            (e.toolItemId ?? null) ===
+              (isRegrindItem ? form.values.toolItemId || null : null),
         ) ?? null)
       : null;
 
   const sourceOptions: Option[] = sources.map((s) => ({
     value: s.number,
-    label: `${s.number} ${s.name}（${formatMoney(s.unitPrice)}）`,
+    label: `${docNo(s.number)} ${s.name}（${formatMoney(s.unitPrice)}）`,
   }));
 
   return (
@@ -465,20 +659,59 @@ export function PriceListTypeForm({
           {lockCustomerProduct ? (
             <FieldValue
               label={tr("common.product")}
-              value={productOption?.label ?? (form.values.productId || "—")}
+              value={productOption?.label ?? (form.values.itemId || "—")}
             />
           ) : (
             <SearchSelect
-              error={form.errors.productId}
-              f4={productF4(tr)}
+              error={form.errors.itemId}
+              f4={productItemF4(tr)}
               initialOption={productOption}
               label={<HelpLabel {...fieldHelp(tr, "priceList", "product")} />}
-              onChange={(v) => form.setFieldValue("productId", v ?? "")}
-              onSearch={searchProductOptions}
+              onChange={(v) => form.setFieldValue("itemId", v ?? "")}
+              // 出るのは**売り物**だけ — 製品と再研磨品目。他社製品（預かる
+              // だけ）と素材は価格表を持てないので、選べてしまうと保存の段に
+              // なって初めて断られる。判定の正は lib/sales-item-guard.ts。
+              onSearch={searchPriceListItemOptions}
               placeholder={tr("common.searchProducts")}
-              storageKey="product"
-              value={form.values.productId || null}
+              storageKey="price-list-product-item"
+              value={form.values.itemId || null}
               withAsterisk
+            />
+          )}
+          {/*
+            対象工具 — 再研磨の品目の価格表だけが持てる任意の欄。同じ顧客 ×
+            役務でも、研ぐ工具で値段が違うときに工具ごとの価格表を作る。
+            解決は 工具一致 → 工具なし → 標準価格（quotes/model selectPriceEntries）。
+          */}
+          {isRegrindItem &&
+            (mode === "edit" ? (
+              <FieldValue
+                label={tr("sales.priceLists.targetTool")}
+                value={entry?.toolName ?? tr("sales.priceLists.anyTool")}
+              />
+            ) : (
+              <SearchSelect
+                description={tr(
+                  "sales.priceListTypeForm.targetToolDescription",
+                )}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "priceList", "targetTool")} />
+                }
+                onChange={(v) => form.setFieldValue("toolItemId", v ?? null)}
+                // 預かる工具の大半は他社製 — 他社製品も候補に入れる。
+                onSearch={(q) =>
+                  searchProductItemOptions(q, { includeExternal: true })
+                }
+                placeholder={tr("sales.priceListTypeForm.searchTools")}
+                storageKey="price-list-tool-item"
+                value={form.values.toolItemId || null}
+              />
+            ))}
+          {mode === "create" && (
+            <IssuingCompanySelect
+              field={issuingCompany}
+              onChange={setOwnCompanyId}
+              value={ownCompanyId}
             />
           )}
           <SalesRepSelect
@@ -511,7 +744,7 @@ export function PriceListTypeForm({
               href={`${BASE_PATH}/${duplicateEntry.entryId}/edit`}
               size="sm"
             >
-              {duplicateEntry.entryId}
+              {docNo(duplicateEntry.entryId)}
             </Anchor>{" "}
             {tr("sales.priceListTypeForm.duplicateEntrySuffix", {
               orderTypes: duplicateEntry.orderTypes
@@ -520,7 +753,43 @@ export function PriceListTypeForm({
             })}
           </Alert>
         )}
-        {form.values.productId && sources.length === 0 && (
+        {!duplicateEntry && copyCandidates.length > 0 && (
+          <Alert
+            color="blue"
+            mt="sm"
+            title={tr("sales.priceListCompanySync.copyRecommendTitle")}
+            variant="light"
+          >
+            <Text size="sm">
+              {copied
+                ? tr("sales.priceListCompanySync.copiedNotice", {
+                    company: copied.company,
+                    number: docNo(copied.entryId) ?? copied.entryId,
+                    count: Object.values(copied.discounts).reduce(
+                      (n, d) => n + d.length,
+                      0,
+                    ),
+                  })
+                : tr("sales.priceListCompanySync.copyRecommendMessage")}
+            </Text>
+            <Group gap="xs" mt="xs">
+              {copyCandidates.map((c) => (
+                <SecondaryButton
+                  key={c.entryId}
+                  leftSection={<IconCopy size={14} />}
+                  loading={isPending}
+                  onClick={() => copyFrom(c)}
+                >
+                  {tr("sales.priceListCompanySync.copyFrom", {
+                    company: c.ownCompanyCode,
+                  })}{" "}
+                  ({docNo(c.entryId)})
+                </SecondaryButton>
+              ))}
+            </Group>
+          </Alert>
+        )}
+        {form.values.itemId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
             {tr("sales.priceLists.noConfirmedEstimateIsLinkedTo")}
           </Alert>
@@ -559,7 +828,9 @@ export function PriceListTypeForm({
               {savedVariant ? (
                 <FieldValue
                   label={tr("sales.priceLists.priceSourcePriceEstimate")}
-                  value={variant.sourceEstimate ?? tr("common.setManually")}
+                  value={
+                    docNo(variant.sourceEstimate) ?? tr("common.setManually")
+                  }
                 />
               ) : (
                 <Select
@@ -788,6 +1059,16 @@ export function PriceListTypeForm({
                           {...form.getInputProps(
                             `variants.${vi}.tiers.${ri}.maxQuantity`,
                           )}
+                          onChange={(v) =>
+                            form.setFieldValue(
+                              `variants.${vi}.tiers`,
+                              setTierEnd(
+                                variant.tiers,
+                                ri,
+                                typeof v === "number" ? v : null,
+                              ),
+                            )
+                          }
                         />
                       </Table.Td>
                       <Table.Td>
@@ -814,42 +1095,46 @@ export function PriceListTypeForm({
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
-                          <Checkbox
-                            aria-label={tr(
-                              "sales.priceLists.useACustomUnitPrice2",
-                            )}
-                            checked={isCustom}
-                            onChange={(e) =>
-                              toggleTierOverride(
-                                vi,
-                                ri,
-                                e.currentTarget.checked,
-                                autoPrice,
-                              )
-                            }
-                          />
-                          <NumberInput
-                            aria-label={
-                              isCustom ? undefined : tr("common.auto")
-                            }
-                            disabled={!isCustom}
-                            min={0}
-                            placeholder={
-                              isCustom ? undefined : tr("common.auto")
-                            }
-                            prefix="¥"
-                            thousandSeparator=","
-                            {...form.getInputProps(
-                              `variants.${vi}.tiers.${ri}.priceOverride`,
-                            )}
-                            onChange={(v) =>
-                              form.setFieldValue(
-                                `variants.${vi}.tiers.${ri}.priceOverride`,
-                                typeof v === "number" ? v : null,
-                              )
-                            }
-                            value={tier.priceOverride ?? ""}
-                          />
+                          {isCustom ? (
+                            <>
+                              <NumberInput
+                                aria-label={tr(
+                                  "sales.priceLists.useACustomUnitPrice2",
+                                )}
+                                min={0}
+                                prefix="¥"
+                                thousandSeparator=","
+                                {...form.getInputProps(
+                                  `variants.${vi}.tiers.${ri}.priceOverride`,
+                                )}
+                                onChange={(v) =>
+                                  form.setFieldValue(
+                                    `variants.${vi}.tiers.${ri}.priceOverride`,
+                                    typeof v === "number" ? v : null,
+                                  )
+                                }
+                                value={tier.priceOverride ?? ""}
+                              />
+                              <GhostButton
+                                onClick={() =>
+                                  toggleTierOverride(vi, ri, false, autoPrice)
+                                }
+                                size="xs"
+                              >
+                                {tr("sales.priceLists.backToAutoButton")}
+                              </GhostButton>
+                            </>
+                          ) : (
+                            <SecondaryButton
+                              leftSection={<IconPencil size={14} />}
+                              onClick={() =>
+                                toggleTierOverride(vi, ri, true, autoPrice)
+                              }
+                              size="xs"
+                            >
+                              {tr("sales.priceLists.customButton")}
+                            </SecondaryButton>
+                          )}
                         </Group>
                       </Table.Td>
                       <Table.Td ta="right">
@@ -887,16 +1172,30 @@ export function PriceListTypeForm({
                 })}
               </Table.Tbody>
             </Table>
-            <GhostButton
-              leftSection={<IconPlus size={16} />}
-              mt="sm"
-              onClick={() =>
-                form.insertListItem(`variants.${vi}.tiers`, emptyTier())
-              }
-              size="xs"
-            >
-              {tr("sales.priceLists.addATier")}
-            </GhostButton>
+            <Group gap="xs" mt="sm">
+              <GhostButton
+                leftSection={<IconPlus size={16} />}
+                onClick={() =>
+                  form.setFieldValue(
+                    `variants.${vi}.tiers`,
+                    appendTierRange(variant.tiers, (min) => ({
+                      ...emptyTier(),
+                      minQuantity: min,
+                    })),
+                  )
+                }
+                size="xs"
+              >
+                {tr("sales.priceLists.addACustomRange")}
+              </GhostButton>
+              <GhostButton
+                leftSection={<IconRestore size={16} />}
+                onClick={() => resetTiersToPreset(vi)}
+                size="xs"
+              >
+                {tr("sales.priceLists.resetToPreset")}
+              </GhostButton>
+            </Group>
           </FormSection>
         );
       })}
@@ -910,7 +1209,7 @@ export function PriceListTypeForm({
           const next =
             (ORDER_TYPE_OPTIONS.find((o) => !used.has(o.value))
               ?.value as VariantForm["orderType"]) ?? "PRODUCTION";
-          form.insertListItem("variants", emptyVariant(next));
+          form.insertListItem("variants", emptyVariant(next, scalePreset));
         }}
       >
         {tr("common.addAnOrderType")}

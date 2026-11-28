@@ -91,7 +91,10 @@ describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 
 describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
   const item = (over: Partial<QuoteItem>): QuoteItem => ({
     id: "i",
-    productId: "p",
+    itemId: "p",
+    productCode: null,
+    toolItemId: null,
+    toolLabel: null,
     productName: "p",
     orderType: "PRODUCTION",
     quantity: 1,
@@ -212,8 +215,8 @@ describe("価格表 back-references", () => {
 
   it("findPriceTierRef resolves a stored tier id to its entry + label", () => {
     const ref = findPriceTierRef("ti-2", tr);
-    expect(ref?.entryId).toBe("PRC-202601-00001");
-    expect(ref?.estimateNumber).toBe("EST-202605-00031");
+    expect(ref?.entryId).toBe("CKK~PRC-2026-00001");
+    expect(ref?.estimateNumber).toBe("CKK~EST-2026-00031");
     expect(ref?.label).toBe(`10〜29本 ${formatMoney(6900)}`);
     expect(findPriceTierRef("nope", tr)).toBe(null);
     expect(findPriceTierRef(null, tr)).toBe(null);

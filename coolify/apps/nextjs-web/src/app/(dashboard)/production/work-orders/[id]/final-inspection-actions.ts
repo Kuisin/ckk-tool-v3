@@ -10,6 +10,7 @@
  * （役割ごとに RBAC を細分するのは過剰と判断）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -27,9 +28,46 @@ function revalidate(workOrderNumber: number) {
   revalidatePath(`${BASE_PATH}/${workOrderNumber}/steps`, "layout");
 }
 
-async function deniedPermission(): Promise<ActionResult | null> {
+/**
+ * 対象指示書がスコープ内か（PLANT = 工程の実施拠点 ∪ OWN = 作成者）。
+ * work-orders/actions.ts / steps/[stepId]/actions.ts の workOrderInScope と
+ * 同じ規則。ALL は素通し。不存在は true — 既存の woNotFound 系に委ねる。
+ */
+async function workOrderInScope(
+  access: Access,
+  userId: string,
+  workOrderNumber: number,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { createdBy: true, steps: { select: { plantId: true } } },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    { plantIds: row.steps.map((s) => s.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
+/**
+ * RBAC ゲート — work_order:UPDATE の権限に加えて、対象指示書が**行スコープ内**か
+ * も見る。最終検査・出荷許可は指示書の実行と同じ権限だが、以前はスコープを見て
+ * おらず、PLANT 権限の利用者が別拠点の指示書番号（通し連番で推測可能）を渡して
+ * 出荷許可までスタンプできた。工程実行アクション（deniedStepPermission）と同じ
+ * 規則に揃える。拒否時は ActionResult、許可時は null。
+ */
+async function deniedPermission(
+  workOrderNumber: number,
+): Promise<ActionResult | null> {
   const authz = await checkPermission("work_order", "UPDATE");
-  return authz.ok ? null : actionError(authz.error);
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
+    const tr = await getTranslations();
+    return actionError(tr("common.scopeDenied"));
+  }
+  return null;
 }
 
 /**
@@ -85,7 +123,7 @@ export async function setFinalInspectionCheck(
   ok: boolean,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedPermission();
+  const denied = await deniedPermission(workOrderNumber);
   if (denied) return denied;
   if (!CHECKLIST_FIELDS.includes(field))
     return actionError(tr("production.finalInspectionActions.invalidField"));
@@ -157,7 +195,7 @@ export async function setFinalInspectionSpareStock(
   value: boolean,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedPermission();
+  const denied = await deniedPermission(workOrderNumber);
   if (denied) return denied;
   if (!SPARE_STOCK_FIELDS.includes(field))
     return actionError(tr("production.finalInspectionActions.invalidField"));
@@ -229,7 +267,7 @@ export async function advanceShipmentStage(
   stage: ShipmentStage,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedPermission();
+  const denied = await deniedPermission(workOrderNumber);
   if (denied) return denied;
   const stageIndex = SHIPMENT_STAGES.indexOf(stage);
   if (stageIndex < 0)
@@ -313,7 +351,7 @@ export async function recordShipDefectReview(
   notes: string,
 ): Promise<ActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedPermission();
+  const denied = await deniedPermission(workOrderNumber);
   if (denied) return denied;
   const target = await findFinalInspectionWorkOrderId(workOrderNumber);
   if ("error" in target) {

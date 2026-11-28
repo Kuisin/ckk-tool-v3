@@ -1,13 +1,15 @@
 /**
  * types.ts — 価格試算 (価格試算) view-model shared by the SA01 screens.
  *
- * Rows come from sales.estimates via Prisma (combined key year_month+seq);
- * `id` is the DERIVED document number (EST-YYYYMM-NNNNN) and doubles as the
- * URL id. `input` snapshots the full calc input so the detail page recomputes
+ * Rows come from sales.estimates via Prisma（行は参照 doc_ref で引く）;
+ * `id` は書類の id（法人コード + 番号 `CKK~EST-2026-00001`）で、URL id を兼ねる。 `input` snapshots the full calc input so the detail page recomputes
  * deterministically via `calcTrialPricing`.
  */
 
+import type { EstimateKind } from "@/lib/estimate-cost";
 import type { TrialInput, TrialResult } from "@/lib/trial-pricing";
+
+export type { EstimateKind };
 
 /** 保存/確定時に記録した価格スナップショット（estimate.result）。 */
 export type TrialPriceSnapshot = TrialResult & {
@@ -22,15 +24,28 @@ export type TrialPriceSnapshot = TrialResult & {
 export type EstimateStatus = "DRAFT" | "CONFIRMED" | "REGISTERED";
 
 export interface TrialEstimateRecord {
-  /** Derived document number EST-YYYYMM-NNNNN — also the URL id. */
+  /**
+   * 書類の id（法人コード + 番号 `CKK~EST-2026-00001`）— URL と Server Action の
+   * 引数。表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   estimateNumber: string;
+  /** 旧番号（EST-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
   name: string;
   status: EstimateStatus;
+  /**
+   * 種別 — COST = 原価試算（原価合計だけを出す。estimate_cost の持ち主にしか
+   * 届かない）/ PRICE = 売価試算（従来の価格試算）。
+   */
+  kind: EstimateKind;
   customerId: string | null;
   customerName: string | null;
-  /** 対象製品（任意リンク — 価格表作成時の基準単価ソース候補）. */
-  productId: string | null;
+  /**
+   * 対象製品（任意リンク — 価格表作成時の基準単価ソース候補）。
+   * 値は品目 id（items.id、`itemType: "PRODUCT"`）— products.id ではない。
+   */
+  itemId: string | null;
   productName: string | null;
   /** 材種 × 直径 × 黒皮/研磨（参照価格の解決キー）. */
   materialTypeId: string;

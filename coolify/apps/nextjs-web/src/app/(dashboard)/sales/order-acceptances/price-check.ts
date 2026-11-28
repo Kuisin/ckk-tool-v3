@@ -23,6 +23,7 @@
  */
 
 import { getTranslations } from "next-intl/server";
+import { isAcceptanceCustomPriceState } from "@/lib/custom-value-approval-core";
 import { prisma } from "@/lib/db";
 import type { DocKey } from "@/lib/doc-number";
 import { formatMoney } from "@/lib/format";
@@ -32,12 +33,16 @@ import {
   acceptancePriceState,
   requiresPriceAcknowledgement,
 } from "@/lib/order-acceptance-price-core";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadCustomerPriceEntries, priceListLookup } from "./price-resolve";
 
 /** 明細 1 行の照合結果。 */
 export interface AcceptancePriceCheckLine {
-  /** order_lines.id — DRAFT エディタ行との突合キー。 */
-  itemId: string;
+  /**
+   * order_lines.id — DRAFT エディタ行との突合キー。
+   * **品目 id（items.id）ではない** — 明細が指す製品は `rowPrice` が扱う。
+   */
+  lineId: string;
   /** 1 始まりの行番号（sortOrder 順）。 */
   row: number;
   /** 明細の数量（数量段階なしの文言に出す）。 */
@@ -86,14 +91,16 @@ export async function checkAcceptancePrices(
 ): Promise<AcceptancePriceCheck> {
   const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
+      ownCompanyId: true,
       customerBpId: true,
       items: {
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
-          productId: true,
+          itemId: true,
+          toolItemId: true,
           orderType: true,
           quantity: true,
           unitPrice: true,
@@ -105,27 +112,38 @@ export async function checkAcceptancePrices(
   if (!acceptance || acceptance.items.length === 0) return EMPTY_PRICE_CHECK;
 
   const customerBpId = acceptance.customerBpId;
-  const entries = await loadCustomerPriceEntries(customerBpId);
+  // 価格表（顧客ごと）と標準価格（品目の定価）— 照合も保存と同じ 2 段で見る。
+  const [entries, standard] = await Promise.all([
+    loadCustomerPriceEntries(customerBpId, acceptance.ownCompanyId),
+    loadStandardUnitPrices(acceptance.items.map((it) => it.itemId)),
+  ]);
 
   const lines: AcceptancePriceCheckLine[] = acceptance.items.map((it, i) => {
-    const productId = it.productId != null ? String(it.productId) : null;
+    const itemId = it.itemId != null ? String(it.itemId) : null;
     const actual = it.unitPrice != null ? Number(it.unitPrice) : null;
     const { expected, missReason } = priceListLookup(
       entries,
       customerBpId,
-      { productId, orderType: it.orderType, quantity: it.quantity },
+      {
+        itemId,
+        orderType: it.orderType,
+        quantity: it.quantity,
+        toolItemId: it.toolItemId,
+        standardUnitPrice:
+          it.itemId != null ? (standard.get(it.itemId) ?? null) : null,
+      },
       tr,
     );
     const state = acceptancePriceState({
       // 顧客が未特定なら価格表を引く相手がいない — 照合不能として扱う。
-      matched: Boolean(productId && customerBpId),
+      matched: Boolean(itemId && customerBpId),
       expected,
       actual,
       overridden: it.priceOverridden,
       missReason,
     });
     return {
-      itemId: it.id,
+      lineId: it.id,
       row: i + 1,
       quantity: it.quantity,
       expected,
@@ -186,6 +204,26 @@ export function priceOverrideSummary(
         row: l.row,
         actual: formatMoney(l.actual),
         expected: formatMoney(l.expected),
+      }),
+    );
+}
+
+/**
+ * 独自値の行の表示文字列（例: `行2 ¥1,200`）— 価格表どおりでない単価の行
+ * （上書き・確認済みの差異・価格表なし・数量段階なし）。1 行でもあれば承認依頼に
+ * 「独自値の追加承認」の段が足される（lib/custom-value-approval-core）。
+ * 監査行にも残す。
+ */
+export function customValueSummary(
+  check: AcceptancePriceCheck,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string[] {
+  return check.lines
+    .filter((l) => isAcceptanceCustomPriceState(l.state))
+    .map((l) =>
+      tr("sales.orderAcceptances.customValueLine", {
+        row: l.row,
+        actual: formatMoney(l.actual),
       }),
     );
 }

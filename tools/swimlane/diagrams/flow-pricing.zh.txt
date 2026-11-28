@@ -1,0 +1,320 @@
+// 业务流程「价格与报价」。结构与 ja 文件相同。
+
+/title/
+价格与报价 — 从价格试算到发行报价单
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_sales>
+label: 销售;
+text-color: #1e293b;
+background-color: #dbeafe;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_admin>
+label: 管理员;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_cust>
+label: 客户;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA01>
+label: SA01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA02>
+label: SA02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA03>
+label: SA03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA06>
+label: SA06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0H>
+label: MS0H;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<EST>
+label: 价格试算;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<RGI>
+label: 再研磨服务;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<PL>
+label: 价格表;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<QOT>
+label: 报价单;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<DR>
+label: 设计委托单;
+side: right;
+background-color: #e0e7ff;
+border-color: #4f46e5;
+text-color: #3730a3;
+
+<OA>
+label: 订单确认书;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+/line/
+
+if (销售对象) is (产品) than #blue
+  [role_sales: 创建价格试算] <block_apply>
+  label: 价格试算;
+  props: APP_SA01;
+  desc: 选择刀具类别，输入尺寸、材料（材料类别、直径、表面处理）和加工条件。每次输入都会重新计算试算单价。;
+  if (材料单价) is (自动) than #blue
+    [role_system: 得出参考价格] <block_system>
+    label: 参考价格;
+    desc: 根据相同材料类别、直径、表面处理的采购实绩，按设置（最新、最高、平均及参考月数）得出 ¥/1000mm。无实绩时使用材料类别的默认单价，并显示「默认价格」标记。;
+  elseif (圆筒) than #purple
+    [role_sales: 手动输入材料价] <block_apply>
+    label: 手动输入;
+    props: APP_SA01;
+    desc: 刀具类别为圆筒时不使用参考价格，手动输入材料价格（¥/支）。;
+  endif
+  if (修改单价) is (修改) than #purple
+    [role_sales: 编辑单价] <block_apply>
+    label: 自定义;
+    props: APP_SA01;
+    desc: 行情不同时，用「编辑单价」重新输入参考价格。会显示「自定义」标记，可用「恢复为策略值」恢复自动价格。;
+  elseif (保持) than
+  endif
+  [role_sales: 保存为草稿] <block_apply>
+  label: 保存;
+  props: APP_SA01,EST;
+  desc: 价格试算名称必填。分配 EST- 编号，状态为「草稿」。记录保存时的计算结果，之后不能编辑内容。;
+  if (内容) is (重做) than #purple
+    [role_sales: 复制并重新试算] <block_apply>
+    label: 复制;
+    props: APP_SA01;
+    desc: 打开内容相同的输入画面，名称后加「（重做）」。保存后成为新编号的草稿。任何状态都可复制。;
+    [loop]
+  elseif (已确定) than
+  endif
+  if (产品) is (未指定) than #orange
+    [role_sales: 关联产品] <block_apply>
+    label: 关联产品;
+    props: APP_SA01;
+    desc: 价格表中只能选择已关联产品的价格试算。草稿和已确定状态下可更换或解除关联。;
+  elseif (已指定) than
+  endif
+  [role_sales: 确定] <block_approve>
+  label: 确定;
+  props: APP_SA01,EST;
+  desc: 只有草稿可以确定。按确定时的设置重新计算并记录，状态变为「已确定」。;
+elseif (再研磨) than #purple
+  [role_admin: 登记标准价格] <block_apply>
+  label: 标准价格;
+  props: APP_MS0H,RGI;
+  desc: 再研磨服务在再研磨服务主数据上持有标准价格（定价），不使用价格试算。标准价格不能在价格表画面修改。;
+endif
+if (价格表) is (创建) than #blue
+  [role_sales: 创建价格表] <block_apply>
+  label: 价格表;
+  props: APP_SA02,PL;
+  desc: 每个 客户 × 品目 一条，按订单类别持有基准单价、有效期、数量档。产品用 量产/试制/样品/其他，再研磨服务只用再研磨。试制、样品必须有失效日。;
+  if (组合) is (已存在) than #orange
+    [role_sales: 修改现有价格表] <block_reject>
+    label: 重复;
+    props: APP_SA02;
+    desc: 相同的 客户 × 品目 已存在，无法保存。打开现有价格表，通过编辑添加订单类别或价格。;
+  elseif (新建) than
+  endif
+  if (基准单价) is (价格试算) than #blue
+    [role_system: 锁定价格试算] <block_system>
+    label: 锁定;
+    props: EST;
+    desc: 同一产品已确定的价格试算的试算单价填入基准单价。首次使用的价格试算变为「已登记价格表」，产品关联也不能再更改。;
+  elseif (手动输入) than #purple
+    [role_sales: 手动输入单价] <block_apply>
+    label: 手动输入;
+    props: APP_SA02;
+    desc: 勾选「使用自定义单价」手动输入基准单价。价格试算来源显示「手动」。也可按数量档设置自定义单价。;
+  endif
+  if (折扣) is (添加) than #purple
+    [role_sales: 添加折扣规则] <block_apply>
+    label: 折扣;
+    props: APP_SA02,PL;
+    desc: 设定比率（%）或金额（¥/支）以及数量、期间条件。多条符合时采用折扣额最大的一条。;
+  elseif (不添加) than
+  endif
+elseif (再研磨按标准价) than #gray
+endif
+[role_sales: 创建报价单] <block_apply>
+label: 报价单;
+props: APP_SA03,QOT;
+desc: 入口有三个：新建、价格表的「创建报价单」、复制现有报价单。选择客户、品目、订单类别、数量后，单价、折扣、金额自动填入（不能手动输入）。;
+if (单价) is (可取得) than #blue
+  [role_system: 从价格表取单价] <block_system>
+  label: 单价;
+  desc: 从有效价格表中有效的订单类别、且今天在有效期内，取符合数量的档位单价（基准单价 × 系数或自定义）和折扣。没有对应价格表的再研磨服务采用标准价格。;
+elseif (无法取得) than #red
+  [role_sales: 修正价格表] <block_reject>
+  label: 无价格表;
+  props: APP_SA02;
+  desc: 产品行没有对应价格表（未创建、停用、期外），或有价格表但没有符合数量的档位时无法保存。请准备价格试算和价格表，或添加档位。;
+  [loop]
+endif
+[role_sales: 保存为草稿] <block_apply>
+label: 保存;
+props: APP_SA03,QOT;
+desc: 分配 QOT- 编号，状态为「草稿」。单价、折扣、税额在保存时固定。草稿可以编辑，重新保存时按当时的价格表重新取价。;
+if (图纸) is (无) than #purple
+  [role_sales: 发起设计委托] <block_apply>
+  label: 设计委托;
+  props: APP_SA06,DR;
+  desc: 从报价单菜单发起时会带入该报价单。与报价并行推进（已过期的报价单不能发起）。;
+elseif (有) than
+endif
+[role_sales: 发行] <block_approve>
+label: 发行;
+props: APP_SA03,QOT;
+desc: 有效期限必填，且须为今天或以后。状态变为「已发行」，之后不能编辑，也不能撤销发行。;
+[role_system: 生成 PDF] <block_system>
+label: PDF;
+props: QOT;
+desc: 发行的同时生成并保存报价单 PDF。只有已发行的报价单才有 PDF。;
+if (PDF) is (失败) than #orange
+  [role_sales: 重新生成 PDF] <block_reject>
+  label: 重新生成;
+  props: APP_SA03;
+  desc: 发行已完成。从 PDF 标签页重新生成。;
+elseif (成功) than
+endif
+[role_sales: 向客户发送 PDF] <block_apply>
+label: 提交;
+props: APP_SA03;
+desc: 从 PDF 标签页下载，通过邮件或打印交给客户。发行画面的「邮件发送」勾选不会自动发送。;
+[role_cust: 收到报价单] <block_neutral>
+label: 收到;
+desc: 研究报价内容。没有把答复记录到报价单上的操作。;
+if (答复) is (订货) than #blue
+  [role_sales: 进入订单确认书] <block_apply>
+  label: 转接单;
+  props: APP_SA04,OA;
+  desc: 在订单确认书中指定该报价单后，会显示在报价单的「后续单据」中。从这里进入接单流程。;
+elseif (拒绝、无答复) than #gray
+  [role_system: 显示为已过期] <block_end>
+  label: 已过期;
+  props: QOT;
+  desc: 超过有效期限的已发行报价单自动显示为「已过期」（不作为状态保存）。;
+elseif (修改后重交) than #purple
+  [role_sales: 复制后重新提交] <block_apply>
+  label: 复制;
+  props: APP_SA03,QOT;
+  desc: 已发行的报价单不能修改，复制成新的草稿后从步骤 15 重新开始。;
+endif

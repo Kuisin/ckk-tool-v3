@@ -90,8 +90,23 @@ async function lookupEntityNamesForTable(
       }
       break;
     }
+    // 製品・素材は app.items（品目統合 第 3 段）。table_name は履歴の事実なので
+    // 分かれたままで、引く先が 1 つになった（種別で必ず絞る — id 空間は共通）。
     case "products": {
-      const rows = await prisma.product.findMany({
+      const rows = await prisma.item.findMany({
+        where: { id: { in: ids.map(Number) }, itemType: "PRODUCT" },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) {
+        const n = jaOf(r.name);
+        if (n) out.set(String(r.id), n);
+      }
+      break;
+    }
+    // 再研磨品目 (MS0H)。種別で絞らないのは id 空間が 1 本だから —
+    // この名前で書くのは再研磨品目の画面だけなので、絞る意味が無い。
+    case "items": {
+      const rows = await prisma.item.findMany({
         where: { id: { in: ids.map(Number) } },
         select: { id: true, name: true },
       });
@@ -102,8 +117,8 @@ async function lookupEntityNamesForTable(
       break;
     }
     case "materials": {
-      const rows = await prisma.material.findMany({
-        where: { id: { in: ids.map(Number) } },
+      const rows = await prisma.item.findMany({
+        where: { id: { in: ids.map(Number) }, itemType: "MATERIAL" },
         select: { id: true, name: true },
       });
       for (const r of rows) {
@@ -203,6 +218,28 @@ async function lookupEntityNamesForTable(
     }
     case "work_location_groups": {
       const rows = await prisma.workLocationGroup.findMany({
+        where: { id: { in: ids.map(Number) } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) {
+        const n = jaOf(r.name);
+        if (n) out.set(String(r.id), n);
+      }
+      break;
+    }
+    case "machine_models": {
+      const rows = await prisma.machineModel.findMany({
+        where: { id: { in: ids.map(Number) } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) {
+        const n = jaOf(r.name);
+        if (n) out.set(String(r.id), n);
+      }
+      break;
+    }
+    case "own_companies": {
+      const rows = await prisma.ownCompany.findMany({
         where: { id: { in: ids.map(Number) } },
         select: { id: true, name: true },
       });
@@ -331,6 +368,14 @@ async function lookupEntityNamesForTable(
     }
     case "api_clients": {
       const rows = await prisma.apiClient.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true },
+      });
+      for (const r of rows) out.set(r.id, r.name);
+      break;
+    }
+    case "webhook_endpoints": {
+      const rows = await prisma.webhookEndpoint.findMany({
         where: { id: { in: ids } },
         select: { id: true, name: true },
       });

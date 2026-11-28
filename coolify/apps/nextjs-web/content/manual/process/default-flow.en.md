@@ -31,7 +31,9 @@ Branches and exceptions (price mismatches, sending back, split receiving, and so
 
 ## Overall flow
 
-![Diagram of the whole standard flow (swimlanes from price estimate to invoice)](../assets/diagrams/process-overview.en.svg)
+![The whole business flow (from price estimate to payment)](../assets/diagrams/flow-overview.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#overview).
 
 ## Who's involved in this flow
 
@@ -158,13 +160,13 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 ### What the system does automatically
 
 - A work order number (a running number) is assigned automatically. This number becomes the lot number as-is, and a QR code that the shop floor scans is printed on the work order document.
-- The portion taken from stock has that stock allocated, so it can no longer be used by another order. See [Production flow](/manual/en/process/production) for how to read stock.
+- Creating a work order does not allocate stock by itself. For the portion taken from stock, the stock allocated by「在庫照合」(stock matching) on the order line is issued when the work order completes. See [Production flow](/manual/en/process/production) for how to read stock.
 
 ## 7. Approval — confirming that manufacturing may begin [#stage-7]
 
 ### What happens (who does what)
 
-1. The approver checks the content in [Approval management](/manual/en/operations/production/approval/user) (`PD03`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
+1. The approver checks the content in [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`) or on the work order screen, then presses「**承認**」(Approve). If there is a problem, they choose「**差し戻し**」(Send back).
 
 ![Work order pending approval. The approve button is highlighted with a red box](../assets/screenshots/flow-approval-01.png)
 
@@ -173,6 +175,8 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 - Requesting approval locks the work order from editing, and a notification reaches the approver.
 - Each step's approval is recorded, and the next step's approver is notified.
 - Once every step is approved, manufacturing can begin.
+
+> 💡 If [Approval settings](/manual/en/operations/masters/approval-setting/user) has no step at all for "Work order", an approval request cannot be raised.
 
 ## 8. Manufacturing — the shop floor runs the steps [#stage-8]
 
@@ -250,10 +254,11 @@ For a product that has no drawing yet, a design request is raised **in parallel*
 
 - Running billing closing automatically totals up everything delivered in that period.
 - Generating the invoice assigns an invoice number (INV-) automatically, and issuing it saves a PDF.
-- A closed period can be exported as a CSV file for 弥生会計 (Yayoi Accounting).
+- A closed period can be exported as a journal CSV file for the accounting software.
 
 ## Related pages
 
+- Every pattern of each process from order to payment, and which app to use … [Business Flow](/manual/en/business-flow)
 - Branches, exceptions and **the list of document states** … [Sales flow](/manual/en/process/sales) / [Purchasing flow](/manual/en/process/purchasing) / [Production flow](/manual/en/process/production) / [Shipping flow](/manual/en/process/shipping) / [Billing flow](/manual/en/process/billing)
-- How to operate each app and what each field means … **How-to** on the left
+- How to operate each app and what each field means … **Operations** on the left
 - New to the system … [Getting started](/manual/en/start)

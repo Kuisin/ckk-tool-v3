@@ -2,8 +2,11 @@
  * approvals-data.ts — 未処理一覧 (CM01) の承認セクションのデータソース
  * （旧 承認管理 PD03 の横断一覧）。
  *
- * PENDING の approval_requests を対象種別（注文請書 / 指示書 / 素材発注書 /
- * 購買依頼）横断で一覧する。
+ * PENDING の approval_requests のうち、**自分が承認する番のもの**を対象種別
+ * （注文請書 / 指示書 / 素材発注書 / 購買依頼 …）横断で一覧する。絞り込みの
+ * 定義は lib/approval-inbox-core.ts（承認ボタンの判定 resolveApprover と同じ）。
+ * `approve:READ` はこのタブを出すかどうかの門で、行を見せる根拠ではない —
+ * 以前は全件を出していて、他部門の依頼まで誰にでも見えていた。
  *
  * 旧データ補完（依頼行のない承認依頼中を行ワークフロー列から合成していた分岐）は
  * 廃止した — マイグレーション 20260908090000_approval_flows が進行中の全書類に
@@ -13,18 +16,23 @@
 import { getTranslations } from "next-intl/server";
 import { appList } from "@/lib/app-list";
 import { stepFromSnapshot } from "@/lib/approval-flow";
+import { approvalInboxWhere } from "@/lib/approval-inbox-core";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
-import { checkPermission } from "@/lib/authz";
+import { actableApprovalGroupIds } from "@/lib/approvals";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { designProgramChangeLabel } from "@/lib/design-program-changes-core";
 import { formatDocNumber } from "@/lib/doc-number";
+import { docDisplayId, docDisplayNumber } from "@/lib/doc-ref";
 import { localized } from "@/lib/format";
 
 /** 承認管理 (PD03) の 1 行（client-safe）。 */
 export interface ApprovalRequestRow {
   id: string;
   targetType: string; // work_orders | material_purchase_orders | order_acceptances | purchase_requests
-  targetId: string; // 業務キー（ロット番号 int / PO-… / ORD-…）
-  /** 表示用番号（指示書はロット番号 → 書類番号 WO-… へ解決済み）。 */
+  /** 書類を指す id（ロット番号 int / `CKK~PO-…` / `CKK~ORD-…` — リンクに使う）。 */
+  targetId: string;
+  /** 表示用番号（番号だけ。指示書はロット番号 → 書類番号 WOR-… へ解決済み）。 */
   targetDisplay: string;
   /** 何段目か（1 起点）と総段数 — 「2/3」と出す。 */
   stepNo: number;
@@ -80,13 +88,16 @@ async function readableTargetTypes(
   return readable;
 }
 
-/** 承認依頼中一覧 (PD03) — PENDING の承認依頼。依頼日時の昇順。 */
+/** 承認依頼中一覧 (PD03) — 自分が承認する番の PENDING の依頼。依頼日時の昇順。 */
 export async function fetchPendingApprovalRequests(): Promise<
   ApprovalRequestRow[]
 > {
   const tr = await getTranslations();
+  const userId = await sessionUserId();
+  if (!userId) return [];
+  const groupIds = await actableApprovalGroupIds(userId);
   const requests = await prisma.approvalRequest.findMany({
-    where: { status: "PENDING" },
+    where: approvalInboxWhere(userId, groupIds),
     include: {
       requestedByUser: { select: { displayName: true } },
       approvers: { select: { actedAt: true } },
@@ -106,11 +117,85 @@ export async function fetchPendingApprovalRequests(): Promise<
       ? (
           await prisma.workOrder.findMany({
             where: { workOrderNumber: { in: woNumbers } },
-            select: { workOrderNumber: true, yearMonth: true, seq: true },
+            select: { workOrderNumber: true, docRef: true },
           })
         ).map((w) => [String(w.workOrderNumber), formatDocNumber("WOR", w)])
       : [],
   );
+
+  // 対象が「申請そのもの」（uuid）の種別は、人が見たい親の書類の番号へ解決する。
+  // そのまま出すと対象番号の欄に uuid が並び、どの指示書・注文請書の件か読めない
+  // （行のリンクは中継ページが親へ送るので、欠けているのは表示だけ）。
+  const idsOf = (type: string) =>
+    requests.filter((r) => r.targetType === type).map((r) => r.targetId);
+  const [flowChanges, aborts, cancelRequests, programChanges] =
+    await Promise.all([
+      idsOf("work_order_flow_changes").length
+        ? prisma.workOrderFlowChange.findMany({
+            where: { id: { in: idsOf("work_order_flow_changes") } },
+            select: { id: true, workOrder: { select: { docRef: true } } },
+          })
+        : [],
+      idsOf("work_order_aborts").length
+        ? prisma.workOrderAbort.findMany({
+            where: { id: { in: idsOf("work_order_aborts") } },
+            select: { id: true, workOrder: { select: { docRef: true } } },
+          })
+        : [],
+      idsOf("order_acceptance_cancel_requests").length
+        ? prisma.orderAcceptanceCancelRequest.findMany({
+            where: { id: { in: idsOf("order_acceptance_cancel_requests") } },
+            select: { id: true, acceptance: { select: { docRef: true } } },
+          })
+        : [],
+      // 加工プログラムの変更 — 「製品コード v図面の版 / プログラム名」で出す。
+      idsOf("design_program_changes").length
+        ? prisma.designProgramChange.findMany({
+            where: { id: { in: idsOf("design_program_changes") } },
+            select: {
+              id: true,
+              payload: true,
+              program: { select: { name: true } },
+              designVersion: {
+                select: {
+                  version: true,
+                  item: { select: { code: true, name: true } },
+                },
+              },
+            },
+          })
+        : [],
+    ]);
+  const parentDocNumbers = new Map<string, string>([
+    ...flowChanges.map(
+      (c) =>
+        [
+          `work_order_flow_changes:${c.id}`,
+          formatDocNumber("WOR", c.workOrder),
+        ] as const,
+    ),
+    ...aborts.map(
+      (a) =>
+        [
+          `work_order_aborts:${a.id}`,
+          formatDocNumber("WOR", a.workOrder),
+        ] as const,
+    ),
+    ...programChanges.map(
+      (c) =>
+        [
+          `design_program_changes:${c.id}`,
+          designProgramChangeLabel(c),
+        ] as const,
+    ),
+    ...cancelRequests.map(
+      (c) =>
+        [
+          `order_acceptance_cancel_requests:${c.id}`,
+          formatDocNumber("ORD", c.acceptance),
+        ] as const,
+    ),
+  ]);
 
   return requests.map((r) => {
     const step = stepFromSnapshot(r.flowSnapshot, r.stepNo);
@@ -118,11 +203,14 @@ export async function fetchPendingApprovalRequests(): Promise<
     return {
       id: r.id,
       targetType: r.targetType,
-      targetId: r.targetId,
+      // target_id は法人コード付きの参照（`CKK/ORD-…`）。リンクには id の姿
+      // （`CKK~ORD-…`）で渡し、表示は番号だけにする。
+      targetId: docDisplayId(r.targetType, r.targetId),
       targetDisplay:
         r.targetType === "work_orders"
           ? (woDocNumbers.get(r.targetId) ?? `#${r.targetId}`)
-          : r.targetId,
+          : (parentDocNumbers.get(`${r.targetType}:${r.targetId}`) ??
+            docDisplayNumber(r.targetType, r.targetId)),
       stepNo: r.stepNo,
       stepCount: r.stepCount,
       stepLabel: step

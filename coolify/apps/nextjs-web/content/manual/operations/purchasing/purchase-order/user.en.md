@@ -7,12 +7,15 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 > ⚠️ This app is still being prepared, so it may not appear on the live system yet. If you cannot find it, please ask the person in charge at your company.
 
+> This app belongs to … [Purchasing flow](/manual/en/process/purchasing)
+
 ## What you can do with this app
 
 - You can write which supplier, which material, how many pieces, and at what price.
 - You can place the order after your manager has given **承認** (approval).
-- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/production/material-inventory/user).
-- When the material arrives, you press 「入荷完了」 (Receiving complete) and it **goes into stock automatically**.
+- Once you place the order, the material appears as "arriving soon" on its [stock screen](/manual/en/operations/inventory/inventory-management/user).
+- When the material arrives, you record the receipt on the purchase order screen and it **goes into stock automatically**. If it arrives in several deliveries, 「**分割入荷**」 (Partial receipt) records just the part that arrived.
+- You can **read a supplier's quote or order acknowledgement with AI** to fill in the purchase order.
 - You can keep copies of order forms and delivery notes attached to the purchase order.
 
 ## Words used on this page
@@ -34,11 +37,23 @@ This app is for making a **素材発注書** (material purchase order), which is
 
 A material purchase order moves along in this order. The coloured badge on the screen tells you where it is now.
 
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| appr("承認済<br/>Approved"):::blue
+  appr -->|"Order"| ord("発注済<br/>Ordered"):::violet
+  ord -->|"Partial receipt (part only)"| ord
+  ord -->|"Receiving complete / partial receipts reach full qty"| recv("入荷完了<br/>Received"):::green
+  ord -.->|"Close without receiving"| recv
+  req -.->|"Send back"| draft
+  appr -.->|"Withdraw"| can("キャンセル<br/>Cancelled"):::red
+```
+
 1. **下書き** (draft) … you have only created it. This is the only time you can change it.
 2. **承認依頼中** (pending approval) … you are waiting for your manager's answer.
 3. **承認済** (approved) … it was accepted. You can now order from the supplier.
 4. **発注済** (ordered) … you have ordered from the supplier. Now you wait for the material.
-5. **入荷完了** (receiving complete) … the material arrived and went into stock.
+5. **入荷完了** (receiving complete) … the material arrived and went into stock (an order closed because the rest will not come also ends here).
 
 Before you place the order, you can still withdraw it and make it 「**キャンセル**」 (cancelled).
 
@@ -55,7 +70,7 @@ When you open the app, you see a list of the material purchase orders made so fa
 
 ## Creating a material purchase order
 
-There are two ways to make one.
+There are three ways to make one.
 
 ### Way 1: create it from scratch
 
@@ -80,6 +95,18 @@ The amount (quantity × unit price) and the total are shown automatically as you
 
 If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) has been approved, you can create the purchase order from 「**発注書へ変換**」 (Convert to purchase order) on its screen. The material, quantity, and site are carried over, but **the unit prices stay at 0 yen**. Please enter the prices from 「編集」 (Edit) while it is still a draft.
 
+### Way 3: read a supplier's document with AI
+
+If you have the supplier's quote, order acknowledgement or a copy of the purchase order, the 「**AI で読み取る**」 (Read with AI) panel at the top of the new screen saves typing.
+
+1. Press 「**新規作成**」 (New) and choose the document (PDF or image) in the 「**AI で読み取る**」 (Read with AI) panel. One document at a time.
+2. Press 「**AI で読み取る**」 (Read with AI). Reading can take about a minute.
+3. The supplier, order date and line items (material, quantity, unit, unit price, expected date) that were read are shown. For lines whose material could not be identified, pick it from the candidates.
+4. Press 「**フォームに反映**」 (Fill in the form) to copy the content into the purchase order form below.
+5. Check and correct the content, then press 「**保存**」 (Save).
+
+Reading alone saves nothing. The system remembers the material names you picked, so the next document in the same supplier's format is matched more easily.
+
 ## Asking for approval
 
 1. Open the purchase order screen.
@@ -87,7 +114,9 @@ If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) 
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
-The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/general/my-tasks/user) screen.
+
+> ⚠️ The approval steps are decided in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`). If the material purchase order approval flow has no steps, you cannot request approval (a message such as "the approval flow is not configured" is shown). Ask an administrator to set up the approval settings.
 
 ## Approving or sending back (for the approver)
 
@@ -104,11 +133,21 @@ A purchase order that was sent back returns to 「**下書き**」 (draft). The 
 2. Press 「**発注**」 (Order).
 3. A small window called 「発注の確認」 (confirm order) appears, so press 「**発注する**」 (Place order).
 
-The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/production/material-inventory/user).
+The status becomes 「**発注済**」 (ordered). From this moment, the material you ordered is shown as "arriving soon" on the [stock screen](/manual/en/operations/inventory/inventory-management/user).
 
 ## Recording that the material has arrived
 
-When everything you ordered has arrived, use this to put it into stock.
+**Always record arrivals of ordered material on this purchase order screen.** A purchase order with the status 「発注済」 (ordered) has three buttons, one for each way the material can arrive.
+
+| Button | When to use it | What happens |
+|------|------|------|
+| **入荷完了** (Receiving complete) | Everything remaining has arrived | Receives all the unreceived quantity at once and marks the order received |
+| **分割入荷** (Partial receipt) | Only part has arrived | Receives just the quantity that arrived this time, per line item. Once every line reaches its ordered quantity, the order becomes received automatically |
+| **未入荷のまま完了** (Close without receiving) | The rest will not come (e.g. the supplier is out of stock) | Marks the order received without receiving anything. A reason is required |
+
+> ⚠️ Do not register arrivals of ordered material with 「新規作成」 (New) or 「納品書から登録」 (From a delivery note) in [material receipt](/manual/en/operations/purchasing/material-receipt/user) (`PU03`). Receipts registered there are **not linked to the purchase order**, so the order's remaining quantity does not go down, and pressing 「入荷完了」 (Receiving complete) later **puts the same material into stock a second time**. The material receipt screen is only for material bought without a purchase order (direct purchases).
+
+### When everything has arrived (receiving complete)
 
 1. Open a purchase order with the status 「発注済」 (ordered).
 2. Press 「**入荷完了**」 (Receiving complete).
@@ -122,7 +161,26 @@ When everything you ordered has arrived, use this to put it into stock.
 
 All the quantity that had not arrived yet is treated as arrived, and it is added to the material stock at the receiving site. At the same time, a [material receipt](/manual/en/operations/purchasing/material-receipt/user) record is created automatically, and the person who requested it and the person who made it are notified.
 
-> ⚠️ Please do not use this when only part of the order has arrived. Register just the part that arrived in [material receipt](/manual/en/operations/purchasing/material-receipt/user). 「入荷完了」 (Receiving complete) handles all the remaining quantity at once.
+> ⚠️ Please do not use this when only part of the order has arrived. 「入荷完了」 (Receiving complete) handles all the remaining quantity at once. Use 「**分割入荷**」 (Partial receipt) below instead.
+
+### When only part has arrived (partial receipt)
+
+1. Open a purchase order with the status 「発注済」 (ordered).
+2. Press 「**分割入荷**」 (Partial receipt).
+3. For each line item, enter the quantity that arrived this time. Lines left at 0 are not received.
+4. When you confirm, just that quantity is added to the material stock at the receiving site, and a [material receipt](/manual/en/operations/purchasing/material-receipt/user) record linked to the purchase order is created automatically.
+
+You may record it in as many parts as you need. When every line item reaches its ordered quantity, the purchase order becomes 「**入荷完了**」 (receiving complete) automatically. **You cannot receive more than the ordered quantity** (it is refused per line item).
+
+### When the rest will not come (close without receiving)
+
+Use this when it is decided that the remaining quantity will not arrive, for example because the supplier is out of stock.
+
+1. Open a purchase order with the status 「発注済」 (ordered).
+2. Press 「**未入荷のまま完了**」 (Close without receiving).
+3. Write the 「**締め切る理由**」 (reason for closing) — it is required — and confirm.
+
+The purchase order becomes 「**入荷完了**」 (receiving complete), but the unreceived quantity **does not go into stock** and drops out of the expected receipts. What has already arrived stays as it is. This cannot be undone.
 
 From 「発注済」 (ordered) onwards, each line item shows how many pieces have arrived so far, like 「**入荷済 20**」 (20 received).
 
@@ -160,7 +218,7 @@ Every field on the material purchase order screen. The **?** next to a field in 
 | [Order date](#field-order-date) | Optional | The date of the order |
 | [Notes](#field-notes) | Optional | Notes for the whole order |
 | [Material](#field-material) | Required | The material being ordered |
-| [Receiving plant](#field-plant) | Optional | Where it will be received |
+| [Receiving site](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much to order |
 | [Unit](#field-unit) | Required | Pieces, kg and so on |
 | [Unit price](#field-unit-price) | Required | Price per unit |
@@ -183,9 +241,9 @@ Notes about the order as a whole. Anything specific to one material belongs in t
 
 The material being ordered. If the order was created from a purchase request, the request's contents are carried over.
 
-### Receiving plant [#field-plant]
+### Receiving site [#field-plant]
 
-The plant that receives the material. **Recording the arrival increases stock at this plant.** If it is not decided yet, you may leave it blank.
+The site that receives the material. **Recording the arrival increases stock at this site.** If it is not decided yet, you may leave it blank.
 
 ### Quantity [#field-quantity]
 
@@ -222,7 +280,13 @@ A. The supplier is still empty. Click the 「仕入先」 (supplier) box and cho
 A. 「発注済」 (ordered) and 「入荷完了」 (receiving complete) cannot be cancelled. You can only cancel before the order is placed (draft, pending approval, or approved). If you try anyway, the screen shows 「**発注前の素材発注書のみキャンセルできます**」 (Only material purchase orders before ordering can be cancelled).
 
 **Q. The material arrived in several deliveries.**
-A. Register just the part that arrived in [material receipt](/manual/en/operations/purchasing/material-receipt/user). When everything has arrived, press 「入荷完了」 (Receiving complete) and the rest is handled together.
+A. Press 「**分割入荷**」 (Partial receipt) on this purchase order and record just the part that arrived. When every line item reaches its ordered quantity, the order becomes received automatically. Do not register it in [material receipt](/manual/en/operations/purchasing/material-receipt/user): those receipts are not linked to the purchase order and the material would later go into stock twice.
+
+**Q. The rest of the material is not coming.**
+A. Press 「**未入荷のまま完了**」 (Close without receiving), write the reason, and close the order. The unreceived quantity does not go into stock and drops out of the expected receipts. Pressing 「入荷完了」 (Receiving complete) instead would put the missing quantity into stock.
+
+**Q. I see a message that the approval flow is not configured and cannot request approval.**
+A. The material purchase order approval flow has no steps. Ask an administrator to create the steps in [approval settings](/manual/en/operations/masters/approval-setting/user) (`MS0B`).
 
 **Q. I see 「未入荷の明細がありません」 (There are no line items still to arrive).**
 A. All the quantity is already treated as arrived. There is nothing left to do on this purchase order.

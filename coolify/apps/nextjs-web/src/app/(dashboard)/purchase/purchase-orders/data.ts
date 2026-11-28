@@ -1,7 +1,8 @@
 /**
  * data.ts — 素材発注書 (PU02) のサーバーサイド取得・マッピング。
  *
- * URL id = po_number（PO-YYYYMM-NNNNN、文字列保存）。
+ * URL id = 法人コード付きの発注番号（`CKK~PO-2026-00001`）。DTO の poNumber も
+ * この id の姿で持つ（表示は docNo / <DocNumber> で番号だけ）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  * history Json（{action,user,at,notes}）は displayName 解決して返す。
  * 仕入先 / 拠点 options は work-orders の data.ts を再利用する。
@@ -16,6 +17,7 @@ import type {
 import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { docIdOf, docIdOrNull, parseDocKey } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 
@@ -32,9 +34,9 @@ export {
 const PO_INCLUDE = {
   supplierBp: true,
   createdByUser: { select: { displayName: true } },
-  sourceRequest: { select: { requestNumber: true } },
+  sourceRequest: { select: { docRef: true } },
   items: {
-    include: { material: true, plant: true },
+    include: { item: true, plant: true },
     orderBy: { sortOrder: "asc" as const },
   },
 };
@@ -70,10 +72,11 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
       supplierBp: true,
       _count: { select: { items: true } },
     },
-    orderBy: { poNumber: "desc" },
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map((r) => ({
-    poNumber: r.poNumber,
+    poNumber: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     supplierName: localized(r.supplierBp.name as LocalizedText | null),
     itemCount: r._count.items,
     totalAmount: Number(r.totalAmount),
@@ -83,15 +86,17 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
   }));
 }
 
-/** 詳細 (PU22) view model。id = po_number。未存在は null。 */
+/** 詳細 (PU22) view model。id = `CKK~PO-…`（法人コード付き）。未存在は null。 */
 export async function fetchPurchaseOrder(
   poNumber: string,
   tr: Tr,
 ): Promise<PurchaseOrderView | null> {
   const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return null;
+  const key = parseDocKey(poNumber, "PO");
+  if (!key) return null;
   const r = await prisma.materialPurchaseOrder.findUnique({
-    where: { poNumber },
+    where: { docRef: key.docRef },
     include: PO_INCLUDE,
   });
   if (!r) return null;
@@ -123,11 +128,12 @@ export async function fetchPurchaseOrder(
 
   return {
     id: r.id,
-    poNumber: r.poNumber,
+    poNumber: docIdOf(r),
+    legacyNumber: r.legacyNumber,
     supplierBpId: r.supplierBpId,
     supplierName: localized(r.supplierBp.name as LocalizedText | null),
     createdByName: r.createdByUser?.displayName ?? null,
-    sourceRequestNumber: r.sourceRequest?.requestNumber ?? null,
+    sourceRequestNumber: docIdOrNull(r.sourceRequest),
     status: r.status as PurchaseStatus,
     totalAmount: Number(r.totalAmount),
     currency: r.currency,
@@ -141,9 +147,9 @@ export async function fetchPurchaseOrder(
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      materialId: String(it.materialId),
-      materialCode: it.material.code,
-      materialName: localized(it.material.name as LocalizedText | null),
+      itemId: String(it.itemId),
+      materialCode: it.item?.code ?? "",
+      materialName: localized(it.item?.name as LocalizedText | null),
       plantId: it.plantId != null ? String(it.plantId) : null,
       plantName: it.plant
         ? `${it.plant.code} ${localized(it.plant.name as LocalizedText | null)}`

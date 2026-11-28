@@ -5,7 +5,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ---
 「資材倉庫A」のような、**物を置いておく倉庫や置場** と、その中の **棚** を登録するアプリです。操作コードは `MS0E` です。
 
-在庫は「どの保管場所の、どの棚にあるか」まで分けて管理されます。[在庫管理](/manual/ja/operations/production/product-inventory/user)の在庫移動では、ここで登録した場所どうしで物を動かせます。
+在庫は「どの保管場所の、どの棚にあるか」まで分けて管理されます。[在庫管理](/manual/ja/operations/inventory/inventory-management/user)の在庫移動では、ここで登録した場所どうしで物を動かせます。
 
 > ⚠️ このアプリは試験公開中です。ご利用の環境によっては、まだ表示されないことがあります。
 
@@ -34,6 +34,17 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 - **棚（たな）** … 保管場所の中の区画です（例 A-1、A-2）。在庫は「保管場所 + 棚」の単位で数えます。
 - **フロアマップ** … 拠点のフロアの図面です。図面そのものの登録は[拠点](/manual/ja/operations/masters/plant/user)で行います。
 - **ピン** … 図面の上に置く、保管場所の位置を示す印です。
+
+つながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  plant["拠点"] --> loc["保管場所<br/>（例 資材倉庫A）"]
+  loc --> shelf["棚<br/>（例 A-1）"]
+  plant --> map["フロアマップ<br/>（拠点アプリで登録）"]
+  loc -.->|"ピンを置く"| map
+  shelf -.-> stock["在庫は「保管場所 + 棚」<br/>の単位で数える"]
+```
 
 ## はじめる前に
 
@@ -133,7 +144,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ## よくある質問・困ったとき
 
 **Q.「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」と出ます。**
-A. その場所にまだ在庫が残っています。[在庫管理](/manual/ja/operations/production/product-inventory/user)の在庫移動で中身を別の場所へ移して空にするか、編集画面で「**有効**」を切って無効にしてください。棚を消すときも同じです。
+A. その場所にまだ在庫が残っています。[在庫管理](/manual/ja/operations/inventory/inventory-management/user)の在庫移動で中身を別の場所へ移して空にするか、編集画面で「**有効**」を切って無効にしてください。棚を消すときも同じです。
 
 **Q. 保管場所を削除すると、中の棚はどうなりますか。**
 A. 一緒に消えます。確認の画面に、消える棚の件数が表示されます。この操作は取り消せません。

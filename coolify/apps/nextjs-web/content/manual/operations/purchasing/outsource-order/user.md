@@ -33,6 +33,15 @@ screenshots: [outsource-order-list-01, outsource-order-list-02, outsource-order-
 
 外注をこの一覧に載せるには、[指示書](/manual/ja/operations/production/work-order/user)の工程で実施場所に「**外注**」を選び、外注先の会社を指定します。外注先の会社は[取引先マスタ](/manual/ja/operations/masters/business-partner/user)で登録します。
 
+どこで何を入れるかを図にすると、次のとおりです。
+
+```mermaid
+flowchart TD
+  wo["指示書の工程で<br/>実施場所に「外注」を選び、<br/>外注先を指定する"] --> list["外注依頼の一覧に出る<br/>（このアプリ・見るだけ）"]
+  list -->|"行をクリック"| step["工程の作業画面の<br/>「外注日程」に日付を入れる"]
+  step -.->|"保存すると日付が反映"| list
+```
+
 閲覧には外注依頼の権限が必要です。画面が開かないときは社内の担当者にご確認ください。
 
 ## 画面の見かた

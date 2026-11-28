@@ -12,7 +12,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCopy,
+  IconCalendar,
   IconCopyPlus,
   IconCurrencyYen,
   IconFileText,
@@ -22,7 +22,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deletePriceEntries,
   setPriceEntriesActive,
@@ -31,15 +31,20 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { matchesDocCompany } from "@/lib/doc-company-view-core";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/mock";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
+import { companySyncState } from "./company-sync";
 import { DeletePriceListModal } from "./DeletePriceListModal";
 import { DuplicatePriceListModal } from "./DuplicatePriceListModal";
 import {
@@ -71,6 +76,34 @@ export function PriceListTable({
   const [customer, setCustomer] = useUrlSelectState("customer");
   const [product, setProduct] = useUrlSelectState("product");
   const [orderType, setOrderType] = useUrlSelectState("orderType");
+  const [company, setCompany] = useUrlSelectState("company");
+
+  // 発行会社 — 価格表は会社ごとに別々。2 社以上の価格表が見える人にだけ
+  // 発行会社の絞り込みと他社との突き合わせ列を出す（1 社だけなら毎行同じ値が
+  // 並ぶだけ）。行ごとの発行会社は顧客名の隣のバッジ（DocCompanyBadge — 全書類
+  // 共通の出し方）。
+  const companyOptions = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const e of entries) {
+      if (!seen.has(e.ownCompanyId))
+        seen.set(
+          e.ownCompanyId,
+          e.ownCompanyName !== e.ownCompanyCode
+            ? `${e.ownCompanyCode} ${e.ownCompanyName}`
+            : e.ownCompanyCode,
+        );
+    }
+    return [...seen.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value: String(value), label }));
+  }, [entries]);
+  const multiCompany = companyOptions.length > 1;
+  // 他社の価格表（同じ顧客 × 品目 × 工具）と中身が同じか — 行ごとに 1 回だけ数える。
+  const syncByEntry = useMemo(
+    () =>
+      new Map(entries.map((e) => [e.entryId, companySyncState(e, entries)])),
+    [entries],
+  );
 
   // Modal targets (null = closed).
   const [deleteTarget, setDeleteTarget] = useState<PriceListEntry | null>(null);
@@ -142,32 +175,130 @@ export function PriceListTable({
     setCustomer(null);
     setProduct(null);
     setOrderType(null);
+    setCompany(null);
   };
 
   const filtered = entries.filter((e) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(e.ownCompanyCode, search) ||
       e.customerName.includes(search) ||
-      e.productName.includes(search);
+      e.productName.includes(search) ||
+      (e.toolName ?? "").includes(search);
     const matchesCustomer = !customer || e.customerId === customer;
-    const matchesProduct = !product || e.productId === product;
+    const matchesProduct = !product || e.itemId === product;
     const matchesType =
       !orderType || e.variants.some((v) => v.orderType === orderType);
-    return matchesSearch && matchesCustomer && matchesProduct && matchesType;
+    const matchesCompany = !company || String(e.ownCompanyId) === company;
+    return (
+      matchesSearch &&
+      matchesCustomer &&
+      matchesProduct &&
+      matchesType &&
+      matchesCompany
+    );
   });
 
   const columns: Column<PriceListEntry>[] = [
+    ...(multiCompany
+      ? [
+          {
+            // 他社の価格表（同じ顧客 × 品目 × 工具・別の発行会社）との突き合わせ。
+            // 相手方が無ければ空。差分は詳細画面で見て、そこで同期する。
+            key: "companySync",
+            header: tr("sales.priceListCompanySync.column"),
+            width: 110,
+            hideable: true,
+            sortValue: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              return st === "diff" ? 2 : st === "same" ? 1 : 0;
+            },
+            render: (e: PriceListEntry) => {
+              const st = syncByEntry.get(e.entryId);
+              if (!st) return null;
+              return (
+                <Badge
+                  color={st === "same" ? "green" : "orange"}
+                  size="xs"
+                  variant="light"
+                >
+                  {st === "same"
+                    ? tr("sales.priceListCompanySync.same")
+                    : tr("sales.priceListCompanySync.differs")}
+                </Badge>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: "customerName",
       header: tr("common.customer"),
       sortable: true,
-      render: (e) => e.customerName,
+      // 価格表は番号の列を持たないので、発行会社のバッジは顧客名に添える。
+      render: (e) => (
+        <WithDocCompany company={e.ownCompanyCode}>
+          <Text size="sm" truncate>
+            {e.customerName}
+          </Text>
+        </WithDocCompany>
+      ),
     },
     {
       key: "productName",
       header: tr("common.product"),
       sortable: true,
-      render: (e) => e.productName,
+      // 既定幅（160px）だと、印 + 品名 + 対象工具の 2 行が入りきらず、印は潰れて
+      // 色の四角だけになり、工具名は途中で切れる。同じ再研磨品目のサイズ帯違い・
+      // 工具違いが並んだときに見分けが付かないので、幅を取り、入りきらない名前は
+      // 切らずに折り返す（見分ける語は名前の後ろ側にある）。
+      width: 280,
+      truncate: false,
+      // 製品と再研磨品目が同じ列に並ぶので、行がどちらかを言う。名前だけだと
+      // 「工具の名前」と「研ぎ直しという役務の名前」が見分けられない。
+      render: (e) => (
+        <Group gap={6} wrap="nowrap">
+          {e.itemType === "REGRIND" && (
+            <Badge
+              color="orange"
+              size="xs"
+              style={{ flexShrink: 0 }}
+              variant="light"
+            >
+              {tr("enum.ITEM_TYPE_LABEL.REGRIND")}
+            </Badge>
+          )}
+          <Stack gap={0} miw={0}>
+            <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+              {e.productName}
+            </Text>
+            {/* 対象工具 — 工具ごとの再研磨価格だけが持つ。工具なしは出さない。 */}
+            {e.toolName && (
+              <Text c="dimmed" size="xs" style={{ overflowWrap: "anywhere" }}>
+                {tr("sales.priceLists.targetTool")}: {e.toolName}
+              </Text>
+            )}
+          </Stack>
+        </Group>
+      ),
+    },
+    {
+      // 標準価格は**読むだけ**（持ち主は品目マスタ）。当たる価格表が無いときに
+      // いくらで売れるのかが、価格表の画面から見えないと分からないため出す。
+      key: "standardUnitPrice",
+      header: tr("common.standardPrice"),
+      width: 120,
+      align: "right" as const,
+      hideable: true,
+      sortValue: (e) => e.standardUnitPrice ?? -1,
+      render: (e) =>
+        e.standardUnitPrice == null ? (
+          <Text c="dimmed" size="xs">
+            —
+          </Text>
+        ) : (
+          <MoneyText value={e.standardUnitPrice} />
+        ),
     },
     {
       key: "orderType",
@@ -290,7 +421,7 @@ export function PriceListTable({
       header: tr("common.status"),
       width: 90,
       sortValue: (e) => (e.isActive ? 1 : 0),
-      render: (e) => <ActiveBadge active={e.isActive} />,
+      render: (e) => <EntryStatusBadges entry={e} />,
     },
   ];
 
@@ -300,6 +431,18 @@ export function PriceListTable({
       breadcrumbs={[tr("common.sales"), tr("common.priceList")]}
       filters={
         <>
+          {multiCompany && (
+            <Select
+              aria-label={tr("common.issuingCompany")}
+              clearable
+              data={companyOptions}
+              flex={isMobile ? 1 : undefined}
+              onChange={setCompany}
+              placeholder={tr("sales.priceListCompanySync.allCompanies")}
+              value={company}
+              w={isMobile ? undefined : 160}
+            />
+          )}
           <Select
             aria-label={tr("common.customer")}
             clearable
@@ -380,12 +523,19 @@ export function PriceListTable({
           return (
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack className="min-w-0" gap={3}>
-                <Text fw={600} size="sm" truncate>
-                  {e.customerName}
-                </Text>
+                <WithDocCompany company={e.ownCompanyCode}>
+                  <Text fw={600} size="sm" truncate>
+                    {e.customerName}
+                  </Text>
+                </WithDocCompany>
                 <Text c="dimmed" size="xs" truncate>
                   {e.productName}
                 </Text>
+                {e.toolName && (
+                  <Text c="dimmed" size="xs" truncate>
+                    {tr("sales.priceLists.targetTool")}: {e.toolName}
+                  </Text>
+                )}
                 <Group gap="xs">
                   {e.variants.map((v) => (
                     <Badge color="gray" key={v.id} size="xs" variant="light">
@@ -403,7 +553,7 @@ export function PriceListTable({
                 <Text className="tabular-nums" ff="mono" size="sm">
                   {priceRangeLabel(s.minPrice, s.maxPrice)}
                 </Text>
-                <ActiveBadge active={e.isActive} />
+                <EntryStatusBadges entry={e} />
               </Stack>
             </Group>
           );
@@ -415,8 +565,10 @@ export function PriceListTable({
             onAction: () => setQuoteTarget(e),
           },
           {
-            label: tr("sales.priceLists.duplicateWithADifferentValidPeriod"),
-            icon: <IconCopy size={14} />,
+            // 複製ではない — (顧客, 製品) は一意なので、選んだ注文種別の
+            // 有効期間を付け替える（DuplicatePriceListModal）。
+            label: tr("common.changeTheValidPeriod"),
+            icon: <IconCalendar size={14} />,
             onAction: () => setDuplicateTarget(e),
           },
           {
@@ -459,5 +611,22 @@ export function PriceListTable({
         source={quoteTarget}
       />
     </ListShell>
+  );
+}
+
+/**
+ * 有効 / 無効 + 独自値の追加承認の状態。承認待ち・差し戻しの価格表は価格の
+ * 解決に使われないので、一覧でもそれと分かるようにする。
+ */
+function EntryStatusBadges({ entry }: { entry: PriceListEntry }) {
+  const pending =
+    entry.approvalStatus === "PENDING" || entry.approvalStatus === "REJECTED";
+  return (
+    <Group gap={4} wrap="nowrap">
+      <ActiveBadge active={entry.isActive} />
+      {pending && entry.approvalStatus && (
+        <StatusBadge entity="PriceListApproval" status={entry.approvalStatus} />
+      )}
+    </Group>
   );
 }

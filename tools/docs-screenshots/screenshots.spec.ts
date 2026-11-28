@@ -23,6 +23,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Page, test } from "@playwright/test";
+import { gotoDoc } from "./doc-number";
 import { currentLocale } from "./i18n-text";
 import { shots } from "./manifest";
 
@@ -199,7 +200,8 @@ for (const shot of shots.filter((s) => !s.external)) {
       page = await ctx.newPage();
     }
 
-    await page.goto(shot.path, { waitUntil: "networkidle" });
+    // 旧番号の URL（シードの書類）は正規の URL へ送られる。?tab= を落とさない。
+    await gotoDoc(page, shot.path, { waitUntil: "networkidle" });
     if (shot.steps) await shot.steps(page);
     const framing = await decideFraming(page, shot.clip, shot.fullPage);
     if (framing.mode === "full") {

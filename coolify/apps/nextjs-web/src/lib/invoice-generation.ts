@@ -1,0 +1,684 @@
+/**
+ * invoice-generation.ts — 出荷から請求書（DRAFT）を組み立てる唯一の場所。server-only.
+ *
+ * 締日処理（BL02, SCHEDULED — PENDING の締日行から）と手動請求（BL11,
+ * MANUAL — 選んだ納品書/出荷書から）の両方が**同じ明細組み立て・税計算**を
+ * 通る。別々に書くと、締め済みかどうかで請求額の数え方が変わり得る
+ * （§9 更新: 締日処理は「締め → 下書きまで 1 回」、手動請求は締日を待たない
+ * 臨時請求）。
+ *
+ * 締日行（billing_closings）の状態遷移だけが 2 経路で異なる:
+ *   SCHEDULED — 既存の PENDING 行を PROCESSED へ進める（runClosingBatch /
+ *               processClosing が起点）。
+ *   MANUAL    — 行そのものを PROCESSED で新規作成する（PENDING で待つ理由が
+ *               無い — 締日を待たず、選んだ出荷がその場で確定する）。
+ */
+
+import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
+import {
+  type BillableShipment,
+  billableUnitPrice,
+  fetchBillableShipmentsForClosing,
+  resolveBillingPeriodStart,
+} from "@/app/(dashboard)/billing/closings/data";
+import { closingDateReached } from "@/components/billing/closings/model";
+import { isoDateJst } from "@/components/sales/price-lists/model";
+import { getCurrentActorId, recordAudit } from "@/lib/audit";
+import {
+  resolveBillingPartyId,
+  resolveDueDate,
+} from "@/lib/billing-terms-core";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import {
+  type CustomerProductLabel,
+  fetchCustomerProductLabels,
+} from "@/lib/customer-product-codes";
+import { type Prisma, prisma } from "@/lib/db";
+import { ownCompanyData } from "@/lib/doc-company-core";
+import { docIdOf, docNumberOf } from "@/lib/doc-number";
+import { type LocalizedText, localized } from "@/lib/format";
+import { label } from "@/lib/messages";
+import { lineAmountYen, type TaxBucket, totalsByRateYen } from "@/lib/money";
+import { defaultOwnCompanyId, shipmentOwnCompanyId } from "@/lib/own-companies";
+import { groupByOwnCompany } from "@/lib/own-company-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
+import {
+  type ActionResult,
+  actionError,
+  actionOk,
+  prismaErrorMessage,
+} from "@/lib/server-action";
+import { loadTaxCatalog } from "@/lib/tax-categories";
+import { billingBasisDate, resolveLineTax } from "@/lib/tax-rate";
+
+/** DATE / タイムスタンプ → JST 暦日 "YYYY-MM-DD"。null はそのまま。 */
+function isoDateOrNull(value: Date | null | undefined): string | null {
+  return value == null ? null : isoDateJst(value);
+}
+
+/** 旧 enum に写せる区分コードか（tax_categories は独自コードも持てる）。 */
+function asLegacyTaxType(
+  code: string | null,
+): "TAXABLE" | "EXEMPT" | "REDUCED" | null {
+  return code === "TAXABLE" || code === "EXEMPT" || code === "REDUCED"
+    ? code
+    : null;
+}
+
+/** その率の束に属する明細の課税区分が 1 つに定まるならその id、でなければ null。 */
+export function bucketCategoryId(
+  items: readonly { taxRate: number; taxCategoryId: number | null }[],
+  taxRate: number,
+): number | null {
+  const ids = new Set(
+    items
+      .filter((it) => it.taxRate.toFixed(4) === taxRate.toFixed(4))
+      .map((it) => it.taxCategoryId),
+  );
+  if (ids.size !== 1) return null;
+  return ids.values().next().value ?? null;
+}
+
+/**
+ * ヘッダに焼く課税区分・税率。**単一税率のときだけ**埋める（design 参照:
+ * 混在請求書は 1 率しか持てないヘッダでは表せないので null にし、内訳は
+ * invoice_tax_summaries だけに持たせる）。
+ */
+export function headerTaxSnapshot(
+  items: readonly { taxRate: number; taxCategoryId: number | null }[],
+  buckets: readonly TaxBucket[],
+  catalog: { categories: readonly { id: number; code: string }[] },
+): {
+  taxType: "TAXABLE" | "EXEMPT" | "REDUCED" | null;
+  taxRate: number | null;
+} {
+  if (buckets.length !== 1) return { taxType: null, taxRate: null };
+  const rate = buckets[0].taxRate;
+  const categoryId = bucketCategoryId(items, rate);
+  const code =
+    categoryId == null
+      ? null
+      : (catalog.categories.find((c) => c.id === categoryId)?.code ?? null);
+  return { taxType: asLegacyTaxType(code), taxRate: rate };
+}
+
+/** 請求明細 1 行（製品 / 追加料金で同じ形）。 */
+interface InvoiceItemDraft {
+  /** 由来の出荷書・納品書（行の uuid）。手動費用は両方 null。 */
+  deliveryOrderId: string | null;
+  deliveryNoteId: string | null;
+  orderLineId: string | null;
+  chargeItemId: number | null;
+  description: { ja: string; en: string };
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  taxCategoryId: number | null;
+  taxRate: number;
+  sortOrder: number;
+}
+
+/** customerAttrs のうち、この組み立てが読む部分。 */
+export interface ClosingCustomerAttrsRef {
+  taxCategoryId: number | null;
+  paymentTermsDays: number | null;
+  paymentDay: number | null;
+  billingBpId: string | null;
+}
+
+/**
+ * 出荷 → 請求明細への組み立て（税計算・小計・合計込み）。**丸め・税率決定の
+ * 唯一の定義元** — SCHEDULED / MANUAL のどちらも必ずこれを通る。
+ */
+async function buildInvoiceDraft(
+  closingDate: Date,
+  customerAttrs: ClosingCustomerAttrsRef | null,
+  shipments: BillableShipment[],
+): Promise<{
+  items: InvoiceItemDraft[];
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  buckets: TaxBucket[];
+  taxType: "TAXABLE" | "EXEMPT" | "REDUCED" | null;
+  taxRate: number | null;
+}> {
+  const catalog = await loadTaxCatalog();
+  // 取引先の課税区分。**null =「製品に従う」** で、入っていれば製品より優先する。
+  const customerTaxCategoryId = customerAttrs?.taxCategoryId ?? null;
+
+  const customerBpId = shipments[0]?.customerBpId;
+  const customerLabels = customerBpId
+    ? await fetchCustomerProductLabels(
+        customerBpId,
+        // **品目 id を渡す**（品目統合 第 2 段 C）。旧 products.id を渡しても
+        // 型は通るが、どちらも int の連番なので**別の製品の品番が当たり得る**。
+        shipments.flatMap((s) =>
+          s.items
+            .map((it) => it.itemId)
+            .filter((id): id is number => id != null),
+        ),
+      )
+    : new Map<number, CustomerProductLabel>();
+
+  let sortOrder = 0;
+  const items: InvoiceItemDraft[] = shipments.flatMap((s) => {
+    const deliveryNote = s.deliveryNotes[0] ?? null;
+    return s.items.map((it) => {
+      const unitPrice = billableUnitPrice(it);
+      const name = it.item?.name as LocalizedText | null;
+      const customerLabel =
+        it.itemId != null ? customerLabels.get(it.itemId) : undefined;
+      const withCode = (locale: string) =>
+        customerFacingProductLabel(localized(name, locale), customerLabel);
+      const ja =
+        it.lotNumber != null
+          ? label("billing.closingActions.itemNameWithLot", "ja", "", {
+              name: withCode("ja"),
+              lot: it.lotNumber,
+            })
+          : withCode("ja");
+      const en =
+        it.lotNumber != null
+          ? label("billing.closingActions.itemNameWithLot", "en", "", {
+              name: withCode("en"),
+              lot: it.lotNumber,
+            })
+          : withCode("en");
+      const lineTax = resolveLineTax(catalog, {
+        customerTaxCategoryId,
+        productTaxCategoryId: it.item?.taxCategoryId ?? null,
+        basisDate: billingBasisDate(
+          isoDateOrNull(it.orderLine?.acceptance?.orderDate),
+          isoDateOrNull(s.shippedAt),
+          isoDateJst(closingDate),
+        ),
+      });
+      return {
+        deliveryOrderId: s.id,
+        deliveryNoteId: deliveryNote?.id ?? null,
+        orderLineId: it.orderLineId,
+        chargeItemId: null,
+        description: { ja, en },
+        quantity: it.quantity,
+        unitPrice,
+        amount: lineAmountYen(unitPrice, it.quantity),
+        taxCategoryId: lineTax.categoryId,
+        taxRate: lineTax.rate,
+        sortOrder: sortOrder++,
+      } satisfies InvoiceItemDraft;
+    });
+  });
+
+  // 追加料金（送料など）— 出荷書の行をそのまま請求明細にする。基準日は出荷日。
+  const chargeItems: InvoiceItemDraft[] = shipments.flatMap((s) => {
+    const deliveryNote = s.deliveryNotes[0] ?? null;
+    return s.charges.map((c) => {
+      const name = c.chargeItem.name as LocalizedText | null;
+      const suffix = c.description ? `（${c.description}）` : "";
+      const lineTax = resolveLineTax(catalog, {
+        customerTaxCategoryId,
+        productTaxCategoryId: c.chargeItem.taxCategoryId,
+        basisDate: billingBasisDate(
+          null,
+          isoDateOrNull(s.shippedAt),
+          isoDateJst(closingDate),
+        ),
+      });
+      return {
+        deliveryOrderId: s.id,
+        deliveryNoteId: deliveryNote?.id ?? null,
+        orderLineId: null,
+        // 由来は料金マスタ（MS0G）— 手動費用の判定（deliveryOrderId が
+        // null かどうか）には効かないが、この行が MS0G のどの項目から
+        // 来たのかの追跡には要る（tables.md invoice_items.charge_item_id）。
+        chargeItemId: c.chargeItemId,
+        description: {
+          ja: `${localized(name, "ja")}${suffix}`,
+          en: `${localized(name, "en")}${suffix}`,
+        },
+        quantity: c.quantity,
+        unitPrice: Number(c.unitPrice),
+        amount: Number(c.amount),
+        taxCategoryId: lineTax.categoryId,
+        taxRate: lineTax.rate,
+        sortOrder: sortOrder++,
+      } satisfies InvoiceItemDraft;
+    });
+  });
+  items.push(...chargeItems);
+
+  const { subtotal, taxAmount, totalAmount, buckets } = totalsByRateYen(
+    items.map((it) => ({ amount: it.amount, taxRate: it.taxRate })),
+  );
+  const { taxType, taxRate } = headerTaxSnapshot(items, buckets, catalog);
+
+  return { items, subtotal, taxAmount, totalAmount, buckets, taxType, taxRate };
+}
+
+export interface GeneratedInvoice {
+  /** 先頭の請求書（既定の法人の分が先）。締日行が指すのもこれ。 */
+  invoiceNumber: string;
+  /** 作った全請求書の税込合計。 */
+  totalAmount: number;
+  /**
+   * 作った請求書の全部。**発行元の自社法人ごとに 1 通**（法人をまたいで
+   * 1 通にしない — 発行元は 1 通に 1 社しか刷れない）。通常は 1 通。
+   */
+  invoices: { invoiceNumber: string; totalAmount: number }[];
+}
+
+/**
+ * 法人ごとに 1 通 — 明細の組み立てまで済ませた請求書（まだ行は無い）。
+ * 番号（INV-FFFF-NNNNN）は INSERT のときに DB が払い出すので、ここでは持たない。
+ */
+interface PreparedInvoice {
+  ownCompanyId: number | null;
+  customerBranchBpId: string | null;
+  salesRepId: string | null;
+  draft: Awaited<ReturnType<typeof buildInvoiceDraft>>;
+}
+
+/**
+ * 出荷を**発行元の自社法人ごと**に束ね、束ごとに明細を組み立てる。
+ * 法人の決め方は出荷書の出荷元拠点 → 明細の担当拠点 → 既定の法人
+ * （lib/own-companies.ts shipmentOwnCompanyId）。SCHEDULED / MANUAL 共通。
+ */
+async function prepareInvoices(
+  closingDate: Date,
+  orderingCustomerBpId: string,
+  customerAttrs: ClosingCustomerAttrsRef | null,
+  shipments: BillableShipment[],
+): Promise<PreparedInvoice[]> {
+  const defaultId = await defaultOwnCompanyId();
+  const groups = groupByOwnCompany(
+    shipments,
+    (s) => shipmentOwnCompanyId(s, null),
+    defaultId,
+  );
+  const prepared: PreparedInvoice[] = [];
+  for (const group of groups) {
+    const draft = await buildInvoiceDraft(
+      closingDate,
+      customerAttrs,
+      group.items,
+    );
+    const branchIds = new Set(
+      group.items.map((s) => s.customerBranchBpId ?? ""),
+    );
+    const customerBranchBpId =
+      branchIds.size === 1 ? branchIds.values().next().value || null : null;
+    const repIds = new Set(
+      group.items.flatMap((s) =>
+        s.items.map((it) => it.orderLine?.acceptance.salesRepId ?? ""),
+      ),
+    );
+    const inheritedSalesRepId =
+      repIds.size === 1 ? repIds.values().next().value || null : null;
+    const salesRepId = await resolveSalesRepId(
+      inheritedSalesRepId,
+      orderingCustomerBpId,
+      null,
+    );
+    prepared.push({
+      ownCompanyId: group.companyId,
+      customerBranchBpId,
+      salesRepId,
+      draft,
+    });
+  }
+  return prepared;
+}
+
+/** prisma.invoice.create の data（SCHEDULED / MANUAL 共通）。 */
+function invoiceCreateData(
+  p: PreparedInvoice,
+  common: {
+    billingPartyId: string;
+    orderingCustomerBpId: string;
+    closingKind: "SCHEDULED" | "MANUAL";
+    periodFrom: Date;
+    closingDate: Date;
+    dueDate: Date;
+    actorId: string | null;
+  },
+) {
+  const { draft } = p;
+  return {
+    customerBpId: common.billingPartyId,
+    customerBranchBpId:
+      common.billingPartyId === common.orderingCustomerBpId
+        ? p.customerBranchBpId
+        : null,
+    salesRepId: p.salesRepId,
+    closingKind: common.closingKind,
+    ...ownCompanyData(p.ownCompanyId),
+    billingPeriodFrom: common.periodFrom,
+    billingPeriodTo: common.closingDate,
+    subtotal: draft.subtotal,
+    taxAmount: draft.taxAmount,
+    totalAmount: draft.totalAmount,
+    taxType: draft.taxType,
+    taxRate: draft.taxRate,
+    status: "DRAFT" as const,
+    dueDate: common.dueDate,
+    createdBy: common.actorId,
+    items: { create: draft.items },
+    taxSummaries: {
+      create: draft.buckets.map((b, i) => ({
+        taxCategoryId: bucketCategoryId(draft.items, b.taxRate),
+        taxRate: b.taxRate,
+        taxableBase: b.taxableBase,
+        taxAmount: b.taxAmount,
+        sortOrder: i,
+      })),
+    },
+  };
+}
+
+/** 作った請求書 — 準備した内容 + DB が払い出した番号（参照）と行の id。 */
+type CreatedInvoice = PreparedInvoice & { id: string; docRef: string };
+
+/** 準備した請求書を作り、DB が払い出した番号を読んで返す（tx の中で呼ぶ）。 */
+async function createInvoices(
+  tx: Prisma.TransactionClient,
+  prepared: PreparedInvoice[],
+  common: Parameters<typeof invoiceCreateData>[1],
+): Promise<CreatedInvoice[]> {
+  const created: CreatedInvoice[] = [];
+  for (const p of prepared) {
+    const row = await tx.invoice.create({
+      data: invoiceCreateData(p, common),
+      select: { id: true, docRef: true },
+    });
+    created.push({ ...p, ...row });
+  }
+  return created;
+}
+
+/**
+ * 作った請求書の要約（戻り値）。`invoiceNumber` は **id の姿**
+ * （`CKK~INV-2026-00001`）— 画面がそのままリンクに使う。
+ */
+function generatedSummary(created: CreatedInvoice[]): GeneratedInvoice {
+  return {
+    invoiceNumber: docIdOf(created[0]),
+    totalAmount: created.reduce((sum, p) => sum + p.draft.totalAmount, 0),
+    invoices: created.map((p) => ({
+      invoiceNumber: docIdOf(p),
+      totalAmount: p.draft.totalAmount,
+    })),
+  };
+}
+
+/**
+ * SCHEDULED — PENDING の締日行から請求書を生成する。既存の PENDING 行を
+ * PROCESSED へ進める（processClosing / runClosingBatch の共通コア）。
+ */
+export async function generateInvoiceForClosing(
+  closingId: string,
+): Promise<ActionResult<GeneratedInvoice>> {
+  const tr = await getTranslations();
+  const BASE_PATH = "/billing/closings";
+  const INVOICES_PATH = "/billing/invoices";
+
+  try {
+    const closing = await prisma.billingClosing.findUnique({
+      where: { id: closingId },
+      include: { customerBp: { include: { customerAttrs: true } } },
+    });
+    if (!closing)
+      return actionError(tr("billing.closingActions.closingNotFound"));
+    if (closing.status !== "PENDING") {
+      return actionError(tr("billing.closingActions.pendingOnly"));
+    }
+    if (!closingDateReached(closing.closingDate, isoDateJst(new Date()))) {
+      return actionError(tr("billing.closingActions.closingDateNotReached"));
+    }
+
+    const shipments = await fetchBillableShipmentsForClosing(
+      closing.customerBpId,
+      closing.closingDate,
+    );
+    if (shipments.length === 0) {
+      return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
+    }
+
+    const closingDate = closing.closingDate;
+    const prepared = await prepareInvoices(
+      closingDate,
+      closing.customerBpId,
+      closing.customerBp.customerAttrs,
+      shipments,
+    );
+    const periodFrom = await resolveBillingPeriodStart(
+      closing.customerBpId,
+      closingDate,
+    );
+    const dueDate = resolveDueDate(closingDate, {
+      paymentTermsDays: closing.customerBp.customerAttrs?.paymentTermsDays,
+      paymentDay: closing.customerBp.customerAttrs?.paymentDay,
+    });
+    const billingPartyId = resolveBillingPartyId(
+      closing.customerBpId,
+      closing.customerBp.customerAttrs?.billingBpId,
+    );
+
+    const actorId = await getCurrentActorId();
+    const common = {
+      billingPartyId,
+      orderingCustomerBpId: closing.customerBpId,
+      closingKind: "SCHEDULED" as const,
+      periodFrom,
+      closingDate,
+      dueDate,
+      actorId,
+    };
+    const created = await prisma.$transaction(async (tx) => {
+      const rows = await createInvoices(tx, prepared, common);
+      const updated = await tx.billingClosing.updateMany({
+        where: { id: closingId, status: "PENDING" },
+        data: {
+          status: "PROCESSED",
+          totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
+          // 締日行が指すのは先頭の 1 通（法人が混ざるときだけ 2 通以上になる）。
+          invoiceId: rows[0].id,
+          processedAt: new Date(),
+          processedBy: actorId,
+        },
+      });
+      if (updated.count === 0) {
+        throw new Error(`GUARD:${tr("billing.closingActions.pendingOnly")}`);
+      }
+      return rows;
+    });
+    const first = created[0];
+    const summary = generatedSummary(created);
+
+    for (const p of created) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "invoices",
+        recordId: p.docRef,
+        after: {
+          customerBpId: billingPartyId,
+          orderingCustomerBpId: closing.customerBpId,
+          ownCompanyId: p.ownCompanyId,
+          billingPeriodFrom: periodFrom.toISOString(),
+          billingPeriodTo: closingDate.toISOString(),
+          subtotal: p.draft.subtotal,
+          taxAmount: p.draft.taxAmount,
+          totalAmount: p.draft.totalAmount,
+          taxType: p.draft.taxType,
+          taxRate: p.draft.taxRate,
+          taxBuckets: p.draft.buckets,
+          status: "DRAFT",
+          dueDate: dueDate.toISOString(),
+          itemCount: p.draft.items.length,
+          closingId,
+        },
+      });
+    }
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "billing_closings",
+      recordId: closingId,
+      before: { status: "PENDING" },
+      after: {
+        status: "PROCESSED",
+        invoiceNumber: docNumberOf(first),
+        ...(created.length > 1
+          ? { invoiceNumbers: created.map((p) => docNumberOf(p)) }
+          : {}),
+      },
+    });
+
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/${closingId}`);
+    revalidatePath(INVOICES_PATH);
+    for (const p of created) {
+      revalidatePath(`${INVOICES_PATH}/${docIdOf(p)}`);
+    }
+    return actionOk(summary);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("billing.closingActions.generateInvoiceFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
+/**
+ * MANUAL — 選んだ出荷から締日行（PROCESSED で新規作成）+ 請求書を同時に作る。
+ * PENDING で待つ理由が無い（締日を待たず、選んだ出荷がその場で確定する）ので
+ * SCHEDULED と違い、行の作成と PROCESSED 化を 1 回の $transaction にまとめる。
+ */
+export async function generateManualInvoice(input: {
+  customerBpId: string;
+  shipments: BillableShipment[];
+  customerAttrs: ClosingCustomerAttrsRef | null;
+}): Promise<ActionResult<GeneratedInvoice & { closingId: string }>> {
+  const tr = await getTranslations();
+  const BASE_PATH = "/billing/closings";
+  const INVOICES_PATH = "/billing/invoices";
+
+  try {
+    if (input.shipments.length === 0) {
+      return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
+    }
+    // 手動請求の締日・請求期間の終わりは「今日」— **JST の暦日**で決める。
+    // UTC の暦日で作ると、日本時間の 0〜9 時に起こした請求書が前日の日付になる
+    // （実機検証で 01:49 JST に再現）。DB の date 列と同じく UTC 0 時の Date に
+    // 落とすので、ほかの経路（締日行の closingDate）と同じ形で下流へ渡る。
+    const closingDate = new Date(`${isoDateJst(new Date())}T00:00:00Z`);
+
+    const prepared = await prepareInvoices(
+      closingDate,
+      input.customerBpId,
+      input.customerAttrs,
+      input.shipments,
+    );
+
+    const periodFrom = await resolveBillingPeriodStart(
+      input.customerBpId,
+      closingDate,
+    );
+    const dueDate = resolveDueDate(closingDate, {
+      paymentTermsDays: input.customerAttrs?.paymentTermsDays,
+      paymentDay: input.customerAttrs?.paymentDay,
+    });
+    const billingPartyId = resolveBillingPartyId(
+      input.customerBpId,
+      input.customerAttrs?.billingBpId,
+    );
+
+    const actorId = await getCurrentActorId();
+    const common = {
+      billingPartyId,
+      orderingCustomerBpId: input.customerBpId,
+      closingKind: "MANUAL" as const,
+      periodFrom,
+      closingDate,
+      dueDate,
+      actorId,
+    };
+    const { closingId, created } = await prisma.$transaction(async (tx) => {
+      // 請求書を先に作る — 締日行が指す先頭の 1 通の id が要る。
+      const rows = await createInvoices(tx, prepared, common);
+      const closing = await tx.billingClosing.create({
+        data: {
+          customerBpId: input.customerBpId,
+          closingDate,
+          kind: "MANUAL",
+          status: "PROCESSED",
+          totalAmount: prepared.reduce((sum, p) => sum + p.draft.subtotal, 0),
+          invoiceId: rows[0].id,
+          processedAt: new Date(),
+          processedBy: actorId,
+        },
+      });
+      return { closingId: closing.id, created: rows };
+    });
+    const first = created[0];
+    const summary = generatedSummary(created);
+
+    for (const p of created) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "invoices",
+        recordId: p.docRef,
+        after: {
+          customerBpId: billingPartyId,
+          orderingCustomerBpId: input.customerBpId,
+          ownCompanyId: p.ownCompanyId,
+          billingPeriodFrom: periodFrom.toISOString(),
+          billingPeriodTo: closingDate.toISOString(),
+          subtotal: p.draft.subtotal,
+          taxAmount: p.draft.taxAmount,
+          totalAmount: p.draft.totalAmount,
+          itemCount: p.draft.items.length,
+          closingId,
+          closingKind: "MANUAL",
+        },
+      });
+    }
+    await recordAudit({
+      action: "CREATE",
+      tableName: "billing_closings",
+      recordId: closingId,
+      after: {
+        customerBpId: input.customerBpId,
+        closingDate: closingDate.toISOString().slice(0, 10),
+        kind: "MANUAL",
+        status: "PROCESSED",
+        invoiceNumber: docNumberOf(first),
+        ...(created.length > 1
+          ? { invoiceNumbers: created.map((p) => docNumberOf(p)) }
+          : {}),
+      },
+    });
+
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/${closingId}`);
+    revalidatePath(INVOICES_PATH);
+    for (const p of created) {
+      revalidatePath(`${INVOICES_PATH}/${docIdOf(p)}`);
+    }
+    return actionOk({ ...summary, closingId });
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("billing.closingActions.generateInvoiceFailed"),
+        tr,
+      ),
+    );
+  }
+}

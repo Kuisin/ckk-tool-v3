@@ -1,0 +1,284 @@
+/title/
+生产计划 — 从确认库存到批准工单
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_support>
+label: 销售助理;
+text-color: #92400e;
+background-color: #fef3c7;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_purch>
+label: 采购;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_admin>
+label: 管理员;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD05>
+label: PD05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_MS0B>
+label: MS0B;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<OL>
+label: 订单明细;
+side: right;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<WO>
+label: 工单;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+<PR>
+label: 采购申请;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+/line/
+
+[role_support: 核对库存] <block_apply>
+label: 库存核对;
+props: APP_SA05,OL;
+desc: 对状态为「已确定」的订单明细查询产品库存。生产中及之后的明细和再研磨明细不适用。;
+[role_system: 分配库存] <block_system>
+label: 分配;
+desc: 在可用数量范围内预留库存，不够的数量显示为「不足」。不足部分用制造分工单生产。;
+[role_prod: 确认未安排] <block_neutral>
+label: 未处理;
+props: APP_PD05;
+desc: 仍有未安排数量（订货数 − 已安排）的明细按交期排列。点「创建工单」即打开已填入未安排数量的新建画面。;
+if (做法) is (复制上次) than #purple
+  [role_prod: 复制上次工单] <block_apply>
+  label: 复制;
+  props: APP_PD02,WO;
+  desc: 选择目标订单明细后，生成继承工序、实施场所、检查表的草稿。有更新版本时会提示。;
+elseif (备库) than #purple
+  [role_prod: 直接选产品] <block_apply>
+  label: 备库;
+  props: APP_PD02;
+  desc: 不分配订单明细的独立工单。类别只能是制造分，用于增加库存。;
+else
+  [role_prod: 分配明细] <block_apply>
+  label: 分配;
+  props: APP_PD02;
+  desc: 选择明细和分配数量。上限为可分配余量（订货数 − 其他工单的分配）。;
+  if (分配) is (仅部分) than #purple
+    [role_prod: 余量稍后安排] <block_wait>
+    label: 拆分;
+    desc: 剩余数量留在未处理工单的「未安排」中，用另一张工单安排。;
+  elseif (合并批次) than #purple
+    [role_prod: 合并明细] <block_apply>
+    label: 合并;
+    desc: 把同一产品的其他明细也合并到 1 张工单（1 个批次）。库存分和再研磨不可。;
+  elseif (全数) than
+  endif
+endif
+if (类别) is (库存分) than #blue
+  [role_prod: 直接选工序] <block_apply>
+  label: 库存分;
+  props: APP_PD02;
+  desc: 不用工序清单，从「产品出库（库存）」开始。只能分配 1 条明细，计划数量 = 分配数量。;
+elseif (制造分) than #blue
+  [role_prod: 选择材料] <block_apply>
+  label: 材料;
+  props: APP_PD02;
+  desc: 预先填入符合产品预定材料类别（材料类别 × 直径）的材料，并提示材料库存与计划数量的比较。;
+  if (材料库存) is (足够) than
+  elseif (不足·有到货) than #orange
+    [role_prod: 确认到货日] <block_wait>
+    label: 待到货;
+    desc: 以黄色显示不足数和下次预计到货日。仅为提醒，可以直接保存。;
+  elseif (不足·无到货) than #orange
+    [role_purch: 安排材料] <block_apply>
+    label: 转采购;
+    props: APP_PU01,PR;
+    desc: 以红色显示「没有到货计划」。转入采购流程（采购申请 → 材料采购单）。不阻止保存。;
+  endif
+  [role_prod: 选工序清单] <block_apply>
+  label: 工序;
+  props: APP_PD02;
+  desc: 组合准备工序清单（通用、始终最新版本）和制造工序清单（产品 × 订货方）。没有则当场新建，修改后以新版本保存。;
+elseif (再研磨) than #purple
+  [role_prod: 用再研磨清单] <block_apply>
+  label: 再研磨;
+  props: APP_PD02;
+  desc: 订单类别为「再研磨」的明细类别固定。使用再研磨工序清单的最新版本，没有材料和存放位置。;
+endif
+[role_prod: 保存草稿] <block_apply>
+label: 保存;
+props: APP_PD02,WO;
+desc: 确定计划数量（不少于分配合计）、存放位置、图纸、「允许不足 / 超出交货」后保存。状态「草稿」，明细获得批次号。;
+[role_prod: 输入作业计划] <block_apply>
+label: 作业计划;
+props: APP_PD02;
+desc: 为每个厂内工序输入计划日，以及工序主数据要求的项目（作业场所、负责人、时间）。;
+[role_prod: 申请审批] <block_apply>
+label: 审批申请;
+props: APP_PD02;
+if (能否申请) is (计划不足) than #orange
+  [role_prod: 补全计划] <block_reject>
+  label: 计划不足;
+  desc: 提示「作业计划不完整」及缺少的工序，无法申请。;
+  [loop]
+elseif (未设流程) than #orange
+  [role_admin: 设置审批流程] <block_apply>
+  label: 审批设置;
+  props: APP_MS0B;
+  desc: 工单的审批流程一级都没有时无法申请。;
+  [loop]
+else
+  [role_system: 确定审批流程] <block_system>
+  label: 流程开始;
+  desc: 按条件规则（类别、计划数量）确定审批级。状态「审批中」，订单明细被锁定。;
+endif
+[role_appr: 批准工单] <block_approve>
+label: 审批;
+props: APP_CM01,APP_PD02;
+desc: 在未处理列表中找到轮到自己的申请，在工单画面中批准。;
+if (审批判断) is (下一级) than #blue
+  [loop]
+elseif (退回) than #red
+  [role_prod: 修改后再申请] <block_reject>
+  label: 退回;
+  props: APP_PD02;
+  desc: 附理由退回「草稿」并解除锁定。编辑后「重新申请审批」。;
+  [loop]
+else
+  [role_system: 设为已批准] <block_system>
+  label: 已批准;
+  desc: 状态「已批准」。所分配的订单明细变为「生产中」并解除锁定。;
+endif
+if (类别) is (制造分) than #blue
+  [role_system: 预留材料] <block_system>
+  label: 材料预留;
+  desc: 按计划数量预留所用材料。即使不够也会预留，作为下单判断的依据。;
+elseif (库存分·再研磨) than
+endif
+if (开工前取消) is (不取消) than
+elseif (取消) than #red
+  [role_prod: 作废工单] <block_end>
+  label: 已取消;
+  props: APP_PD02;
+  desc: 草稿、审批中、或已批准但工序未开始时可取消。释放预留，明细回到「已确定」和未安排。;
+endif

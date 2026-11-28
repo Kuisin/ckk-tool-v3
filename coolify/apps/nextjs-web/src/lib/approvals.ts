@@ -16,7 +16,14 @@
  * 置いてあり、画面と共用する。
  */
 
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import {
+  docDisplayId,
+  docDisplayNumber,
+  requireDocRef,
+  toDocRef,
+} from "@/lib/doc-ref";
+import { docRefNumber } from "@/lib/doc-ref-core";
 import type { Prisma } from "../../generated/client/client";
 import {
   type ApprovalDocInfo,
@@ -34,14 +41,33 @@ import {
   stepsFromSnapshot,
 } from "./approval-flow";
 import { effectiveMemberWhere } from "./approval-membership";
-import { APPROVAL_TARGET, type ApprovalTargetType } from "./approval-targets";
+import {
+  type ApprovalPolicy,
+  isApprovalPolicy,
+  LEGACY_EMPTY,
+  resolveApprovalNeed,
+} from "./approval-policy-core";
+import {
+  APPROVAL_TARGET,
+  type ApprovalTargetType,
+  isApprovalTargetType,
+} from "./approval-targets";
 import { getCurrentActorId } from "./audit";
+import {
+  type ApprovalStepLayer,
+  appendCustomValueSteps,
+} from "./custom-value-approval-core";
 import { prisma } from "./db";
-import { formatDocNumber, parseDocKey } from "./doc-number";
+import { designProgramChangeLabel } from "./design-program-changes-core";
+import { docNumberOf } from "./doc-number";
 import { type LocalizedText, localized } from "./format";
 import { notify, notifyApprovalGroup } from "./notifications";
 
 export type { ApprovalTargetType } from "./approval-targets";
+
+/** uuid を業務キーにする書類（版など）の形の確認 — 不正な形で findUnique すると例外になる。 */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ─── 履歴 Json（行ワークフローの遷移記録。承認とは別軸で各書類が持つ） ──────
 
@@ -52,6 +78,46 @@ export interface HistoryEntry {
   notes?: string;
 }
 
+/**
+ * approval_requests.target_id に入れる値。番号を持つ書類は法人コード付きの
+ * 参照（`CKK/ORD-…` — lib/doc-ref-core.ts）で指す。uuid やロット番号で指す
+ * 対象はそのまま。書類が見つからないときは渡された id のまま（読み出しは
+ * 何も当たらないだけ。**保存は createStepRequest が requireDocRef で止める**）。
+ */
+async function storedTargetId(
+  targetType: string,
+  targetId: string,
+): Promise<string> {
+  return (await toDocRef(targetType, targetId)) ?? targetId;
+}
+
+/**
+ * 番号を持つ書類の参照（doc_ref）。targetId は id（`CKK~ORD-…`）・参照・
+ * 番号だけ・旧番号のどれでもよい。書類が無い・番号だけで 2 つの法人に当たる
+ * ときは null（呼び出し側は「書類が引けなかった」として扱う）。
+ */
+async function targetDocRef(
+  targetType: string,
+  targetId: string,
+): Promise<string | null> {
+  return toDocRef(targetType, targetId).catch(() => null);
+}
+
+/**
+ * 通知のリンクに使う id。番号を DB が払い出す書類は法人コード付きの id
+ * （`CKK~ORD-2026-00001`）— 同じ番号が 2 つの法人にあっても行き先が決まる。
+ * フォーム回答・社内文書は番号が全社で一意のまま（月次の通し番号）なので、
+ * 従来どおり番号だけで開く。uuid・ロット番号で指す対象はそのまま。
+ */
+async function targetLinkId(
+  targetType: string,
+  targetId: string,
+): Promise<string> {
+  if (targetType === "form_responses" || targetType === "internal_pages") {
+    return docRefNumber(targetId);
+  }
+  return docDisplayId(targetType, await storedTargetId(targetType, targetId));
+}
 /** history Json 配列への追記（不正形は作り直す）。 */
 export function appendHistory(
   history: unknown,
@@ -73,6 +139,8 @@ export interface FlowStepDef {
   /** カスタム段の承認者（フォームのみ・1..N 人）。グループとどちらか一方。 */
   approverUserIds?: string[];
   approverNames?: string[];
+  /** 独自値の追加承認として足した段（lib/custom-value-approval-core）。 */
+  layer?: ApprovalStepLayer;
 }
 
 /** 書類種別の承認フロー（stepNo 昇順）。未設定なら空配列。 */
@@ -94,6 +162,37 @@ export async function getApprovalFlow(
 }
 
 /**
+ * 書類種別の「独自値の追加承認」の段（stepNo 昇順）。未設定なら空配列 —
+ * 何も足さない。通常のフローとは別建てで、依頼時に後ろへ連結する。
+ */
+export async function getCustomValueSteps(
+  targetType: ApprovalTargetType,
+): Promise<FlowStepDef[]> {
+  const rows = await prisma.approvalCustomValueStep.findMany({
+    where: { targetType },
+    include: { group: { select: { name: true } } },
+    orderBy: { stepNo: "asc" },
+  });
+  return rows.map((r) => ({
+    stepNo: r.stepNo,
+    name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
+    groupId: r.groupId,
+    groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
+    mode: r.mode as ApprovalMode,
+  }));
+}
+
+/** 独自値の追加承認の段が 1 本でも組まれているか。 */
+export async function hasCustomValueSteps(
+  targetType: ApprovalTargetType,
+): Promise<boolean> {
+  const count = await prisma.approvalCustomValueStep.count({
+    where: { targetType },
+  });
+  return count > 0;
+}
+
+/**
  * フォーム 1 件分の承認フロー（form_approval_steps）。
  *
  * targetId は回答番号なので、回答 → フォーム → 段定義 とたどる。段が 0 本なら
@@ -103,7 +202,8 @@ export async function getFormApprovalFlow(
   responseNumber: string,
 ): Promise<FlowStepDef[]> {
   const response = await prisma.formResponse.findUnique({
-    where: { responseNumber },
+    // 法人コード付きの参照で渡されても番号で引く。
+    where: { responseNumber: docRefNumber(responseNumber) },
     select: { formId: true },
   });
   if (!response) return [];
@@ -152,19 +252,66 @@ export async function getApprovalApplyMode(
   return row?.applyMode ?? "PRE";
 }
 
-/** 依頼を出す前の確認。未設定ならエラー文言、設定済みなら null。 */
-export async function assertFlowConfigured(
-  targetType: ApprovalTargetType,
-): Promise<string | null> {
-  // フォームはフォームごとにフローを持つので、種別だけでは判定できない
-  // （呼ぶ側が assertFormFlowConfigured を使う）。
-  if (targetType === "form_responses") return null;
-  const count = await prisma.approvalFlowStep.count({ where: { targetType } });
-  if (count > 0) return null;
-  const tr = await getTranslations();
-  return tr("approvals.engine.flowNotConfigured", {
-    doc: APPROVAL_TARGET[targetType].label,
+/**
+ * 依頼を出す前の判断: 承認を通す / 承認なしで進める / 依頼できない。
+ *
+ * 承認設定（MS0B）の種別ごとのスイッチ（system_settings `approval_policy.<種別>`）
+ * と段の数から決める。規則は lib/approval-policy-core.ts が唯一の定義
+ * （スイッチが無い種別は従来どおり — 段なしで依頼を拒む種別と素通しする種別がある）。
+ *
+ * - `flow`    … startApprovalFlow で依頼を出す
+ * - `skip`    … 承認なし。呼び出し側は最終承認されたときと同じ状態へ進める
+ * - `blocked` … `error` を利用者へ返す
+ */
+export type ApprovalNeedResult =
+  | { kind: "flow" }
+  | { kind: "skip" }
+  | { kind: "blocked"; error: string };
+
+export async function approvalNeed(
+  targetType: Exclude<ApprovalTargetType, "form_responses">,
+): Promise<ApprovalNeedResult> {
+  const [stepCount, setting] = await Promise.all([
+    prisma.approvalFlowStep.count({ where: { targetType } }),
+    prisma.systemSetting.findUnique({
+      where: { key: `${APPROVAL_POLICY_NS}.${targetType}` },
+      select: { value: true },
+    }),
+  ]);
+  const policy = isApprovalPolicy(setting?.value) ? setting.value : null;
+  const need = resolveApprovalNeed({
+    policy,
+    stepCount,
+    legacyEmpty: LEGACY_EMPTY[targetType],
   });
+  if (need !== "blocked") return { kind: need };
+  const tr = await getTranslations();
+  return {
+    kind: "blocked",
+    error: tr("approvals.engine.flowNotConfigured", {
+      doc: APPROVAL_TARGET[targetType].label,
+    }),
+  };
+}
+
+/** system_settings の名前空間（`approval_policy.<種別>` = "on" | "off"）。 */
+export const APPROVAL_POLICY_NS = "approval_policy";
+
+/** 承認設定の一覧用: 種別ごとの保存済みスイッチ（無ければ null）。 */
+export async function getApprovalPolicies(): Promise<
+  Map<ApprovalTargetType, ApprovalPolicy | null>
+> {
+  const rows = await prisma.systemSetting.findMany({
+    where: { key: { startsWith: `${APPROVAL_POLICY_NS}.` } },
+    select: { key: true, value: true },
+  });
+  const out = new Map<ApprovalTargetType, ApprovalPolicy | null>();
+  for (const r of rows) {
+    const t = r.key.slice(APPROVAL_POLICY_NS.length + 1);
+    if (isApprovalTargetType(t) && isApprovalPolicy(r.value))
+      out.set(t, r.value);
+  }
+  return out;
 }
 
 /**
@@ -182,7 +329,11 @@ export async function hasAnyApproval(
   const count = await prisma.approvalRecord.count({
     where: {
       action: "APPROVED",
-      request: { targetType, targetId, requestedAt: { gte: since } },
+      request: {
+        targetType,
+        targetId: await storedTargetId(targetType, targetId),
+        requestedAt: { gte: since },
+      },
     },
   });
   return count > 0;
@@ -202,7 +353,12 @@ export async function hasApprovalInCurrentRound(
   createdAt: Date,
 ): Promise<boolean> {
   const roundStart = await prisma.approvalRequest.findFirst({
-    where: { targetType, targetId, stepNo: 1, requestedAt: { gte: createdAt } },
+    where: {
+      targetType,
+      targetId: await storedTargetId(targetType, targetId),
+      stepNo: 1,
+      requestedAt: { gte: createdAt },
+    },
     orderBy: { requestedAt: "desc" },
     select: { requestedAt: true },
   });
@@ -229,7 +385,13 @@ export async function isApproverOf(
 ): Promise<boolean> {
   if (!userId) return false;
   const count = await prisma.approvalRequestApprover.count({
-    where: { userId, request: { targetType, targetId } },
+    where: {
+      userId,
+      request: {
+        targetType,
+        targetId: await storedTargetId(targetType, targetId),
+      },
+    },
   });
   return count > 0;
 }
@@ -322,15 +484,21 @@ export async function fetchApprovalDocInfo(
 ): Promise<ApprovalDocInfo | null> {
   switch (targetType) {
     case "order_acceptances": {
-      const key = parseDocKey(targetId, "ORD");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef },
         select: {
-          deliveryMethod: true,
-          assignedPlantId: true,
           items: {
-            select: { quantity: true, unitPrice: true, amount: true },
+            select: {
+              quantity: true,
+              unitPrice: true,
+              amount: true,
+              // 配送（§8）— 明細ごと。条件評価は「明細のどれかが一致すれば
+              // 一致」（approval-conditions.ts の配列対応）。
+              deliveryMethod: true,
+              assignedPlantId: true,
+            },
           },
         },
       });
@@ -344,9 +512,15 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.deliveryMethod,
-        assigned_plant_id:
-          row.assignedPlantId != null ? String(row.assignedPlantId) : null,
+        delivery_method: [...new Set(row.items.map((it) => it.deliveryMethod))],
+        assigned_plant_id: [
+          ...new Set(
+            row.items
+              .map((it) => it.assignedPlantId)
+              .filter((id): id is number => id != null)
+              .map(String),
+          ),
+        ],
       };
     }
     case "work_orders": {
@@ -360,24 +534,30 @@ export async function fetchApprovalDocInfo(
       return { type: row.type, planned_quantity: row.plannedQuantity };
     }
     case "material_purchase_orders": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: targetId },
+        where: { docRef },
         select: { totalAmount: true },
       });
       if (!row) return null;
       return { total_amount: Number(row.totalAmount) };
     }
     case "purchase_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: targetId },
+        where: { docRef },
         select: { _count: { select: { items: true } } },
       });
       if (!row) return null;
       return { item_count: row._count.items };
     }
     case "design_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: targetId },
+        where: { docRef },
         select: { trigger: true, kind: true, priority: true },
       });
       if (!row) return null;
@@ -386,7 +566,7 @@ export async function fetchApprovalDocInfo(
     }
     case "form_responses": {
       const row = await prisma.formResponse.findUnique({
-        where: { responseNumber: targetId },
+        where: { responseNumber: docRefNumber(targetId) },
         select: { form: { select: { kind: true } } },
       });
       if (!row) return null;
@@ -394,7 +574,7 @@ export async function fetchApprovalDocInfo(
     }
     case "internal_pages": {
       const row = await prisma.internalPage.findUnique({
-        where: { pageNumber: targetId },
+        where: { pageNumber: docRefNumber(targetId) },
         select: { pageNumber: true },
       });
       // 条件に使う属性は今のところ無い（approvalConditionFields も空）。
@@ -414,15 +594,34 @@ export async function fetchApprovalDocInfo(
         wo_planned_quantity: row.workOrder.plannedQuantity,
       };
     }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: {
+          workOrder: { select: { type: true, plannedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      return {
+        wo_type: row.workOrder.type,
+        wo_planned_quantity: row.workOrder.plannedQuantity,
+      };
+    }
     case "order_acceptance_cancel_requests": {
       const row = await prisma.orderAcceptanceCancelRequest.findUnique({
         where: { id: targetId },
         select: {
           acceptance: {
             select: {
-              deliveryMethod: true,
               items: {
-                select: { quantity: true, unitPrice: true, amount: true },
+                select: {
+                  quantity: true,
+                  unitPrice: true,
+                  amount: true,
+                  // 配送（§8）— 明細ごと。
+                  deliveryMethod: true,
+                },
               },
             },
           },
@@ -437,14 +636,16 @@ export async function fetchApprovalDocInfo(
       }, 0);
       return {
         total_amount: totalAmount,
-        delivery_method: row.acceptance.deliveryMethod,
+        delivery_method: [
+          ...new Set(row.acceptance.items.map((it) => it.deliveryMethod)),
+        ],
       };
     }
     case "delivery_orders": {
-      const key = parseDocKey(targetId, "DOR");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.deliveryOrder.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
         select: {
           fromPlantId: true,
           items: { select: { quantity: true } },
@@ -457,6 +658,61 @@ export async function fetchApprovalDocInfo(
         from_plant_id: row.fromPlantId != null ? String(row.fromPlantId) : null,
       };
     }
+    case "stock_takes": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
+      const row = await prisma.stockTake.findUnique({
+        where: { docRef },
+        select: {
+          plantId: true,
+          lines: { select: { bookQuantity: true, countedQuantity: true } },
+        },
+      });
+      if (!row) return null;
+      // 差異の件数は**数えた行のうち帳簿と違うもの**。未カウントは数えない
+      // （「差異ゼロ」と「まだ数えていない」を同じ扱いにしない）。
+      const differenceCount = row.lines.filter(
+        (l) =>
+          l.countedQuantity != null &&
+          Number(l.countedQuantity) !== Number(l.bookQuantity),
+      ).length;
+      return {
+        plant_id: String(row.plantId),
+        difference_count: differenceCount,
+      };
+    }
+    case "invoices":
+    case "invoice_payments": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
+      const row = await prisma.invoice.findUnique({
+        where: { docRef },
+        select: { totalAmount: true },
+      });
+      if (!row) return null;
+      return { total_amount: Number(row.totalAmount) };
+    }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      // 条件に使う属性は無い（approvalConditionFields も空）。
+      return row ? {} : null;
+    }
+    case "design_program_changes": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      // 条件に使う属性は無い（approvalConditionFields も空）。
+      return row ? {} : null;
+    }
+    // 価格表は通常のフローも条件付きフローも持たない（独自値の追加承認だけ）。
+    case "price_list_entries":
+      return null;
   }
 }
 
@@ -466,6 +722,21 @@ export async function fetchApprovalDocInfo(
  * ルールは既定フローの**上書き**であり、単体では承認ゲートを作らない）。
  */
 async function resolveFlowForTarget(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  customValues: boolean,
+): Promise<FlowStepDef[]> {
+  const base = await resolveBaseFlowForTarget(targetType, targetId);
+  // 独自値の追加承認 — 書類に前の書類から引き継いでいない値があるときだけ、
+  // 通常の段（既定 or 一致した条件付きフロー）の後ろに足す。段が無ければ何も
+  // 足さない。価格表のように通常のフローを持たない書類では、これだけが段になる。
+  if (!customValues || targetType === "form_responses") return base;
+  const extra = await getCustomValueSteps(targetType);
+  return appendCustomValueSteps(base, extra);
+}
+
+/** 通常の段（独自値の追加承認を足す前）。 */
+async function resolveBaseFlowForTarget(
   targetType: ApprovalTargetType,
   targetId: string,
 ): Promise<FlowStepDef[]> {
@@ -495,6 +766,7 @@ function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
     mode: s.mode,
     approverUserIds: s.approverUserIds ?? [],
     approverNames: s.approverNames ?? [],
+    ...(s.layer ? { layer: s.layer } : {}),
   }));
 }
 
@@ -554,6 +826,51 @@ export async function resolveApprover(
   return { ok: false, delegateForId: null };
 }
 
+/**
+ * actor が**いま**承認できるグループの id（resolveApprover のグループ宛の判定を
+ * 一覧向けにまとめて引いたもの）。本人が実効メンバーのグループ + 期間内代理を
+ * 任されていて、原承認者が今も実効メンバーのグループ。条件を変えるときは
+ * resolveApprover と必ず一緒に直すこと（一覧と承認ボタンの答えが割れる）。
+ */
+export async function actableApprovalGroupIds(
+  userId: string,
+): Promise<number[]> {
+  const now = new Date();
+  const effective = effectiveMemberWhere(now);
+  const [direct, delegations] = await Promise.all([
+    prisma.approvalGroupMember.findMany({
+      where: { userId, group: { isActive: true }, ...effective },
+      select: { groupId: true },
+    }),
+    prisma.approvalDelegate.findMany({
+      where: {
+        delegateId: userId,
+        validFrom: { lte: now },
+        validUntil: { gte: now },
+        group: { isActive: true },
+      },
+      select: {
+        groupId: true,
+        delegator: {
+          select: {
+            approvalGroupMembers: {
+              where: { group: { isActive: true }, ...effective },
+              select: { groupId: true },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+  const ids = new Set(direct.map((m) => m.groupId));
+  for (const d of delegations) {
+    if (d.delegator.approvalGroupMembers.some((m) => m.groupId === d.groupId)) {
+      ids.add(d.groupId);
+    }
+  }
+  return [...ids];
+}
+
 // ─── 画面向けの状態 ─────────────────────────────────────────────────────────
 
 /**
@@ -596,11 +913,15 @@ const EMPTY_STATE: ApprovalActionState = {
   steps: [],
 };
 
-function snapshotSteps(snapshot: unknown) {
+/**
+ * 段名・グループ名は DB の多言語 JSON（承認設定で「多言語」に入れたもの）。
+ * 見ている人の言語で引く — 訳が無ければ ja へ落ちる（localized の規則）。
+ */
+function snapshotSteps(snapshot: unknown, locale: string) {
   return stepsFromSnapshot(snapshot).map((s) => ({
     stepNo: s.stepNo,
-    label: localized(s.name),
-    groupLabel: localized(s.groupName),
+    label: localized(s.name, locale),
+    groupLabel: localized(s.groupName, locale),
     mode: s.mode,
   }));
 }
@@ -622,10 +943,10 @@ async function targetCreatedAt(
 ): Promise<Date | null> {
   switch (targetType) {
     case "order_acceptances": {
-      const key = parseDocKey(targetId, "ORD");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.orderAcceptance.findUnique({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -640,36 +961,42 @@ async function targetCreatedAt(
       return row?.createdAt ?? null;
     }
     case "material_purchase_orders": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: targetId },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "purchase_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: targetId },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "design_requests": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: targetId },
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "form_responses": {
       const row = await prisma.formResponse.findUnique({
-        where: { responseNumber: targetId },
+        where: { responseNumber: docRefNumber(targetId) },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
     }
     case "internal_pages": {
       const row = await prisma.internalPage.findUnique({
-        where: { pageNumber: targetId },
+        where: { pageNumber: docRefNumber(targetId) },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -690,11 +1017,63 @@ async function targetCreatedAt(
       });
       return row?.requestedAt ?? null;
     }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
     case "delivery_orders": {
-      const key = parseDocKey(targetId, "DOR");
-      if (!key) return null;
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
       const row = await prisma.deliveryOrder.findUnique({
-        where: { yearMonth_seq: key },
+        where: { docRef },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "stock_takes": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
+      const row = await prisma.stockTake.findUnique({
+        where: { docRef },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "invoices":
+    case "invoice_payments": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
+      const row = await prisma.invoice.findUnique({
+        where: { docRef },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "design_versions": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "design_program_changes": {
+      if (!UUID_RE.test(targetId)) return null;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: { requestedAt: true },
+      });
+      return row?.requestedAt ?? null;
+    }
+    case "price_list_entries": {
+      const docRef = await targetDocRef(targetType, targetId);
+      if (!docRef) return null;
+      const row = await prisma.priceListEntry.findUnique({
+        where: { docRef },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
@@ -708,7 +1087,7 @@ async function targetCreatedAt(
  * 一致しない書類が 3 種類ある:
  *
  *   - 指示書（work_orders）: 業務キーはロット番号（int の通し連番。QR・監査・
- *     kiosk が使う）で、画面の表示番号は書類番号 WOR-YYYYMM-NNNNN
+ *     kiosk が使う）で、画面の表示番号は書類番号 WOR-FFFF-NNNNN
  *     （structure.md 「ロット番号は…／WO 番号は表示用」）。両者は別物。
  *   - 工程フロー変更依頼 / 注文請書キャンセル依頼: 業務キーは依頼行自体の
  *     uuid（対象書類ではなく依頼そのものを指す）。人が知りたいのは
@@ -729,31 +1108,69 @@ async function targetDisplayNumber(
       if (!Number.isInteger(workOrderNumber)) return targetId;
       const row = await prisma.workOrder.findUnique({
         where: { workOrderNumber },
-        select: { yearMonth: true, seq: true },
+        select: { docRef: true },
       });
-      return row ? formatDocNumber("WOR", row) : targetId;
+      return row ? docNumberOf(row) : targetId;
     }
     case "work_order_flow_changes": {
       const row = await prisma.workOrderFlowChange.findUnique({
         where: { id: targetId },
-        select: { workOrder: { select: { yearMonth: true, seq: true } } },
+        select: { workOrder: { select: { docRef: true } } },
       });
-      return row ? formatDocNumber("WOR", row.workOrder) : targetId;
+      return row ? docNumberOf(row.workOrder) : targetId;
     }
     case "order_acceptance_cancel_requests": {
       const row = await prisma.orderAcceptanceCancelRequest.findUnique({
         where: { id: targetId },
-        select: { acceptanceYearMonth: true, acceptanceSeq: true },
+        select: { acceptance: { select: { docRef: true } } },
       });
-      return row
-        ? formatDocNumber("ORD", {
-            yearMonth: row.acceptanceYearMonth,
-            seq: row.acceptanceSeq,
-          })
-        : targetId;
+      return row ? docNumberOf(row.acceptance) : targetId;
+    }
+    case "work_order_aborts": {
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.workOrderAbort.findUnique({
+        where: { id: targetId },
+        select: { workOrder: { select: { docRef: true } } },
+      });
+      return row ? docNumberOf(row.workOrder) : targetId;
+    }
+    case "design_versions": {
+      // 版の uuid は人が読む番号ではない — 「製品コード v版番号」にする。
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.designVersion.findUnique({
+        where: { id: targetId },
+        select: {
+          version: true,
+          item: { select: { code: true, name: true } },
+        },
+      });
+      if (!row) return targetId;
+      const product =
+        row.item.code ?? localized(row.item.name as LocalizedText | null);
+      return `${product} v${row.version}`;
+    }
+    case "design_program_changes": {
+      // 申請の uuid は人が読む番号ではない — 「製品コード v版 / プログラム名」。
+      if (!UUID_RE.test(targetId)) return targetId;
+      const row = await prisma.designProgramChange.findUnique({
+        where: { id: targetId },
+        select: {
+          payload: true,
+          program: { select: { name: true } },
+          designVersion: {
+            select: {
+              version: true,
+              item: { select: { code: true, name: true } },
+            },
+          },
+        },
+      });
+      if (!row) return targetId;
+      return designProgramChangeLabel(row);
     }
     default:
-      return targetId;
+      // 番号を持つ書類は法人コードを落として番号だけにする（人が読む姿）。
+      return docDisplayNumber(targetType, targetId);
   }
 }
 
@@ -766,9 +1183,10 @@ async function targetScope(
   targetId: string,
 ): Promise<Prisma.ApprovalRequestWhereInput> {
   const createdAt = await targetCreatedAt(targetType, targetId);
+  const stored = await storedTargetId(targetType, targetId);
   return createdAt
-    ? { targetType, targetId, requestedAt: { gte: createdAt } }
-    : { targetType, targetId };
+    ? { targetType, targetId: stored, requestedAt: { gte: createdAt } }
+    : { targetType, targetId: stored };
 }
 
 /**
@@ -781,6 +1199,7 @@ export async function fetchApprovalState(
   userId?: string | null,
 ): Promise<ApprovalActionState> {
   const actor = userId ?? (await getCurrentActorId());
+  const locale = await getLocale();
   const scope = await targetScope(targetType, targetId);
   const pending = await prisma.approvalRequest.findFirst({
     where: { ...scope, status: "PENDING" },
@@ -799,15 +1218,15 @@ export async function fetchApprovalState(
       orderBy: [{ stepNo: "desc" }, { requestedAt: "desc" }],
     });
     if (!last) return EMPTY_STATE;
-    const steps = snapshotSteps(last.flowSnapshot);
+    const steps = snapshotSteps(last.flowSnapshot, locale);
     const step = stepFromSnapshot(last.flowSnapshot, last.stepNo);
     return {
       ...EMPTY_STATE,
       phase: last.status === "REJECTED" ? "REJECTED" : "APPROVED",
       stepNo: last.stepNo,
       stepCount: last.stepCount,
-      stepLabel: step ? localized(step.name) : "",
-      groupLabel: step ? localized(step.groupName) : "",
+      stepLabel: step ? localized(step.name, locale) : "",
+      groupLabel: step ? localized(step.groupName, locale) : "",
       mode: last.mode as ApprovalMode,
       steps,
     };
@@ -828,8 +1247,8 @@ export async function fetchApprovalState(
     phase: "PENDING",
     stepNo: pending.stepNo,
     stepCount: pending.stepCount,
-    stepLabel: step ? localized(step.name) : "",
-    groupLabel: step ? localized(step.groupName) : "",
+    stepLabel: step ? localized(step.name, locale) : "",
+    groupLabel: step ? localized(step.groupName, locale) : "",
     mode,
     canAct,
     alreadyActed,
@@ -839,7 +1258,7 @@ export async function fetchApprovalState(
             .filter((a) => a.actedAt == null)
             .map((a) => ({ userId: a.userId, name: a.user.displayName }))
         : [],
-    steps: snapshotSteps(pending.flowSnapshot),
+    steps: snapshotSteps(pending.flowSnapshot, locale),
   };
 }
 
@@ -862,7 +1281,8 @@ async function createStepRequest(
   const row = await tx.approvalRequest.create({
     data: {
       targetType: input.targetType,
-      targetId: input.targetId,
+      // 保存するのは法人コード付きの参照（番号だけを保存しない）。
+      targetId: await requireDocRef(input.targetType, input.targetId, tx),
       stepNo: input.stepNo,
       stepCount: input.stepCount,
       groupId: step?.groupId ?? null,
@@ -937,14 +1357,16 @@ async function notifyStepStart(
       title: tr("approvals.engine.approvalRequestTitle", {
         doc: APPROVAL_TARGET[targetType].label,
         targetId: displayNumber,
-        stepName: localized(step.name),
+        stepName: localized(step.name, await getLocale()),
       }),
       message: requesterName
         ? tr("approvals.engine.requesterMessage", { name: requesterName })
         : undefined,
       // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
       // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
-      linkPath: APPROVAL_TARGET[targetType].href(targetId),
+      linkPath: APPROVAL_TARGET[targetType].href(
+        await targetLinkId(targetType, targetId),
+      ),
     };
     if (step.groupId == null) {
       // カスタム段 — 指名された人にだけ送る（代理はグループの仕組みなので無い）。
@@ -967,12 +1389,22 @@ export async function startApprovalFlow(input: {
   targetType: ApprovalTargetType;
   targetId: string;
   notes?: string;
+  /**
+   * 書類が独自値（前の書類から引き継いでいない値）を持っているか。true なら
+   * 承認設定（MS0B）の「独自値の追加承認」の段を通常の段の後ろに足す。
+   * 判定は書類ごと（lib/approval-targets.ts CUSTOM_VALUE_TARGETS）。
+   */
+  customValues?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const tr = await getTranslations();
   // 条件付きフロー（approval_flow_rules）を書類の属性で解決する。
   // 一致すればその段構成、なければ既定フロー。以降は従来と同じ
   // （スナップショットに落ちるので、進行中の扱いに違いは無い）。
-  const flow = await resolveFlowForTarget(input.targetType, input.targetId);
+  const flow = await resolveFlowForTarget(
+    input.targetType,
+    input.targetId,
+    input.customValues ?? false,
+  );
   if (flow.length === 0) {
     return {
       ok: false,
@@ -993,7 +1425,7 @@ export async function startApprovalFlow(input: {
   const existing = await prisma.approvalRequest.findFirst({
     where: {
       targetType: input.targetType,
-      targetId: input.targetId,
+      targetId: await storedTargetId(input.targetType, input.targetId),
       status: "PENDING",
     },
     select: { id: true, requestedAt: true },
@@ -1078,7 +1510,7 @@ export async function actOnCurrentStep(input: {
   const request = await prisma.approvalRequest.findFirst({
     where: {
       targetType: input.targetType,
-      targetId: input.targetId,
+      targetId: await storedTargetId(input.targetType, input.targetId),
       status: "PENDING",
     },
     include: { approvers: { select: { userId: true, actedAt: true } } },
@@ -1244,7 +1676,9 @@ export async function actOnCurrentStep(input: {
                 targetId: displayNumber,
               }),
         message: input.comment ?? undefined,
-        linkPath: APPROVAL_TARGET[input.targetType].href(input.targetId),
+        linkPath: APPROVAL_TARGET[input.targetType].href(
+          await targetLinkId(input.targetType, input.targetId),
+        ),
       });
     } catch (e) {
       console.error("[approvals] 承認結果通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
@@ -1267,7 +1701,7 @@ export async function cancelApprovalFlow(input: {
   await prisma.approvalRequest.deleteMany({
     where: {
       targetType: input.targetType,
-      targetId: input.targetId,
+      targetId: await storedTargetId(input.targetType, input.targetId),
       status: "PENDING",
     },
   });
@@ -1298,6 +1732,7 @@ export async function fetchApprovalTrail(
   targetId: string,
 ): Promise<ApprovalTrailEntry[]> {
   const tr = await getTranslations();
+  const locale = await getLocale();
   const rows = await prisma.approvalRequest.findMany({
     where: await targetScope(targetType, targetId),
     include: {
@@ -1318,7 +1753,7 @@ export async function fetchApprovalTrail(
     return {
       stepNo: r.stepNo,
       stepLabel: step
-        ? localized(step.name)
+        ? localized(step.name, locale)
         : tr("approvals.engine.stepOrdinal", { n: r.stepNo }),
       status: r.status,
       mode,

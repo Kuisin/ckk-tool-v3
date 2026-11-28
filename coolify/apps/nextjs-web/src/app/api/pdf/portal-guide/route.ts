@@ -23,6 +23,7 @@
 import { requirePermissionResponse } from "@/lib/authz";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { escapeHtml } from "@/lib/format";
+import { issuerForCompanyId, ownCompanyLogo } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { portalGuidePdfLabels } from "@/lib/pdf-labels";
 import {
@@ -41,14 +42,6 @@ import { qrSvg } from "@/lib/qr";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
-
-// 発行元（CKK 本社）— quote / delivery-note ルートの issuer と同一。
-// 登録番号は載せない（税務書類ではない）。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-};
 
 /** 発行できない理由 → 応答。理由ごとに文言を分ける（管理者が読む画面）。 */
 const ERROR_STATUS: Record<PortalGuideError, number> = {
@@ -154,15 +147,26 @@ export async function GET(request: Request): Promise<Response> {
     };
   });
 
+  // 発行元（自社法人 MS0I）。ご案内はポータルのアカウント宛てで、書類でも
+  // 拠点でもないので法人を持たない → 既定の法人（マスタの値。コードに直書き
+  // しない）。登録番号は載せない（税務書類ではない — テンプレートが出さない）。
+  const { issuer, company } = await issuerForCompanyId(null, document.locale);
+  const logo = await ownCompanyLogo(company, document.locale);
+
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("portal-guide.html", {
-      lang: document.locale,
-      issuer: ISSUER,
-      // `<title>` はループの外なので根にも 1 つ要る（中身は同じ見出し）。
-      labels: pages[0]?.labels,
-      pages,
-    });
+    pdf = await renderPdf(
+      "portal-guide.html",
+      {
+        lang: document.locale,
+        issuer,
+        brand_logo: logo.html,
+        // `<title>` はループの外なので根にも 1 つ要る（中身は同じ見出し）。
+        labels: pages[0]?.labels,
+        pages,
+      },
+      { assets: logo.assets },
+    );
   } catch (err) {
     console.error("[pdf/portal-guide]", err);
     return Response.json({ error: "PDF generation failed" }, { status: 502 });

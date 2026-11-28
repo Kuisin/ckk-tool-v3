@@ -24,6 +24,74 @@ model Region {
   @@schema("app")
 }
 
+// ─── 自社法人（書類の発行元。拠点が 1 つの法人に属する） ─────────────────────
+//
+// CKK と TSP のように、同じグループでも書類を出す法人が別。見積書・納品書・
+// 請求書の発行元ブロック（社名・住所・電話・登録番号・社印）はここから刷る。
+// どの法人かは**拠点から決まる**（plants.own_company_id）— 書類ごとに法人を
+// 選ばせない。拠点の分からない書類は既定の法人（is_default、1 行だけ）。
+// 決め方の唯一の定義は nextjs-web の lib/own-company-core.ts resolveIssuer。
+model OwnCompany {
+  id                    Int      @id @default(autoincrement())
+  /// 作成後は変えられない（BEFORE UPDATE トリガー own_companies_code_immutable）—
+  /// 書類番号に埋め込まれる（例: CKK/QOT-2026-00001）
+  code                  String   @unique
+  name                  Json // { ja, en, … }
+  nameKana              String?  @map("name_kana")
+  postalCode            String?  @map("postal_code")
+  address               Json?
+  phone                 String?
+  fax                   String?
+  email                 String?
+  /// 適格請求書発行事業者登録番号（T + 13 桁）
+  invoiceRegistrationNo String?  @map("invoice_registration_no")
+  /// 社印（電子印影）の画像。null = 印影なし（既定の法人だけは同梱の印影へ落ちる）
+  sealFileId            String?  @map("seal_file_id") @db.Uuid
+  /// PDF の見出しに刷るロゴ画像（PNG / JPG）。null = ロゴなし（既定の法人だけは
+  /// 同梱の logo.svg へ落ちる — 他の法人の書類に CKK のマークを刷らないため）
+  logoFileId            String?  @map("logo_file_id") @db.Uuid
+  bankName              String?  @map("bank_name")
+  bankBranch            String?  @map("bank_branch")
+  bankAccountType       String?  @map("bank_account_type")
+  bankAccountNumber     String?  @map("bank_account_number")
+  bankAccountHolder     String?  @map("bank_account_holder")
+  /// 会計年度の開始月（1〜12。既定 4 = 4 月始まり）。法人ごとの採番の年度区切りに使う
+  /// （範囲は DB の CHECK own_companies_fiscal_year_start_month_check）。
+  /// 1 件でも採番した法人は変えられない（トリガー own_companies_fiscal_month_lock）
+  fiscalYearStartMonth  Int      @default(4) @map("fiscal_year_start_month") @db.SmallInt
+  /// 既定の法人（拠点の分からない書類の発行元）。部分 unique index で 1 行だけ
+  isDefault             Boolean  @default(false) @map("is_default")
+  isActive              Boolean  @default(true) @map("is_active")
+  notes                 String?
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sealFile          File?              @relation("OwnCompanySeal", fields: [sealFileId], references: [id], onDelete: SetNull)
+  logoFile          File?              @relation("OwnCompanyLogo", fields: [logoFileId], references: [id], onDelete: SetNull)
+  plants            Plant[]            @relation("PlantOwnCompany")
+  invoices          Invoice[]          @relation("InvoiceOwnCompany")
+  estimateDocs Estimate[] @relation("EstimateOwnCompany")
+  priceListEntryDocs PriceListEntry[] @relation("PriceListEntryOwnCompany")
+  quoteDocs Quote[] @relation("QuoteOwnCompany")
+  orderAcceptanceDocs OrderAcceptance[] @relation("OrderAcceptanceOwnCompany")
+  deliveryOrderDocs DeliveryOrder[] @relation("DeliveryOrderOwnCompany")
+  deliveryNoteDocs DeliveryNote[] @relation("DeliveryNoteOwnCompany")
+  materialPurchaseOrderDocs MaterialPurchaseOrder[] @relation("MaterialPurchaseOrderOwnCompany")
+  purchaseRequestDocs PurchaseRequest[] @relation("PurchaseRequestOwnCompany")
+  designRequestDocs DesignRequest[] @relation("DesignRequestOwnCompany")
+  workOrderDocs WorkOrder[] @relation("WorkOrderOwnCompany")
+  outsourceOrderDocs OutsourceOrder[] @relation("OutsourceOrderOwnCompany")
+  formResponseDocs FormResponse[] @relation("FormResponseOwnCompany")
+  internalPageDocs InternalPage[] @relation("InternalPageOwnCompany")
+  inventoryMovementDocs InventoryMovement[] @relation("InventoryMovementOwnCompany")
+  stockTakeDocs StockTake[] @relation("StockTakeOwnCompany")
+  accountingDocumentDocs AccountingDocument[] @relation("AccountingDocumentOwnCompany")
+  documentSequences DocumentSequence[] @relation("DocumentSequenceOwnCompany")
+
+  @@map("own_companies")
+  @@schema("app")
+}
+
 // ─── 拠点（製造・在庫・出荷の拠点。SCOPE.PLANT の実体） ────────────────────
 
 model Plant {
@@ -34,6 +102,8 @@ model Plant {
   // 国は拠点ごとに 1 つ（ISO 3166-1 alpha-2）
   countryCode   String?  @map("country_code") @db.VarChar(2)
   regionId      Int?     @map("region_id")
+  // 所属する自社法人（書類の発行元）。null = 既定の法人
+  ownCompanyId  Int?     @map("own_company_id")
   postalCode    String?  @map("postal_code")
   address       Json?
   phone         String?
@@ -44,15 +114,14 @@ model Plant {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  region Region? @relation("PlantRegion", fields: [regionId], references: [id])
+  region     Region?     @relation("PlantRegion", fields: [regionId], references: [id])
+  ownCompany OwnCompany? @relation("PlantOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
 
   workOrderSteps WorkOrderStep[]
   deliveryOrders DeliveryOrder[]
   poItems        MaterialPurchaseOrderItem[] @relation("PoItemPlant")
   receipts       MaterialReceipt[]           @relation("ReceiptPlant")
   prqItems       PurchaseRequestItem[]       @relation("PrqItemPlant")
-  productInventory  ProductInventory[]
-  materialInventory MaterialInventory[]
   kioskDevices      KioskDevice[]   @relation("KioskDevicePlant")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapPlant")
   displayDevices    DisplayDevice[] @relation("DisplayDevicePlant")
@@ -61,8 +130,13 @@ model Plant {
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
   userPlants         UserPlant[]         @relation("PlantUsers")
   orderAcceptances   OrderAcceptance[]   @relation("AcceptancePlant")
+  orderLines         OrderLine[]         @relation("OrderLinePlant")
+  inventoryMovements InventoryMovement[] @relation("InventoryMovementPlant")
+  stockTakes         StockTake[]         @relation("StockTakePlant")
+  itemInventory      ItemInventory[]     @relation("ItemInventoryPlant")
 
   @@index([regionId])
+  @@index([ownCompanyId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
   @@map("plants")
@@ -114,6 +188,8 @@ model WorkLocation {
   stepActuals WorkOrderStepActual[] @relation("StepActualWorkLocation")
   kioskDevices KioskDevice[] @relation("KioskDeviceDefaultWorkLocation")
   orderAcceptances OrderAcceptance[] @relation("AcceptanceShippingWorkLocation")
+  orderLines       OrderLine[]       @relation("OrderLineShippingWorkLocation")
+  designPrograms   DesignProgram[]   @relation("DesignProgramWorkLocation")
 
   @@index([groupId, sortOrder])
   @@map("work_locations")
@@ -125,6 +201,7 @@ model WorkLocation {
 enum ProcessCategory {
   MATERIAL_PREP // 材料準備
   MACHINING // 加工
+  REGRIND // 再研磨（顧客の工具を研ぎ直す工程。再研磨指示書だけが使う）
   COATING // コーティング
   INSPECTION // 検査
   APPROVAL // 検査承認
@@ -196,13 +273,39 @@ model ProcessStepCatalog {
   // false にする。使える場所の範囲は別（process_step_work_locations の許可リスト）。
   workLocationRequired Boolean       @default(true) @map("work_location_required")
   // 作業計画の必須項目（承認前の揃い）— 作業場所と同じく工程ごと。担当者と計画日は
-  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）と 数量。
+  // 常に必須（列が NOT NULL）で、ここで切れるのは 時刻（開始・終了）。
   // 「何を入れれば計画が揃ったか」は工程マスタだけが決める（lib/work-plan-core.ts）。
   planTimeRequired     Boolean       @default(false) @map("plan_time_required")
-  planQuantityRequired Boolean       @default(false) @map("plan_quantity_required")
   // 担当者。既定は任意 — 承認後に現場で決めてよい工程が多く、計画の最小単位は
   // 「いつ・どこで」。人まで決めてから承認に出す工程だけ立てる。
   planAssigneeRequired Boolean       @default(false) @map("plan_assignee_required")
+  /// **この工程を載せてよい指示書種別**（在庫分 / 製造分 / 再研磨）。空にはできない。
+  ///
+  /// 以前はカテゴリから推測していた（「再研磨の指示書に加工工程は載せない」等）が、
+  /// 推測は現場の例外を表せない — 研ぎ直しのついでに円筒を当て直す、在庫から出す
+  /// だけのロットにも受入検査を通す、といった運用はどの会社にもあり、そのたびに
+  /// コードを直すことになっていた。**どの工程がどの種別で使えるかは業務の決め事**
+  /// なので、マスタが持つ。
+  ///
+  /// ただし**開始工程だけは設定で動かせない**（`stepAllowedForType`）— 製品出し
+  /// （在庫）は引当済み在庫を消費し、製品受入（再研磨）は顧客の預り品を計上する。
+  /// どちらも台帳がその種別であることに依っているので、種別を跨がせると在庫が壊れる。
+  ///
+  /// 既定は製造分だけ — 値を渡さずに作られた行が「どこでも使える」に倒れると、
+  /// 気づかないまま在庫分の指示書へ加工工程が並ぶ。広い側ではなく狭い側へ落とす。
+  allowedWorkOrderTypes WorkOrderType[] @default([MANUFACTURE]) @map("allowed_work_order_types")
+  /// **加工状態に数える工程か**（仕掛品の再設計 — lib/wip-state-core.ts）。
+  ///
+  /// 仕掛品（途中で止まった品）は「材種 × 径 × 長」のブランク品目に、
+  /// **済んだ形を変える工程の並び**（wip_states）を添えて在庫に置く。ここが
+  /// true の工程だけがその並びに入る — 検査・承認のように品物の形を変えない
+  /// 工程を数えると、同じ形の品が別の状態に割れて突合できなくなる。
+  ///
+  /// 既定はカテゴリから入れた（材料準備・加工・コーティング = true、それ以外 =
+  /// false、開始工程は常に false）が、**業務の例外は工程ごとにここで上書きする**
+  /// （allowed_work_order_types と同じ考え方 — 推測ではなくマスタが持つ）。
+  /// 新しく作る行の DB 既定は false — 渡し忘れた工程が状態を割らない側へ倒す。
+  affectsWipState       Boolean         @default(false) @map("affects_wip_state")
   approvalMinRank   String?          @map("approval_min_rank") // 係長以上等
   quantityTracking  QuantityTracking @default(FLOW) @map("quantity_tracking")
   lotInputMode      LotInputMode     @default(NONE) @map("lot_input_mode") // 実行時のロット入力の既定（工程リスト/指示書で上書き可）
@@ -219,6 +322,7 @@ model ProcessStepCatalog {
   inspectionTemplates InspectionTemplate[]
   workOrderSteps      WorkOrderStep[]
   routeVersionSteps   ProductProcessRouteVersionStep[]
+  designProgramSteps  DesignProgramStep[] @relation("DesignProgramProcessStep")
 
   @@map("process_step_catalog")
   @@schema("app")
@@ -362,7 +466,8 @@ model InspectionTemplate {
   // ようにするため。絞り込みは既定選択だけで、割当自体（MultiSelect）は
   // 引き続きどのテンプレートも選べる（現場判断で汎用外の検査表を使うことも
   // ある）。
-  productId             Int?     @map("product_id")
+  /// 統合品目（app.items）。この検査表テンプレートの対象品目。
+  itemId                Int?     @map("item_id")
   // ナビゲーション用のグループ（例: 製品検査記録／外観検査 等）。
   // 判定・PDF には影響しない — 一覧の絞り込み・見出し分けのためだけの表示軸。
   groupId               Int?     @map("group_id")
@@ -393,7 +498,7 @@ model InspectionTemplate {
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
-  product            Product?                 @relation(fields: [productId], references: [id])
+  item               Item?                    @relation("InspectionTemplateItem", fields: [itemId], references: [id], onDelete: Restrict)
   group              InspectionTemplateGroup? @relation(fields: [groupId], references: [id])
   imageFile          File?                    @relation("InspectionTemplateImage", fields: [imageFileId], references: [id], onDelete: SetNull)
   approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
@@ -403,8 +508,8 @@ model InspectionTemplate {
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])
-  @@index([productId])
   @@index([groupId])
+  @@index([itemId])
   @@map("inspection_templates")
   @@schema("app")
 }
@@ -507,6 +612,7 @@ model ApprovalGroup {
   delegates     ApprovalDelegate[]
   flowSteps     ApprovalFlowStep[]
   flowRuleSteps ApprovalFlowRuleStep[]
+  customValueSteps ApprovalCustomValueStep[]
   formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
   inspectionTemplates InspectionTemplate[]
@@ -559,6 +665,7 @@ model ApprovalFlow {
 
   steps         ApprovalFlowStep[]
   rules         ApprovalFlowRule[]
+  customValueSteps ApprovalCustomValueStep[]
   updatedByUser User?              @relation("ApprovalFlowUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("approval_flows")
@@ -581,6 +688,32 @@ model ApprovalFlowStep {
   @@unique([targetType, stepNo])
   @@index([groupId])
   @@map("approval_flow_steps")
+  @@schema("app")
+}
+
+// ─── 独自値の追加承認（承認フローとは別の段構成） ───────────────────────────
+//
+// 書類に「前の書類から引き継いでいない値」（価格表なら価格試算に無い基準単価・
+// 段階単価の上書き、注文請書なら価格表に無い／上書きした単価）があるときだけ、
+// 既定フロー（または一致した条件付きフロー）の**後ろに足す**段。依頼時点で
+// flow_snapshot に連結されるので、進行中の扱いは通常の段と変わらない。
+// 段が 0 本 = 追加の承認なし（未設定 = 素通し）。
+// どの書類で「独自値」を判定できるかは nextjs-web lib/approval-targets.ts の
+// CUSTOM_VALUE_TARGETS が唯一の定義。approval_flow_steps と同型。
+model ApprovalCustomValueStep {
+  id         Int          @id @default(autoincrement())
+  targetType String       @map("target_type")
+  stepNo     Int          @map("step_no")
+  name       Json // { ja, en } 例「独自価格承認」
+  groupId    Int          @map("group_id")
+  mode       ApprovalMode @default(ANY)
+
+  flow  ApprovalFlow  @relation(fields: [targetType], references: [targetType], onDelete: Cascade)
+  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([targetType, stepNo])
+  @@index([groupId])
+  @@map("approval_custom_value_steps")
   @@schema("app")
 }
 

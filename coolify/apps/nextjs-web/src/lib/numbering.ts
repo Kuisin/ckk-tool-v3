@@ -2,28 +2,32 @@
  * numbering.ts — document numbering on app.numbering_sequences
  * (_specs/tables.md §採番管理). Server-only.
  *
- * Formats: PRD-YYYYMM-NNNN (製品) / EST-, QOT- ... -NNNNN with monthly reset.
+ * Formats: PRD-YYYYMM-NNNN (製品) / RGD-YYYYMM-NNNN (再研磨品目) / FRM- (フォーム回答) /
+ * DOC- (社内文書) with monthly reset, plus the global serials below.
+ *
+ * **業務書類の番号（EST / QOT / PRC / ORD / DOR / DRN / INV / PO / PRQ / DSG / WOR /
+ * MOV / STK / ACC / OUT）はここでは払い出さない** — 番号設計 PR-C 以降は DB が
+ * 作成時に採番する（BEFORE INSERT トリガー app.assign_document_number。自社法人 ×
+ * 会計年度の連番、`PREFIX-FFFF-NNNNN`）。アプリは行を作って、返ってきた
+ * `docRef` / `docNumber` を読むだけ（lib/doc-number.ts）。Web と共有端末のどちらが
+ * 作っても同じ採番を通る。
  * The increment is a single atomic INSERT ... ON CONFLICT statement, so
  * concurrent callers never receive the same number.
+ *
+ * ⚠️ **nextjs-kiosk との twin file**（`pnpm twin:sync` / twin-files.test.ts）。
+ * 共有端末も工程完了で在庫を動かし、そのたびに入出庫伝票を起こす = 採番が要る。
+ * 採番の upsert を 2 か所に書くと必ずずれるので、この 1 本を逐語コピーで持つ。
+ * 依存は `./db` の prisma だけ（両アプリに同じ形である）。
  */
 
 import { prisma } from "./db";
 
 const SEQUENCES = {
   PRODUCT: { prefix: "PRD", digits: 4 },
-  ESTIMATE: { prefix: "EST", digits: 5 },
-  QUOTE: { prefix: "QOT", digits: 5 },
-  PRICE_LIST: { prefix: "PRC", digits: 5 },
-  ORDER: { prefix: "ORD", digits: 5 }, // 注文明細ベース（枝番は行側で 1..N）
-  DELIVERY_ORDER: { prefix: "DOR", digits: 5 }, // 出荷書（delivery order）
-  DELIVERY: { prefix: "DRN", digits: 5 }, // 納品書
-  PURCHASE: { prefix: "PO", digits: 5 }, // 素材発注書（po_number に文字列保存）
-  PURCHASE_REQUEST: { prefix: "PRQ", digits: 5 }, // 購買依頼（request_number に文字列保存）
-  INVOICE: { prefix: "INV", digits: 5 }, // 請求書
-  DESIGN: { prefix: "DSG", digits: 5 }, // 設計依頼書（request_number に文字列保存）
-  // 指示書の書類番号（表示用）。ロット番号は別キー WORK_ORDER（通し連番）—
-  // 同じキーにすると月次リセットの upsert が通し連番を壊すため分けている。
-  WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
+  // 再研磨品目 (MS0H)。製品と同じ items 表に載るが、売る**役務**なので
+  // 番号を分ける — 一覧・注文請書・請求書で「これは研ぎ直しだ」と
+  // コードだけで読めるようにするため。
+  REGRIND_ITEM: { prefix: "RGD", digits: 4 },
   // フォーム回答 (CM02)。承認依頼・監査・添付はこの番号で紐づく。
   FORM_RESPONSE: { prefix: "FRM", digits: 5 },
   // 社内文書 (CM03)。DC02「管理マニュアル」とは無関係（あちらはファイル）。
@@ -33,10 +37,8 @@ const SEQUENCES = {
 export type NumberingKey = keyof typeof SEQUENCES;
 
 /**
- * Allocate the next (yearMonth, seq) pair for `key`. Documents with combined
- * keys (価格試算/見積書) store these two columns and DERIVE the display number
- * (lib/doc-number.ts); `nextDocumentNumber` keeps the formatted-string API for
- * single-column ids (製品コード).
+ * Allocate the next (yearMonth, seq) pair for `key`（品目コード・フォーム回答・
+ * 社内文書）。`nextDocumentNumber` は整形済みの文字列を返す。
  */
 /**
  * JST の YYYYMM（監査 P1-5: コンテナ TZ=UTC だと JST 0:00〜8:59 の伝票が

@@ -367,7 +367,7 @@ export async function getLoginAttempt(
 export interface UserDeviceRow {
   id: string;
   label: string | null;
-  fingerprint: string;
+  fingerprint: string | null;
   ownership: DeviceOwnership;
   ownershipSource: string | null;
   userAgent: string | null;
@@ -397,6 +397,23 @@ export async function listUserDevices(
     firstSeenAt: d.firstSeenAt.toISOString(),
     lastSeenAt: d.lastSeenAt.toISOString(),
   }));
+}
+
+/**
+ * SY01 ユーザー詳細に埋め込む端末行。toEmbeddedLoginAttemptRow と同じ理由で、
+ * 端末シグネチャ・UA・最終 IP・所有判定の根拠を落とす — SY0D では
+ * `personal_data` + 特権操作 `login_history_detail` の承認を経て初めて見せる値で、
+ * `user_admin` だけで読める場所に出ていては門の意味が無い。残すのは
+ * 端末名・回数・時刻・所有区分（表示用の判定結果）だけ。
+ */
+export function toEmbeddedUserDeviceRow(row: UserDeviceRow): UserDeviceRow {
+  return {
+    ...row,
+    fingerprint: null,
+    userAgent: null,
+    lastIpAddress: null,
+    ownershipSource: null,
+  };
 }
 
 export interface LoginAttemptSummary {

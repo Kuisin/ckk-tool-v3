@@ -35,6 +35,7 @@ All tokens are derived from Mantine's theme object. Reference semantic tokens in
 | 販売 | `blue` |
 | 購買 | `teal` |
 | 生産 | `violet` |
+| 在庫 | `cyan` |
 | 出荷 | `orange` |
 | 請求 | `pink` |
 | マスタ | `gray` |
@@ -309,9 +310,12 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 購買 | 3 | 素材入荷 | PU03 | PU13 | PU23 |
 | 購買 | 4 | 外注依頼 | PU04 | PU14 | PU24 |
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
-| 生産 | 4 | 在庫管理 | PD04 | — | — |
+| 在庫 | 1 | 在庫管理 | ST01 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
 | 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
+| 生産 | 9 | 作業場所一覧 | PD09 | — | — |
+| 在庫 | 4 | 入出庫伝票 | ST04 | — | ST24 |
+| 在庫 | 5 | 棚卸 | ST05 | ST15 | ST25 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
@@ -329,6 +333,9 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | マスタ | C | 拠点 | MS0C | MS1C | MS2C |
 | マスタ | D | 作業場所 | MS0D | — | — |
 | マスタ | E | 保管場所 | MS0E | — | — |
+| マスタ | G | 料金マスタ | MS0G | MS1G | — |
+| マスタ | H | 再研磨品目 | MS0H | MS1H | — |
+| マスタ | I | 自社法人 | MS0I | MS1I | MS2I |
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
@@ -348,6 +355,8 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | G | 特権アクセス | SY0G | — | — |
 | システム | F | 通知メール | SY0F | — | — |
 | システム | H | 取引先ポータル | SY0H | — | — |
+| システム | I | API クライアント | SY0I | — | — |
+| システム | J | 会計連携 | SY0J | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -361,6 +370,9 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > 注文明細（`SA05`）として販売カテゴリへ移った。注文明細は新規・編集画面を
 > 持たない（作成は注文請書の明細エディタ）ため `SA15` も欠番で、一覧 `SA05` と
 > 詳細 `SA25` だけを登録する。
+>
+> `PD04` / `PD07` / `PD08` も**欠番**（在庫カテゴリ `ST*` へ移設した旧画面）。
+> そのため 作業場所一覧 は `PD09`（一覧だけ — 作る画面は無い）。
 
 `OperationCodeJump` component (`src/components/layout/OperationCodeJump.tsx`) renders as a compact TextInput in the header center. Pressing Enter or clicking a result navigates to that screen.
 
@@ -425,6 +437,9 @@ Stack (gap="xl", p="md", maw={1200})
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
 | 設計図 | `IconFileVector` |
+| 作業場所一覧 | `IconMapPin` |
+| 入出庫伝票 | `IconArrowsExchange` |
+| 棚卸 | `IconClipboardList` |
 | 未処理一覧 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
@@ -442,6 +457,9 @@ Stack (gap="xl", p="md", maw={1200})
 | 不良種類 | `IconAlertTriangle` |
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
+| 料金マスタ | `IconCoin` |
+| 再研磨品目 | `IconTool` |
+| 自社法人 | `IconBuildingBank` |
 | ユーザー管理 | `IconUserCog` |
 | 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
@@ -702,9 +720,23 @@ Stack (gap="md")
 | DesignRequest | COMPLETED | green | 完了 |
 | DesignRequest | REJECTED | red | 差し戻し |
 | DesignRequest | CANCELLED | red | キャンセル |
+| DesignVersion | DRAFT | gray | 下書き |
+| DesignVersion | REQUESTED | yellow | 承認依頼中 |
+| DesignVersion | CONFIRMED | green | 確定 |
+| DesignVersion | REJECTED | red | 差し戻し |
+| StockTake | DRAFT | gray | 下書き |
+| StockTake | COUNTING | blue | 記入中 |
+| StockTake | CONFIRMED | green | 確定 |
+| StockTake | CANCELLED | red | キャンセル |
+| StockTake (approval) | NONE | gray | — |
+| StockTake (approval) | PENDING | yellow | 承認依頼中 |
+| StockTake (approval) | APPROVED | green | 承認済 |
+| StockTake (approval) | REJECTED | red | 差し戻し |
 | BillingClosing | PENDING | gray | 未処理 |
 | BillingClosing | PROCESSED | blue | 処理済 |
 | BillingClosing | EXPORTED | green | エクスポート済 |
+| AccountingDocument | POSTED | blue | 転記済み |
+| AccountingDocument | REVERSED | red | 反対仕訳済み |
 
 ---
 
@@ -826,6 +858,11 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 価格表 / 価格試算 / **設計依頼書** = **コメント**。既存の 備考（`notes`）は平文のまま
 別物として残り、PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
+**設計図 (PD06) は 2 種類のメモを持つ。** 製品画面の各系列（製品 × 受注元）の節に
+**系列メモ**（`ownerType="design_series"`、`ownerId` = `<品目 id>:<受注元 id | generic>`
+— `lib/design-files-core.ts` `designSeriesOwnerId`）。版をまたいで残したいこと用で、
+版ごとの変更点は版の notes が持つ。
+
 **設計図 (PD06) だけ owner が書類ではなく「版」**（`design_files` の 1 行）で、
 `ownerId` は表示番号ではなく **版の uuid**。版には業務キーが無いため。画面では
 版の行の「メモ」ボタンからモーダルで開く（タブではない）。**編集可否とは独立に
@@ -883,7 +920,10 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼 /
 出荷書 (`DeliveryVarianceCard` — **過不足納品のときだけ出る**。数量ちょうどの
-出荷では何も描かない)。
+出荷では何も描かない) / 請求書 (`InvoiceApprovalCard` — 発行前承認は
+**追加費用ありの下書きだけ**、入金前承認は送付済み全件。どちらも「承認を
+依頼する」ボタンは持たず、発行/入金を押した時点でサーバーが自動で依頼する
+— `DeliveryVarianceCard` と同じ作法）。
 
 ### 10.10 EditablePanel
 
@@ -942,6 +982,11 @@ Paper (withBorder, p="md", radius="md")
   `onCancel` を渡して差し替える**（`ApprovalFlowEditor` の既定は承認設定 MS0B
   への遷移で、そのままだと別画面へ飛ばされる）。
 - モバイルでは見出しと編集ボタンを縦に積み、ボタンを全幅にする（§20.2）。
+- **閲覧へ戻るのは新しい値が届いてから。** `close` は `router.refresh()` と
+  閉じる操作を 1 つの遷移（`startTransition`）に入れるので、サーバーが描き直した
+  `view` が届くまで編集側が出たままになり、両方が一緒に切り替わる。以前は先に
+  閉じていたため、保存の直後に一瞬だけ古い値が出ていた（SY0J 会計連携）。
+  編集側で `router.refresh()` を呼んでいても害は無い。
 
 搭載画面: フォーム詳細の 承認 / 共有 タブ、回答詳細の 回答 タブ。
 
@@ -1090,7 +1135,7 @@ Paper (withBorder, p="md", radius="md")
             zoomOnScroll=false / preventScrolling=false。工程の増減時のみ
             fitView で測り直す（数量だけの更新では視点を動かさない）。
             ノード本体は `WorkflowStepNode.tsx` = Mantine の HTML ノード
-            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 数量バッジ。
+            （工程名 lineClamp 2 + 種別バッジ + 外注バッジ + 工程納期バッジ + 数量バッジ。
             アイコンは StepCard と STEP_STATUS_ICON を共有）
 ```
 
@@ -1106,6 +1151,12 @@ Paper (withBorder, p="md", radius="md")
 | 検査 INSPECTION | `cyan` |
 | 検査承認 APPROVAL | `violet` |
 | 出荷 SHIPPING | `pink` |
+| 再研磨 REGRIND | `orange` |
+
+指示書の **種別バッジ**（`WORK_ORDER_TYPE_COLOR`, `lib/enum-labels.ts`）も同じ表の隣で決める:
+製造分 `violet` / 在庫分 `teal` / 再研磨 `orange`。一覧（PD02）・未処理指示書（PD05）・
+詳細の 3 か所が同じ表を読む（以前はコンポーネントごとの三項演算子で、種別を足すと
+片方だけ色が付かなかった）。
 
 状態色（§9 StepStatus の gray / blue / green / red）とぶつからないよう、その 4 色は
 種別に使わない。**状態**はアイコン（時計 / スピナー / チェック / ✗）と、進行を
@@ -1138,7 +1189,14 @@ Paper (withBorder, p="sm", radius="sm")
 │   │       text: "外注" | "社内"
 │   └── [desktop, if OUTSOURCE] Text size="xs" c="dimmed" — supplier name
 ├── [mobile, if OUTSOURCE] Text size="xs" c="dimmed" mt={4} pl={28} — supplier name
-├── [if 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+├── [if 工程納期 or 担当者 or 作業時間] Group gap="md" mt="xs" pl={28} wrap="wrap"
+│   ├── [工程納期] StepDueDateBadge — IconCalendarDue +「工程納期 {date}」。
+│   │   過ぎて未完了（COMPLETED / CANCELLED 以外）なら red filled、それ以外は gray light。
+│   │   比較は JST の暦日の文字列同士（lib/step-due-date-core.ts isStepOverdue —
+│   │   共有端末と twin）。フロー図のノードと工程実行画面の見出しにも同じバッジを出す。
+│   │   編集は指示書ビルダーの「工程納期」節（工程ごとに日付 1 つ）と、承認後は
+│   │   工程実行画面の計画パネル（作業計画と同じ窓 — 下書き/承認済/進行中の
+│   │   指示書の、未完了の工程）。
 │   ├── [担当者] Group gap={6} — Text c="dimmed" "担当" +
 │   │   最大 3 名 × (UserAvatar size={18} + Text size="xs" 氏名) + "ほか N 名"
 │   │   担当者 = 作業計画（work_order_step_plans）の割当ユーザー（重複排除・計画日順）
@@ -1283,7 +1341,8 @@ Paper (withBorder, p="md", radius="md")
 表示なし）、書類ごとに進捗を探す場所が違っていた。
 
 搭載: 価格試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
-指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
+指示書 / 出荷書 / 納品書 / 請求書 / 締日処理 / 棚卸（**13 書類**）。
+**入出庫伝票は持たない** — 作られた時点で完結していて、進む先が無い（不変）。
 価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
 
 置き場所は **ActionCard (§10.9) → SummaryGrid → ProcedurePanel → Tabs** の順。
@@ -1530,18 +1589,22 @@ Row click navigates to detail page.
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
 | WorkOrder | 指示書番号 / 注文明細番号 / 種別 / 予定数量 / 承認状態 / 状態 / 更新日 |
 | DeliveryOrder | 出荷書番号 / 注文明細番号 / 種別 / 状態 / 出荷日 |
+| ProductStock（在庫管理 ST01 製品タブ） | 製品 / 拠点 / 保管場所 / ロット / 在庫数 / 利用可能 / 使える仕掛品 / 更新日 |
+| WipStock（在庫管理 ST01 仕掛品タブ — **材種 / 径 / 長 → 加工状態 でまとめる**） | 加工状態 / 仕上がり寸法 / 数量 / 予約 / 利用可能 / 拠点・保管場所 / ロット / 目標製品 / 発生工程 / 経過日数 |
+| InProcess（在庫管理 ST01 工程内タブ — 製品でまとめる） | 指示書番号 / 工程 / 仕掛数 |
 | UnplannedOrderLine (PD05 未手配) | 注文明細番号 / 顧客 / 製品 / 受注数 / 手配済 / 未手配 / 在庫引当 / 納期 / 状態 |
 | UnshippedOrderLine (SH03 未手配) | 注文明細番号 / 顧客 / 製品 / 完了ロット / 完成数 / 出荷手配済 / 未手配 / 納期 / 状態 |
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
-| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
-| BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
+| Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態（承認依頼中バッジ込み） / 発行日 |
+| BillingClosing | 顧客 / 締日 / 実行区分（定期/手動） / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
-| DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版 / 役割 / 出どころ / 更新日 |
+| DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版（番号 + 状態。下書きなら確定済みの版を併記）/ 役割 / 出どころ / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
 | MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |
 | BusinessPartner | BPコード / 名称 / ロール / 支店数 / 状態 / 更新日 |
 | Plant | コード / 名称 / 国 / 状態 / 更新日 |
+| OwnCompany | コード / 名称（+ 既定バッジ） / 登録番号 / 拠点数 / 状態 / 更新日 |
 | Product | 製品コード / 名称 / 材種（+ φ直径×全長） / 単位 / 状態 |
 | MaterialType | 材種コード / メーカー / 形状 / 名称 / 状態 |
 | Material | 素材コード / 材種 / 直径 / 全長 / 黒皮研磨 / 状態 |
@@ -1549,6 +1612,46 @@ Row click navigates to detail page.
 | InspectionTemplate | コード / 名称 / 関連工程 / 状態 |
 | DefectType | コード / 名称 / 状態 |
 | ApprovalGroup | 名称 / 種別 / メンバー数 / 状態 |
+
+**在庫管理 (ST01) の仕掛品タブ** — 在庫に置いた仕掛品（仕掛ブランク × 加工状態）は
+`DataTable` ではなく **見出し行つきの表**（`components/inventory/wip/WipStockList.tsx`）。
+同じ仕掛ブランクがどこまで加工された状態で何本あるかを上から読むための並びで、
+更新日順のフラットな表にすると同じブランクが散らばる。並びは
+`lib/wip-stock-core.ts` `groupWipStock` が決める（未分類 → 材種 → 径 → 長、
+状態は浅い順、状態の中は古い順）。
+
+- 加工状態は **呼び名（任意）があれば呼び名 + 工程のチップ、無ければ工程のチップ**
+  （`切断 › センタレス › 段加工`。`›` は次のチップと 1 組で折り返す）。何も済んで
+  いなければ gray の「未加工」、移行で行き先を決められなかった行は orange の「未分類」。
+- 絞り込みは 材種 / 加工状態 / 目標製品 / 拠点（選択肢はいま在庫にあるものだけ）。
+  モバイルは 4 つを 2 つずつ折り返す（1 行に並べると 1 つ 40px になり読めない）。
+- 製品タブの「使える仕掛品 n 本」は `matchWip` の ちょうど + 長い + 太い の合計で、
+  押すと `?tab=wip&for=<製品の items.id>` で仕掛品タブがその行だけに絞られる
+  （絞り込み中は上に Alert を出し、× で外せる）。加工状態が合わないもの（`other`）は
+  数えない。
+- 行の操作: 「移動」（在庫移動）と、未分類の行だけ「分類する」。加工状態の右の
+  鉛筆で呼び名を付ける（どちらも在庫の調整権限 `inventory:UPDATE` があるときだけ出す）。
+- モバイルは仕掛ブランクの見出し + 区切り線のカード列（§8.1）。
+- 「工程内」タブ（旧「仕掛品」タブ）は進行中の指示書に乗っている本数で、在庫ではない。
+
+**指示書ビルダー (PD12) の「使える仕掛品」** — 工程リストの節の下、工程の一覧の上に
+置く（`components/production/work-orders/WipDrawPanel.tsx`。突合の相手は工程の並び
+なので、工程が決まってから出す）。
+
+- 候補は **ちょうど（green）/ 長い（blue）/ 太い（grape）の 3 区分を別々の表**で
+  出す（1 つの表に混ぜない — 利用者の決定）。列は 選択 / 加工状態 / 仕上がり寸法 /
+  目標製品 / ロット / 利用可能数 / 飛ばす工程 / 投入数。モバイルは 1 行 = 1 カード。
+- 加工状態が合わないもの（orange）は**畳んでおく**。開くと警告の Alert、選ぶと
+  理由の Textarea（必須）が出る。
+- 選んだあとは下にまとめ（投入 n 本 / 予定数量 n 本、飛ばす工程、もう一度行う工程、
+  長い・太いを選んだときの注意）。加工状態の違う行はチェックボックスを無効にして
+  理由を Tooltip で出す。使用素材の欄は消す（仕掛品から始める指示書は素材を使わない）。
+- 工程の一覧（閲覧モード）では、飛ばす工程を**灰色 + 打ち消し線 + 「仕掛品で済み」**で
+  残して見せる（消さない — 何を飛ばしたかが読めなくなる）。開始工程は打ち消して
+  隣に「半製品出し」を出す。工程納期・作業計画の入力欄には飛ばす工程を出さない。
+- 指示書詳細は、ヘッダーに violet の「開始状態」バッジ、サマリに全幅の「開始状態」
+  （加工状態のチップ・飛ばした工程・投入する仕掛品と予約の状況）。共有端末の
+  指示書スキャンも同じ内容を上のカードに出す。
 
 ---
 
@@ -1591,6 +1694,14 @@ Use `notifications.show()` from `@mantine/notifications` for:
 notifications.show({ title: '保存しました', message: '見積書を作成しました', color: 'green' })
 notifications.show({ title: 'エラー', message: '保存に失敗しました', color: 'red' })
 ```
+
+**A success clears earlier error toasts.** When a `green` toast appears, every
+`red` toast that was already on screen (or queued) is hidden — the error described
+an attempt that has since succeeded, and leaving it next to the success (often on
+the next page, after the redirect) makes it unclear which one is current. This is
+applied once for the whole app (`components/layout/ToastHygiene.tsx`, rule in
+`lib/toast-hygiene-core.ts`), so screens keep calling `notifications.show()` and do
+not clean up themselves. Yellow / blue toasts are left alone.
 
 Do **not** use toast for:
 - Destructive confirmations (use modal instead)

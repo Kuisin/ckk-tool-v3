@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OrderLineTable — 注文明細 一覧 (PD01, design.md §8.1 / §14).
+ * OrderLineTable — 注文明細 一覧 (SA05, design.md §8.1 / §14).
  *
  * Columns: 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態。
  * フィルタ: 検索（番号・顧客・製品）+ 状態 + 注文種別。行クリック → 詳細。
@@ -18,11 +18,15 @@ import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
+import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { OrderLine } from "./model";
@@ -50,7 +54,9 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const filtered = rows.filter((o) => {
     const matchesSearch =
       !search ||
-      o.orderNumber.includes(search) ||
+      matchesDocCompany(docCompanyCode(o.orderNumber), search) ||
+      docNo(o.orderNumber).includes(search) ||
+      (o.legacyNumber?.includes(search) ?? false) ||
       o.customerName.includes(search) ||
       o.productName.includes(search);
     const matchesStatus = !status || o.status === status;
@@ -63,10 +69,13 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
       key: "orderNumber",
       header: tr("common.orderLineNumber"),
       sortable: true,
+      sortValue: (o) => docSortValue(o.orderNumber),
       render: (o) => (
-        <Text ff="mono" size="sm">
-          {o.orderNumber}
-        </Text>
+        <WithDocCompany docId={o.orderNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(o.orderNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -196,9 +205,11 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         renderCard={(o) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {o.orderNumber}
-              </Text>
+              <WithDocCompany docId={o.orderNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(o.orderNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {o.customerName}
               </Text>

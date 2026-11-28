@@ -17,6 +17,7 @@
 import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { writeConfigValues } from "@/lib/app-config";
 import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
 import {
@@ -28,7 +29,10 @@ import {
   APPLY_MODE_TARGETS,
   APPROVAL_TARGET_TYPES,
   type ApprovalTargetType,
+  FLOW_SETTINGS_TARGET_TYPES,
+  hasCustomValueLayer,
 } from "@/lib/approval-targets";
+import { APPROVAL_POLICY_NS } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -582,6 +586,10 @@ export async function saveApprovalFlow(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  // 通常のフローを持たない書類（価格表 = 独自値の追加承認だけ・フォーム =
+  // フォームごと）には保存させない。画面も出していない。
+  if (!(FLOW_SETTINGS_TARGET_TYPES as readonly string[]).includes(targetType))
+    return actionError(tr("common.invalidInput"));
   const parsed = flowInputSchema(tr).safeParse({ targetType, steps });
   if (!parsed.success) {
     return actionError(
@@ -655,6 +663,120 @@ export async function saveApprovalFlow(
     });
     revalidatePath(BASE_PATH);
     revalidatePath(`${BASE_PATH}/flows/${v.targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.flowSaveFailed"),
+        tr,
+      ),
+    );
+  }
+}
+
+// ── 独自値の追加承認（書類種別ごとに 0..N 段・通常のフローとは別建て） ─────
+
+/**
+ * 独自値の追加承認の段を保存する（全段を置き換える）。**0 段も保存できる** —
+ * それが「追加の承認なし」（未設定 = 素通し）。通常のフローの保存
+ * （saveApprovalFlow）と同じく、変更が効くのは次の承認依頼から。
+ *
+ * 判定を持たない書類種別（CUSTOM_VALUE_TARGETS に無いもの）には保存させない —
+ * 段を組めても一度も発動しない設定は、組んだ人を誤らせる。
+ */
+export async function saveCustomValueSteps(
+  targetType: string,
+  steps: ApprovalFlowStepInput[],
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!hasCustomValueLayer(targetType))
+    return actionError(tr("common.invalidInput"));
+  const parsed = z
+    .object({
+      targetType: z.enum(APPROVAL_TARGET_TYPES),
+      steps: z.array(flowStepInputSchema(tr)),
+    })
+    .safeParse({ targetType, steps });
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
+  const v = parsed.data;
+  if (v.steps.length > 0) {
+    const issues = validateFlowSteps(
+      v.steps.map((s) => ({
+        nameJa: s.nameJa,
+        groupId: s.groupId,
+        mode: s.mode,
+      })),
+      false,
+      tr,
+    );
+    if (issues.length > 0) return actionError(issues[0]);
+    const groupIssue = await validateStepGroups(
+      tr,
+      v.steps.map((s) => s.groupId),
+    );
+    if (groupIssue) return actionError(groupIssue);
+  }
+
+  try {
+    const actor = await getCurrentActorId();
+    const before = await prisma.approvalCustomValueStep.findMany({
+      where: { targetType: v.targetType },
+      orderBy: { stepNo: "asc" },
+      select: { stepNo: true, name: true, groupId: true, mode: true },
+    });
+    await prisma.$transaction(async (tx) => {
+      // 段の FK 先（approval_flows）の行。通常のフローを持たない価格表でも要る。
+      await tx.approvalFlow.upsert({
+        where: { targetType: v.targetType },
+        create: { targetType: v.targetType, updatedBy: actor },
+        update: { updatedBy: actor },
+      });
+      await tx.approvalCustomValueStep.deleteMany({
+        where: { targetType: v.targetType },
+      });
+      if (v.steps.length > 0) {
+        await tx.approvalCustomValueStep.createMany({
+          data: v.steps.map((s, i) => ({
+            targetType: v.targetType,
+            stepNo: i + 1,
+            name: localizedInput(s.nameJa, undefined, s.nameTranslations),
+            groupId: s.groupId,
+            mode: s.mode,
+          })),
+        });
+      }
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: v.targetType,
+      before: {
+        customValueSteps: before.map((s) => ({
+          stepNo: s.stepNo,
+          name: localized(s.name as LocalizedText | null),
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      },
+      after: {
+        customValueSteps: v.steps.map((s, i) => ({
+          stepNo: i + 1,
+          name: s.nameJa,
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${v.targetType}`);
+    revalidatePath(`${BASE_PATH}/custom-values/${v.targetType}`);
     return actionOk();
   } catch (e) {
     return actionError(
@@ -1086,6 +1208,48 @@ export async function setApprovalApplyMode(
         tr("master.approvalSettingsActions.applyModeSaveFailed"),
         tr,
       ),
+    );
+  }
+}
+
+/**
+ * 書類種別ごとの「承認を使う / 使わない」（承認設定 MS0B の各カードのスイッチ）。
+ * OFF は段が残っていても承認なしで進める（段は消さない）。規則は
+ * lib/approval-policy-core.ts、読み取りは lib/approvals.ts approvalNeed。
+ */
+export async function setApprovalPolicy(
+  targetType: string,
+  policy: "on" | "off",
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (
+    !(FLOW_SETTINGS_TARGET_TYPES as readonly string[]).includes(targetType) ||
+    (policy !== "on" && policy !== "off")
+  ) {
+    return actionError(tr("common.invalidInput"));
+  }
+  try {
+    const key = `${APPROVAL_POLICY_NS}.${targetType}`;
+    const before = await prisma.systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    await writeConfigValues({ [key]: policy });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "approval_flows",
+      recordId: targetType,
+      before: { approvalPolicy: before?.value ?? null },
+      after: { approvalPolicy: policy },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/flows/${targetType}`);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("master.approvalFlows.policy.saveFailed"), tr),
     );
   }
 }

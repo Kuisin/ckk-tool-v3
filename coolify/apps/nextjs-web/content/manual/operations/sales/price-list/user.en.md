@@ -5,6 +5,8 @@ screenshots: [price-list-list-01, price-list-new-01, price-list-detail-01, price
 ---
 A register where you record "this [product](/manual/en/operations/masters/product/user) costs this much" for each customer. The operation code is `SA02`.
 
+> This app belongs to … [Sales flow](/manual/en/process/sales)
+
 ## What you can do with this app
 
 - You can record the selling price of a product for each [customer](/manual/en/operations/masters/business-partner/user).
@@ -18,17 +20,67 @@ Register a price here when you and the customer have agreed a price. From then o
 
 ## Words used on this page
 
-- **価格表 (price list)** … one record is "one customer × one product". You can only make one record for the same combination.
+- **価格表 (price list)** … one record is "issuing company × one customer × one product". Within one company, you can only make one record for the same combination.
 - **注文種別 (order type)** … the classes **本番 (production) / テスト (test) / サンプル (sample) / その他 (other)**. The same product can have a different price in each class.
-- **基準単価 (base unit price)** … the basic price for that order type. Normally it comes from the result of a [trial estimate](/manual/en/operations/sales/trial-estimate/user).
+- **基準単価 (base unit price)** … the basic price for that order type. Normally it comes from the result of a [price estimate](/manual/en/operations/sales/trial-estimate/user).
 - **段階（数量段階）(quantity tier)** … a break by quantity, such as "1–49 pieces cost this much, 50–99 pieces cost this much".
 - **倍率 (multiplier)** … the number the base unit price is multiplied by. Below 1 makes it cheaper.
 - **値引きルール (discount rule)** … a discount that is taken off automatically when you make a quote, if the period and the number of pieces match the conditions you set.
 
+## Products and regrinds are priced on this same screen
+
+There are two kinds of sellable thing, and **both carry their per-customer price here**. They are not split across separate apps.
+
+| Sellable | Where the item is registered | Order type used |
+|---|---|---|
+| **Product** | [Products](/manual/en/operations/masters/product/user) (MS04) | Production / test / sample / other |
+| **Regrind** (the regrinding service) | [Regrind items](/manual/en/operations/masters/regrind-item/user) (MS0H) | 再研磨 (regrind) |
+
+In the list, regrind rows carry a 「**再研磨**」 badge. A tool's name and the name of "the regrinding service" look alike, so the row says which it is. The 「製品」 (product) filter offers regrind items too.
+
+> 💡 **The pairings are fixed.** A regrind item can only carry a regrind price, and a product cannot carry one. They are different things to sell, and a mismatch is refused on save.
+
+> ⚠️ **The customer's tool itself (an external product) is never priced.** You receive it, regrind it and send it back — you do not sell it. It does not appear among this screen's item choices.
+
+### The standard price cannot be edited here
+
+A regrind item carries a customer-independent **standard price**. This screen only **reads** it — edit it on [regrind items](/manual/en/operations/masters/regrind-item/user) (MS0H), so the price has one owner rather than two. The detail screen links straight there.
+
+A price resolves in two tiers:
+
+1. the item's **standard price**
+2. that customer's **price list** — which wins when one applies
+
+**It falls back only when no price list applies** (none made / inactive / outside its period). ⚠️ A live price list that is missing that quantity tier does **not** fall back — that would hide a configuration hole, so the price stays unresolved. Fix the tier.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  q1{"Does a price list apply<br/>for that customer?"} -->|"No"| std["The item's standard price"]
+  q1 -->|"Yes"| q2{"Does it have a tier<br/>for that quantity?"}
+  q2 -->|"Yes"| pl["The price-list price"]
+  q2 -->|"No"| none["Price stays unresolved<br/>(no fallback to the standard price)"]
+```
+
+### Pricing per tool [#tool-specific-price]
+
+Some customers pay **a different regrind price depending on which tool is reground**. For them, set a **[target tool](#field-target-tool)** on the regrind item's price list and make one price list per tool. The same customer × regrind item can have one any-tool price list plus any number of per-tool price lists.
+
+Regrind lines on quotes and order acceptances carry their "tool to regrind", so the price is looked up in this order (the same on both documents):
+
+1. the price list for that tool
+2. the any-tool price list
+3. the item's standard price
+
+If the tool's price list is inactive, awaiting approval or outside its period, the lookup moves on to the next step. ⚠️ A missing quantity tier does not move on (same reason as above).
+
+> 💡 **The same tool gets the same unit price on the quote and on the order acceptance.** A price that comes from a per-tool price list is marked — on the quote with「対象工具の価格表」(target tool price list) under the unit price, on the order acceptance with the badge「価格表（対象工具）¥…」(price list (target tool)) — so it can be told apart from an any-tool price.
+
 ## Before you start
 
 - The [customer](/manual/en/operations/masters/business-partner/user) and the [product](/manual/en/operations/masters/product/user) must already be registered.
-- It helps to have a [trial estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
+- It helps to have a [price estimate](/manual/en/operations/sales/trial-estimate/user) to base the price on. If you set a product on the estimate and set it to 確定 (confirmed), you can choose it on this screen and the amount fills in automatically.
 - You can still register a price list without an estimate by typing the price in by hand.
 
 ## Reading the screen
@@ -55,7 +107,7 @@ When you open the app, the registered price lists are shown as a list. One row i
 6. Choose「**有効開始日**」(valid from).
 7. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
 8. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
-9. To add another break, press「**段階を追加**」(add tier).
+9. To add another break, press「**範囲を追加**」(add a range). When you add a new order type, its quantity breaks start out filled from the [quantity scale](/manual/en/operations/sales/trial-estimate/settings) (the table of "from how many pieces, at what multiplier" that an administrator maintains). Press「**プリセットに戻す**」(reset to preset) to put that order type's breaks back to that table (ranges you added by hand and custom prices are lost).
 10. To register a price for another class too, press「**注文種別を追加**」(add order type) and repeat steps 5 to 9.
 11. Press「**保存**」(save).
 
@@ -65,7 +117,7 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 > 💡 Set the quantity breaks like this: "1–49 pieces at multiplier 1.05, 50–99 at 1.00, 100 and above at 0.95". This is how you make each piece cheaper the more the customer buys.
 
-> ⚠️ If you see「この製品にリンクされた確定済みの価格試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [trial estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
+> ⚠️ If you see「この製品にリンクされた確定済みの価格試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [price estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
 
 ## Looking at what you registered
 
@@ -91,7 +143,43 @@ In the quantity table, a row with an orange「**手動**」(manual) badge uses a
 
 - **The customer and the product cannot be changed after the record is made.** If you need a different combination, make a new record.
 - A saved order type, and the estimate its price came from, also cannot be changed.
-- To give one quantity break a special price, tick「**カスタム単価**」(custom price) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting).
+- To give one quantity break a special price, press「**カスタム**」(custom) on that row and enter the amount. A confirmation screen appears — press「**カスタム設定する**」(use a custom setting). Press「**自動に戻す**」(back to auto) to return to the automatic calculation.
+
+## Custom prices go through approval
+
+When the price list steps are set under "**独自値の追加承認**" (custom value approval) in the approval settings (MS0B), a price list with **prices not carried over from a price estimate** submits an approval request automatically when saved.
+
+- Custom prices are a base unit price not taken from a price estimate, a base unit price changed from the estimate, and a "custom" tier price (enabled order types only).
+- **Until it is approved, the price list is not used to price quotes or order acceptances.** A "pending approval" card appears at the top of the screen, from which approvers can approve or send it back.
+- Saving again without changing the custom prices (for example, only the sales rep) does not restart the approval. Changing a price restarts it.
+- If it is sent back, fix it and save again, or press "**再承認依頼**" (request again) on the card.
+
+## Price lists per company [#per-company]
+
+Price lists are kept **separately for each issuing company (own company)**. The same customer and product can have one price list per company.
+
+- Prices on quotes, order acceptances and shipments come **only from the price list of that document's issuing company**. Another company's prices are never used.
+- Choose the issuing company with "**発行会社**" (Issuing company) on the create screen (it only appears for people whose sites belong to two or more companies). It cannot be changed afterwards.
+
+### Copying from another company's price list
+
+When you choose the customer and product on the create screen and another company already has a price list for that combination, "**他社の価格表があります**" (Another company already has this price list) appears.
+
+1. Press "**〇〇 の価格表からコピー**" (Copy from 〇〇's price list).
+2. The order types, base prices, valid periods and quantity tiers are filled in. The discount rules are created together when you save.
+3. Check the content and press "**保存**" (Save). A new number is issued for this company.
+
+Custom prices go through approval, just as when you make a price list from scratch.
+
+### Keeping companies in line
+
+When another company has a price list for the same customer and product, the price list screen shows a "**他社の価格表**" (Other companies' price lists) section.
+
+- It shows "**〇〇 と同じ**" (Same as 〇〇) when the content matches, and "**〇〇 と差分あり**" (Differs from 〇〇) when it does not. The comparison covers each order type's base price, valid period and status, the quantity tiers and the discount rules (numbers and dates of creation are not compared).
+- "**差分を見る**" (Show differences) shows what differs in a table.
+- "**〇〇 の内容で同期**" (Sync from 〇〇) makes this price list's content the same as that company's. Order types only in this price list are deleted. Custom prices go through approval.
+
+In the list, rows with another company's price list show "**同じ**" (Same) or "**差分あり**" (Differs). When there are two or more companies, you can filter by issuing company. The company-code badge next to the customer name (for example `TSP`) tells you whose price list it is ([Issuing company badge](/manual/en/operations/masters/own-company/user#company-badge)).
 
 ## Registering a discount rule
 
@@ -120,7 +208,7 @@ To change a rule press the pencil mark, and to remove it press the bin mark.
 
 ![Screen for creating a quote](../../../assets/screenshots/price-list-quote-01.png)
 
-The [quote](/manual/en/operations/sales/quote/user) creation screen opens with the contents already filled in. You can do the same from「**…**」on a row in the list.
+The [quote](/manual/en/operations/sales/quote/user) creation screen opens with the contents already filled in. You can do the same from「**…**」on a row in the list. When you start from a price list that has a target tool, that tool is also filled into the line's「研ぎ直す工具」(tool to regrind).
 
 ## Other things you can do
 
@@ -140,9 +228,10 @@ Every field on the price list screen. The **?** next to a field in the app links
 |-------|----------|---------------|
 | [Customer](#field-customer) | Required | Who the price is for |
 | [Product](#field-product) | Required | Which product the price is for |
+| [Target tool](#field-target-tool) | Optional | The tool a regrind price is limited to (regrind items only) |
 | [Active (whole list)](#field-active) | — | Whether this price list is in use |
 | [Order type](#field-order-type) | Required | Production, test and so on |
-| [Price source (trial estimate)](#field-estimate) | Optional | The estimate the base price comes from |
+| [Price source (price estimate)](#field-estimate) | Optional | The estimate the base price comes from |
 | [Base price](#field-base-price) | Required | The price the quantity tiers work from |
 | [Valid from](#field-valid-from) | Required | When this price starts to apply |
 | [Valid until](#field-valid-until) | Optional | When it stops applying |
@@ -157,17 +246,21 @@ Who the price is for. **One price list covers one customer and one product**, an
 
 Which product the price is for. Like the customer, it cannot be changed after creation.
 
+### Target tool [#field-target-tool]
+
+Shown **only when a regrind item is selected**. Pick a tool when this regrind price applies only to regrinding that tool; leave it empty for a price list that applies to **any tool**. Like the customer and product, it cannot be changed after creation. See [Pricing per tool](#tool-specific-price) for how prices are looked up.
+
 ### Active (whole list) [#field-active]
 
-A field for marking a price list you no longer use as 「無効」(inactive), to keep things tidy. Turning it off does not, at present, affect how quotes work out their unit prices.
+Whether this price list is used. **When it is turned off, quotes and order acceptances can no longer take a unit price from it** ("price list disabled" is shown). Turn off price lists you no longer use.
 
 ### Order type [#field-order-type]
 
 Production, test, sample or other. **The same customer and product can hold a different price per type.** For samples, the practice is to set the unit price to zero yourself (it does not become zero automatically).
 
-### Price source (trial estimate) [#field-estimate]
+### Price source (price estimate) [#field-estimate]
 
-The trial estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+The price estimate the base price comes from. **Only confirmed estimates can be chosen.** Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
 
 ### Base price [#field-base-price]
 
@@ -175,11 +268,11 @@ The price the quantity tiers work from. Each tier's price is this price times it
 
 ### Valid from [#field-valid-from]
 
-A date recording when you started using this price. Quote unit prices do not switch over on this date. What does start and stop automatically by period is the discount rules (each rule's own valid period).
+The day this price starts to apply. **If a quote or order acceptance is saved before this date, this price is not used** ("outside the price list's valid period" is shown). Discount rules start and stop separately, by each rule's own valid period.
 
 ### Valid until [#field-valid-until]
 
-When it stops applying. Leave it empty for no end date. **Test and sample prices are normally given an end date.**
+When it stops applying. **After this date, quotes and order acceptances no longer use this price** ("outside the price list's valid period" is shown). Leave it empty for no end date. **Test and sample prices are normally given an end date.**
 
 ### Multiplier [#field-multiplier]
 

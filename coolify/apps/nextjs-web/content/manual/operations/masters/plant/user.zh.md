@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 这是用于登记 **据点（工厂・营业所）本身** 的应用。操作代码是 `MS0C`。
 
-[产品库存](/manual/zh/operations/production/product-inventory/user)和[材料库存](/manual/zh/operations/production/material-inventory/user)按据点分开管理，材料的到货地点等也从这里登记的据点中选择。
+产品库存和材料库存在[库存管理](/manual/zh/operations/inventory/inventory-management/user)中按据点分开管理，材料的到货地点等也从这里登记的据点中选择。
 
 > ⚠️ 本应用处于试用公开阶段。根据您使用的环境，可能还看不到它。
 
@@ -20,6 +20,17 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 | [保管場所（保管场所）](/manual/zh/operations/masters/storage-location/user) | 据点内部存放物品的仓库・货架 | 资材仓库A 的 A-1 货架 |
 
 作业场所和保管场所在登记时，都要选择「位于哪个据点」。因此请 **先登记据点**。
+
+用图表示如下。
+
+```mermaid
+flowchart TD
+  region["地区<br/>（例 关东）"] -.->|"归并据点"| plant["据点<br/>（例 总部工厂）"]
+  plant --> work["作业场所<br/>（例 NC车床1号机）"]
+  plant --> storage["保管场所・货架<br/>（例 资材仓库A 的 A-1 货架）"]
+  plant --> map["楼层地图<br/>（楼层的图纸）"]
+  storage -.->|"在图纸上放置标记"| map
+```
 
 ## 本应用可以做什么
 
@@ -55,10 +66,11 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 2. 在「**拠点コード**」（据点代码）中输入代表该据点的短文字（例 `F01`）。
 3. 在「**名称**」（名称）的日语栏中输入据点的名称（例 本社工場 / 总部工厂）。
 4. 在「**よみがな**」（读音）中输入读法（例 ほんしゃこうじょう）。
-5. 选择「**連絡先・住所**」（联系方式・地址）中的「**国**」（国家）（初始为 日本）。
-6. 选择「**地域**」（地区）（尚未登记时留空也可以）。
-7. 填写「**郵便番号**」（邮政编码）「**住所**」（地址）「**電話番号**」（电话号码）「**メールアドレス**」（邮箱地址）「**担当者**」（负责人）。
-8. 点击「**保存**」（保存）。
+5. 开具单据的公司有 2 家以上时，在「**自社法人**」（本公司法人）中选择该据点所属的公司（只有 1 家时保持「既定の法人」（默认法人）即可）。
+6. 选择「**連絡先・住所**」（联系方式・地址）中的「**国**」（国家）（初始为 日本）。
+7. 选择「**地域**」（地区）（尚未登记时留空也可以）。
+8. 填写「**郵便番号**」（邮政编码）「**住所**」（地址）「**電話番号**」（电话号码）「**メールアドレス**」（邮箱地址）「**担当者**」（负责人）。
+9. 点击「**保存**」（保存）。
 
 ![据点的新建表单](../../../assets/screenshots/master-plant-new-01.png)
 
@@ -70,7 +82,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ![据点的详细界面](../../../assets/screenshots/master-plant-detail-01.png)
 
-上方会显示据点代码、名称、读音、国家、邮政编码、地址、电话号码、邮箱地址、负责人。下方有 2 个标签页。
+上方会显示据点代码、名称、读音、本公司法人、国家、邮政编码、地址、电话号码、邮箱地址、负责人。下方有 2 个标签页。
 
 - **概要**（概要）… 显示备注中填写的内容。
 - **フロアマップ**（楼层地图）… 管理楼层的图纸（请见下面的说明）。
@@ -115,29 +127,34 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ## 输入项
 
-基地登记画面的输入项一览。
+据点登记画面的输入项一览。
 
 | 项目 | 必填 | 填什么 |
 |------|------|--------|
-| [基地编码](#field-code) | 必填 | 基地的管理编号 |
-| [名称 / 假名](#field-name) | 必填 | 基地的名称 |
+| [据点编码](#field-code) | 必填 | 据点的管理编号 |
+| [名称 / 假名](#field-name) | 必填 | 据点的名称 |
+| [本公司法人](#field-own-company) | 选填 | 开具该据点单据的公司 |
 | [国家 / 地区](#field-region) | 选填 | 用于权限范围的区分 |
 | [邮编 / 地址](#field-address) | 选填 | 所在地 |
 | [电话 / 邮箱 / 负责人](#field-contact) | 选填 | 联系方式 |
 | [有效](#field-active) | — | 是否出现在选项中 |
 | [备注](#field-notes) | 选填 | 补充说明 |
 
-### 基地编码 [#field-code]
+### 据点编码 [#field-code]
 
-基地的管理编号，用于库存与发货画面。
+据点的管理编号，用于库存与发货画面。
 
 ### 名称 / 假名 [#field-name]
 
-基地的名称，表示库存・到货・发货的「地点」。
+据点的名称，表示库存・到货・发货的「地点」。
+
+### 本公司法人 [#field-own-company]
+
+该据点所属的公司（[本公司法人](/manual/zh/operations/masters/own-company/user)）。**该据点处理的单据（订单确认书・出货单・送货单・请款单等）的开具方，以及单据编号的流水号，都使用这里所选的公司。** 不选时为「默认法人」。更改后，已创建单据的公司不会改变（从更改之后创建的单据开始生效）。
 
 ### 国家 / 地区 [#field-region]
 
-国家与地区的区分。**是将用户权限限定为「仅该地区的基地」时的单位。**
+国家与地区的区分。**是将用户权限限定为「仅该地区的据点」时的单位。**
 
 ### 邮编 / 地址 [#field-address]
 
@@ -149,7 +166,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ### 有效 [#field-active]
 
-取消后，到货基地与发货基地的选项中将不再显示。
+取消后，到货据点与发货据点的选项中将不再显示。
 
 ### 备注 [#field-notes]
 

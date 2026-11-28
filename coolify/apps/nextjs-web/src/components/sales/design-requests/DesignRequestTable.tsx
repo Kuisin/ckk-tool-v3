@@ -16,11 +16,15 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
+import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import {
   designKindLabel,
   designKindOptions,
@@ -91,7 +95,9 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.requestNumber.includes(search) ||
+      matchesDocCompany(docCompanyCode(r.requestNumber), search) ||
+      docNo(r.requestNumber).includes(search) ||
+      (r.legacyNumber?.includes(search) ?? false) ||
       (r.productName ?? "").includes(search) ||
       (r.description ?? "").includes(search) ||
       (r.assigneeName ?? "").includes(search);
@@ -113,10 +119,13 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       key: "requestNumber",
       header: tr("common.requestNumber"),
       sortable: true,
+      sortValue: (r) => docSortValue(r.requestNumber),
       render: (r) => (
-        <Text ff="mono" size="sm">
-          {r.requestNumber}
-        </Text>
+        <WithDocCompany docId={r.requestNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(r.requestNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -278,9 +287,11 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {r.requestNumber}
-              </Text>
+              <WithDocCompany docId={r.requestNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(r.requestNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.productName ?? tr("sales.designRequests.noProductSpecified")}
               </Text>

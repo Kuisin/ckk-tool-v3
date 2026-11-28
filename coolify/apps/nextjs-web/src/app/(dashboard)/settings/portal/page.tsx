@@ -11,10 +11,12 @@ import { Stack } from "@mantine/core";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PortalAccountsTable } from "@/components/settings/portal/PortalAccountsTable";
+import { PortalLinksPanel } from "@/components/settings/portal/PortalLinksPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { listPortalAccounts, listPortalBpOptions } from "@/lib/portal-admin";
+import { listPortalLinks } from "@/lib/portal-links";
 import { peekElevations } from "@/lib/privileged-access";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +29,12 @@ export default async function PortalAdminPage() {
   // クライアント表示の速路なので、サーバー側でも見る）。
   if (!isDevFeatureEnabled("portal")) notFound();
 
-  const [accounts, bpOptions, elevations] = await Promise.all([
+  const [accounts, bpOptions, links, elevations] = await Promise.all([
     listPortalAccounts(),
     listPortalBpOptions(),
+    // アカウントを問わず全件（見積書メールなど、アカウントに紐づかないリンクの
+    // 唯一の失効口）。
+    listPortalLinks({}),
     // **peek** — 画面を開いただけで持ち時間を動かさない（ボタンの活性を描くだけ）。
     peekElevations([
       "portal_admin.activate_account",
@@ -48,6 +53,15 @@ export default async function PortalAdminPage() {
         bpOptions={bpOptions}
         canActivate={elevations["portal_admin.activate_account"]?.allowed}
         canIssueBackup={elevations["portal_admin.issue_backup_codes"]?.allowed}
+      />
+      <PortalLinksPanel
+        links={links.map((l) => ({
+          ...l,
+          expiresAt: l.expiresAt.toISOString(),
+          revokedAt: l.revokedAt?.toISOString() ?? null,
+          lastUsedAt: l.lastUsedAt?.toISOString() ?? null,
+          createdAt: l.createdAt.toISOString(),
+        }))}
       />
     </Stack>
   );

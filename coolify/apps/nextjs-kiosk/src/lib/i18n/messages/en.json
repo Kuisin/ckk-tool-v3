@@ -2,7 +2,8 @@
   "apps": {
     "stepExecution": "Step Execution",
     "woScan": "Work Order Scan",
-    "workLocation": "Work Location Steps"
+    "workLocation": "Work Location Steps",
+    "woList": "Work order list"
   },
   "userMenu": {
     "title": "User",
@@ -34,6 +35,8 @@
     "workOrder": "Work order #{n}",
     "plannedQty": "Planned quantity: {n} pcs",
     "material": "Material: {name}",
+    "marking": "Marking number {first} – {last} (per line {perLine})",
+    "markingSplit": "Marking number {first} – {last} (split {split}, per split {perLine})",
     "progress": "{done} / {total} steps completed",
     "stepsTitle": "Steps",
     "noSteps": "This work order has no steps",
@@ -41,6 +44,10 @@
     "unplanned": "Unassigned",
     "plannedForOthers": "Planned for another operator",
     "notExecutable": "This work order is not approved/in progress, so steps cannot be operated",
+    "startState": "Start state",
+    "startStateUnprocessed": "Unprocessed",
+    "startStateSkipped": "Steps already done in the WIP and not performed: {names}",
+    "startStateNoSkip": "Starts from WIP in stock (no steps are skipped)",
     "backToWorkOrder": "Back to work order",
     "status": {
       "DRAFT": "Draft",
@@ -49,7 +56,21 @@
       "IN_PROGRESS": "In progress",
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "aborted": "Closed out",
+    "abortPending": "Close-out pending approval",
+    "abortPendingNote": "A close-out of this work order is pending approval. Once approved, its steps close and the parts in the flow return to stock as WIP."
+  },
+  "woList": {
+    "title": "Work order list",
+    "backToList": "Back to work orders",
+    "scopePlant": "Approved and in-progress work orders at {plant}",
+    "scopeAll": "Approved and in-progress work orders",
+    "searchPlaceholder": "Search by work order number or product",
+    "count": "{n} items",
+    "truncated": "Showing the newest up to the limit. Narrow it down with search",
+    "empty": "No approved or in-progress work orders",
+    "noMatch": "No matching work orders"
   },
   "workLocationBoard": {
     "title": "Work Location Steps",
@@ -95,7 +116,10 @@
       "elapsed": "Worked {t}",
       "elapsedLabel": "Worked",
       "plannedHours": "Planned {h}h",
-      "lot": "Lot {t}"
+      "lot": "Lot {t}",
+      "marking": "Marking number {first} – {last} (per line {perLine})",
+      "markingSplit": "Marking number {first} – {last} (split {split}, per split {perLine})",
+      "dueDate": "Due {d}"
     },
     "state": {
       "startable": "Ready",
@@ -137,6 +161,13 @@
         "success": "Good",
         "semi": "Semi-finished",
         "scrap": "Scrapped",
+        "rework": "Process branch"
+      },
+      "REGRIND_RECEIPT": {
+        "input": "Received",
+        "success": "To regrind",
+        "semi": "Semi-finished",
+        "scrap": "Returned as-is (not regrindable)",
         "rework": "Process branch"
       },
       "INSPECTION": {
@@ -279,7 +310,13 @@
       "STAGE_OUT_OF_ORDER": "Record the previous stage first",
       "INSPECTION_REQUIRED": "Some inspection sheets have no record yet. Save them before completing the step",
       "INSPECTION_NOT_PASS": "Only records that passed can be approved",
-      "NOT_APPROVER": "You are not an approver for this inspection sheet"
+      "NOT_APPROVER": "You are not an approver for this inspection sheet",
+      "WIP_DIAMETER_REQUIRED": "Enter the finished diameter",
+      "WIP_LENGTH_REQUIRED": "Enter the finished length",
+      "WIP_DIAMETER_INVALID": "Enter a finished diameter greater than 0",
+      "WIP_LENGTH_INVALID": "Enter a finished length greater than 0",
+      "WIP_PATH_REQUIRED": "Select the route the parts took",
+      "WIP_PATH_INVALID": "The selected route is not available for this step. Reload the page"
     },
     "finalInspection": {
       "title": "Final inspection and pre-shipment checks",
@@ -378,6 +415,34 @@
       "openOne": "Open",
       "empty": "Nothing in this step can be grouped right now",
       "notFound": "That step was not found"
+    },
+    "programs": {
+      "title": "Machining programs",
+      "machineModels": "Machine models: {names}",
+      "anyModel": "Any machine model",
+      "modelMatch": "For this machine model",
+      "revision": "v{revision}",
+      "download": "Download",
+      "noFile": "No file"
+    },
+    "seriesMemo": {
+      "title": "Series memo",
+      "hint": "Shared by every version of the drawing ({series})",
+      "generic": "Generic"
+    },
+    "wip": {
+      "title": "WIP going to stock",
+      "description": "Semi-finished parts go to stock separately by processing state and finished size.",
+      "state": "Processing state",
+      "stateUnprocessed": "Unprocessed (no shaping step done)",
+      "kindDefect": "Set aside as semi-finished",
+      "kindBranchTerminal": "Branch end (to semi-finished stock)",
+      "finishedDiameter": "Finished diameter (mm)",
+      "finishedLength": "Finished length (mm)",
+      "defaultsToBlank": "No shaping step is done yet, so the WIP blank size (φ{diameter} × {length}) is used when left empty.",
+      "path": "Route taken",
+      "pathHint": "A branch merges before this step, so the processing state is not unique. Confirm the route the parts took.",
+      "recommended": "Recommended (main line)"
     }
   },
   "deviceError": {
@@ -405,7 +470,7 @@
     "pinMismatchTitle": "PINs do not match",
     "pinMismatchMessage": "Please start over.",
     "pinVerifyTitle": "Enter PIN",
-    "pinVerifySubtitle": "Identity verification is required after 3+ days of inactivity.",
+    "pinVerifySubtitle": "Enter your PIN to verify your identity.",
     "pinIncorrectTitle": "Incorrect PIN",
     "pinIncorrectMessage": "Please enter it again.",
     "pinWeakTitle": "That PIN cannot be used",
@@ -421,7 +486,9 @@
     "retry": "Retry",
     "lockedMessage": "Temporarily locked after multiple incorrect PIN attempts.",
     "lockedUntil": " Unlocks at: {time}",
-    "backToScan": "Back to scan"
+    "backToScan": "Back to scan",
+    "pinVerifySubtitleDeviceIdle": "Identity verification is required because this card has not been used on this device for 48 hours or more (or this is its first use here).",
+    "pinVerifySubtitlePeriodic": "Identity verification is required because two weeks have passed since your last PIN check."
   },
   "setup": {
     "couldNotIssueCode": "Could not issue a code",
@@ -493,6 +560,7 @@
     "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
     "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
     "branchSourceIncomplete": "The branch source step is not complete",
+    "startStepIncomplete": "The start step (issue / handoff) is not complete",
     "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete"
   },
   "common": {

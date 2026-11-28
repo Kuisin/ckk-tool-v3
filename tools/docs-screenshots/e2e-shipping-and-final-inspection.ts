@@ -30,6 +30,7 @@
  * 揃わず、ここで見たい状態そのものが作れない。何度流しても同じ結果になるよう、
  * fixtures は前回の打刻を消してから作り直す。
  */
+import { mkdirSync } from "node:fs";
 import { chromium, type Page } from "@playwright/test";
 
 const APP = process.env.APP_URL ?? "http://localhost:3100";
@@ -42,6 +43,29 @@ const OPEN_WO = process.env.OPEN_WO ?? "9001";
 
 const results: string[] = [];
 let failed = 0;
+/** 画面の写しを残す先（省略時は残さない）。 */
+const SHOT_DIR = process.env.SHOT_DIR;
+async function shot(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return;
+  mkdirSync(SHOT_DIR, { recursive: true });
+  const path = `${SHOT_DIR}/${name}.png`;
+  // モーダルが開いている間は表示領域ぶんで撮る。
+  const overlay = await page.locator(".mantine-Modal-content:visible").count();
+  const size = page.viewportSize();
+  if (overlay > 0 || !size) {
+    if (overlay > 0) await page.waitForTimeout(400); // 開く・入れ替わるアニメーションが終わってから
+    await page.screenshot({ path });
+    return;
+  }
+  // 全高で撮る。**fullPage: true は使わない** — Playwright は撮る前に表示領域を一瞬
+  // 1×1 にするので、幅で配置を切り替える画面（工程実行の 2 ペイン = MasterDetailShell）
+  // が作り直され、開いたばかりのモーダルや入力途中の値が消える（実際に踏んだ）。
+  // 幅は変えずに高さだけ伸ばして撮り、元に戻す。
+  const height = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width: size.width, height: Math.min(Math.max(size.height, height), 8000) });
+  await page.screenshot({ path });
+  await page.setViewportSize(size);
+}
 const pageErrors: string[] = [];
 
 function check(name: string, ok: boolean, detail = ""): void {
@@ -101,6 +125,7 @@ async function main(): Promise<void> {
     await catalogRow.click();
     await page.waitForLoadState("networkidle");
     const flags = await page.locator("body").innerText();
+    await shot(page, "01-process-step-final-inspection-flag");
     check(
       "A6 工程の印に「最終検査」が出る",
       flags.includes("最終検査"),
@@ -113,6 +138,7 @@ async function main(): Promise<void> {
     waitUntil: "networkidle",
   });
   const woBody = await page.locator("body").innerText();
+  await shot(page, "02-work-order-done-next-step");
   check(
     "A1 指示書詳細に最終検査パネルが無い",
     !woBody.includes("出荷前確認（棚包"),
@@ -139,9 +165,10 @@ async function main(): Promise<void> {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1500); // シードは fetch → setState の非同期
     const v = await acceptanceFieldValue(page);
+    await shot(page, "03-delivery-order-from-work-order");
     check(
       "B2 指示書から: 注文請書の欄が埋まる",
-      /^ORD-\d{6}-\d{5}/.test(v),
+      /^ORD-\d{4}-\d{5}\b/.test(v),
       `value="${v}"`,
     );
     // 本文一致だと「まとめますか」モーダルの明細番号を拾ってしまうので、
@@ -185,6 +212,7 @@ async function main(): Promise<void> {
     waitUntil: "networkidle",
   });
   const olRow = page.locator("table tbody tr").first();
+  await shot(page, "04-pending-shipments");
   check("B4 未処理出荷書に出荷できる明細がある", (await olRow.count()) > 0);
   // 完了していない指示書にはカードを出さない。
   // 「完了しているが受注残が無い」ほうは shippableQuantity の単体テスト
@@ -221,9 +249,10 @@ async function main(): Promise<void> {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1500);
     const v = await acceptanceFieldValue(page);
+    await shot(page, "05-delivery-order-from-order-line");
     check(
       "B4 注文明細から: 注文請書の欄が埋まる",
-      /^ORD-\d{6}-\d{5}/.test(v),
+      /^ORD-\d{4}-\d{5}\b/.test(v),
       `from=${olUrl} value="${v}"`,
     );
   }
@@ -248,9 +277,10 @@ async function main(): Promise<void> {
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(1500);
       const v = await acceptanceFieldValue(page);
+      await shot(page, "06-delivery-order-from-acceptance");
       check(
         "B5 注文請書から: 注文請書の欄が埋まる",
-        /^ORD-\d{6}-\d{5}/.test(v),
+        /^ORD-\d{4}-\d{5}\b/.test(v),
         `value="${v}"`,
       );
     } else {
@@ -277,6 +307,7 @@ async function main(): Promise<void> {
     await page.waitForTimeout(1500);
     await page.waitForLoadState("networkidle");
     const stepBody = await page.locator("body").innerText();
+    await shot(page, "07-final-inspection-panel");
     check(
       "A2 最終検査パネルが工程の実行画面に出る",
       stepBody.includes("最終検査") && stepBody.includes("出荷前確認（棚包"),
@@ -295,6 +326,7 @@ async function main(): Promise<void> {
       await okBtn.click();
       await page.waitForTimeout(2500);
       const after = await page.locator("body").innerText();
+      await shot(page, "08-check-stamped");
       check(
         "A3 ○ を押すと確認者スタンプが残る",
         /図面・ラベル[\s\S]{0,400}デモ/.test(after) ||
@@ -319,6 +351,7 @@ async function main(): Promise<void> {
       await recordButtons.first().click();
       await page.waitForTimeout(2500);
       const nowEnabled = page.getByRole("button", { name: "記録する" });
+      await shot(page, "09-packing-recorded");
       check(
         "A5 棚包を記録すると次の段が押せる",
         (await nowEnabled.count()) > 0,

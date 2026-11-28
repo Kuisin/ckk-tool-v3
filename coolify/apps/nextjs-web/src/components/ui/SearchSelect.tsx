@@ -8,13 +8,18 @@
  * 空クエリでは「最近使用」（localStorage、storageKey ごと最大5件）を先頭に
  * 出し、無ければサーバーの先頭 N 件へフォールバックする。
  *
+ * 検索結果は TanStack Query に載せる（鍵 = 検索関数 × 入力）。同じ検索を
+ * 使う欄どうしは結果を共有し、一度引いた入力はキャッシュから即座に出したうえで
+ * 必ず取り直す（マスタは別の画面で増えるので、古い結果を正にしない）。
+ * 打鍵の追い越し（遅い応答が新しい結果を上書きする）は鍵が違うので起きない。
+ *
  * 使い方:
  *   <SearchSelect
  *     label="製品"
  *     storageKey="product"
- *     onSearch={searchProductOptions}   // "use server" action
- *     value={form.values.productId}
- *     onChange={(v) => form.setFieldValue("productId", v)}
+ *     onSearch={searchProductItemOptions}   // "use server" action
+ *     value={form.values.itemId}
+ *     onChange={(v) => form.setFieldValue("itemId", v)}
  *     initialOption={…}                 // 編集時: 既存値の {value,label}
  *   />
  */
@@ -26,14 +31,18 @@ import {
   type SelectProps,
   Tooltip,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconZoomScan } from "@tabler/icons-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fnKey } from "@/lib/query-client";
 import { pushRecent, type RecentOption, readRecents } from "@/lib/recents";
 import { type F4Config, F4SearchModal } from "./F4SearchModal";
 
 const DEBOUNCE_MS = 250;
+const EMPTY: RecentOption[] = [];
 
 export interface SearchSelectProps
   extends Omit<
@@ -69,15 +78,11 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const tr = useTranslations();
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<RecentOption[]>([]);
   const [recents, setRecents] = useState<RecentOption[]>([]);
-  const [loading, setLoading] = useState(false);
   // 選択済み option のラベルを保持（results が入れ替わっても表示を維持）
   const [selected, setSelected] = useState<RecentOption | null>(
     initialOption ?? null,
   );
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const seq = useRef(0);
   // 検索アクションの失敗通知は 1 マウント 1 回（デバウンスごとに鳴らさない）
   const errorNotified = useRef(false);
   const [f4Open, setF4Open] = useState(false);
@@ -99,37 +104,37 @@ export function SearchSelect({
   }, [initialOption, initialValue, value, selected?.value]);
 
   // デバウンス付きサーバー検索。空クエリも投げる（先頭 N 件フォールバック用）
+  const [debounced] = useDebouncedValue(search, DEBOUNCE_MS);
+  // 検索関数も鍵の一部（別の検索の結果を引かないため）。呼び出し側が条件を
+  // 閉じ込めた関数（`(q) => search(q, customerId)`）は親のレンダーごとに
+  // 作り直されるので、入力と同じ間隔で落ち着くのを待ってから鍵にする —
+  // 親が 1 打ごとに描き直すフォームで、その回数ぶん取りに行かない。
+  const [searchFnId] = useDebouncedValue(fnKey(onSearch), DEBOUNCE_MS);
+  const latestSearch = useRef(onSearch);
+  latestSearch.current = onSearch;
+  const query = useQuery({
+    queryKey: ["search-select", searchFnId, debounced],
+    queryFn: () => latestSearch.current(debounced),
+    // 打っている間は前の結果を出したままにする（候補が一瞬消えない）。
+    placeholderData: keepPreviousData,
+    // 典型的な失敗はデプロイ跨ぎの Server Action 404 — 繰り返しても直らない。
+    retry: false,
+  });
+  // 失敗したら「該当なし」と同じ空の一覧にする（前の結果を出し続けない）。
+  const results = query.isError ? EMPTY : (query.data ?? EMPTY);
+  const loading = query.isFetching || search !== debounced;
+
+  // 黙って「該当なし」にしない — 典型はデプロイ跨ぎの古いタブで
+  // Server Action id が 404 になるケース。再読み込みで直ることを伝える。
   useEffect(() => {
-    const id = ++seq.current;
-    setLoading(true);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      onSearch(search)
-        .then((rows) => {
-          if (seq.current === id) setResults(rows);
-        })
-        .catch(() => {
-          if (seq.current !== id) return;
-          setResults([]);
-          // 黙って「該当なし」にしない — 典型はデプロイ跨ぎの古いタブで
-          // Server Action id が 404 になるケース。再読み込みで直ることを伝える。
-          if (!errorNotified.current) {
-            errorNotified.current = true;
-            notifications.show({
-              title: tr("ui.searchSelect.theSearchFailed"),
-              message: tr("ui.searchSelect.aCommunicationErrorOrTheApp"),
-              color: "red",
-            });
-          }
-        })
-        .finally(() => {
-          if (seq.current === id) setLoading(false);
-        });
-    }, DEBOUNCE_MS);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [search, onSearch, tr]);
+    if (!query.isError || errorNotified.current) return;
+    errorNotified.current = true;
+    notifications.show({
+      title: tr("ui.searchSelect.theSearchFailed"),
+      message: tr("ui.searchSelect.aCommunicationErrorOrTheApp"),
+      color: "red",
+    });
+  }, [query.isError, tr]);
 
   const data = useMemo(() => {
     const seen = new Set<string>();

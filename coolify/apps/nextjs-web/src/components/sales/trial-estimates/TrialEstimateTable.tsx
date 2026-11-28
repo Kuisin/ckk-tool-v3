@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
@@ -23,6 +24,9 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
+import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import { statusOptions } from "@/lib/status-map";
 import {
   calcTrialPricing,
@@ -38,12 +42,22 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
   (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).lots[0]
     ?.estimateUnitPrice ?? 0;
 
+/**
+ * 原価試算の代表値 = 原価合計（見積単価は出さない）。原価試算の行は
+ * estimate_cost の持ち主にしか届かないので、ここで原価を出してよい。
+ */
+const headlineCost = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
+  (r.resultSnapshot ?? calcTrialPricing(r.input, opts)).costTotal ?? 0;
+
 export function TrialEstimateTable({
   rows,
   pricingOptions = {},
   toolTypeOptions,
+  canOpenSettings = false,
 }: {
   rows: TrialEstimateRecord[];
+  /** 価格試算計算 (SY02, system 権限) を開けるか — 「設定」ボタンの表示。 */
+  canOpenSettings?: boolean;
   /** 価格試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
@@ -64,8 +78,10 @@ export function TrialEstimateTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(docCompanyCode(r.estimateNumber), search) ||
       r.name.includes(search) ||
-      r.estimateNumber.includes(search) ||
+      docNo(r.estimateNumber).includes(search) ||
+      (r.legacyNumber?.includes(search) ?? false) ||
       (r.customerName ?? "").includes(search);
     const matchesTool = !toolType || r.input.toolType === toolType;
     const matchesStatus = !status || r.status === status;
@@ -78,8 +94,12 @@ export function TrialEstimateTable({
       header: tr("common.priceEstimateNumber"),
       width: 170,
       sortable: true,
-      sortValue: (r) => r.estimateNumber,
-      render: (r) => <DocNumber>{r.estimateNumber}</DocNumber>,
+      sortValue: (r) => docSortValue(r.estimateNumber),
+      render: (r) => (
+        <WithDocCompany docId={r.estimateNumber}>
+          <DocNumber>{r.estimateNumber}</DocNumber>
+        </WithDocCompany>
+      ),
     },
     {
       key: "name",
@@ -88,6 +108,11 @@ export function TrialEstimateTable({
       render: (r) => (
         <Group gap="xs" wrap="nowrap">
           <Text size="sm">{r.name}</Text>
+          {r.kind === "COST" && (
+            <Badge color="orange" size="xs" variant="light">
+              {tr("sales.trialEstimates.kindCost")}
+            </Badge>
+          )}
           {r.isCustomPrice && (
             <Badge color="orange" size="xs" variant="light">
               {tr("common.custom")}
@@ -123,12 +148,21 @@ export function TrialEstimateTable({
       header: tr("sales.trialEstimates.representativeEstimatedUnitPrice"),
       align: "right",
       width: 140,
-      sortValue: (r) => headlinePrice(r, pricingOptions),
-      render: (r) => (
-        <Text fw={600} size="sm" ta="right">
-          <MoneyText value={headlinePrice(r, pricingOptions)} />
-        </Text>
-      ),
+      sortValue: (r) =>
+        r.kind === "COST"
+          ? headlineCost(r, pricingOptions)
+          : headlinePrice(r, pricingOptions),
+      render: (r) =>
+        r.kind === "COST" ? (
+          <Text c="dimmed" size="sm" ta="right">
+            {`${tr("sales.trialEstimates.costTotal")} `}
+            <MoneyText value={Math.round(headlineCost(r, pricingOptions))} />
+          </Text>
+        ) : (
+          <Text fw={600} size="sm" ta="right">
+            <MoneyText value={headlinePrice(r, pricingOptions)} />
+          </Text>
+        ),
     },
     {
       key: "status",
@@ -154,12 +188,14 @@ export function TrialEstimateTable({
     <ListShell
       action={
         <Group gap="xs">
-          <SecondaryButton
-            href="/settings/apps/trial-estimate"
-            leftSection={<IconSettings size={16} />}
-          >
-            {tr("common.settings")}
-          </SecondaryButton>
+          {canOpenSettings && (
+            <SecondaryButton
+              href="/settings/trial-pricing-engine"
+              leftSection={<IconSettings size={16} />}
+            >
+              {tr("common.settings")}
+            </SecondaryButton>
+          )}
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
@@ -220,9 +256,11 @@ export function TrialEstimateTable({
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {r.estimateNumber}
-              </Text>
+              <WithDocCompany docId={r.estimateNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(r.estimateNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.name}
               </Text>
@@ -233,6 +271,11 @@ export function TrialEstimateTable({
                 <Badge color="gray" size="xs" variant="light">
                   {toolLabel(r.input.toolType)}
                 </Badge>
+                {r.kind === "COST" && (
+                  <Badge color="orange" size="xs" variant="light">
+                    {tr("sales.trialEstimates.kindCost")}
+                  </Badge>
+                )}
                 {r.isCustomPrice && (
                   <Badge color="orange" size="xs" variant="light">
                     {tr("common.custom")}
@@ -242,9 +285,19 @@ export function TrialEstimateTable({
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <StatusBadge entity="Estimate" size="xs" status={r.status} />
-              <Text fw={700} size="sm">
-                <MoneyText value={headlinePrice(r, pricingOptions)} />
-              </Text>
+              {/* 原価試算は見積単価を持たない — 一覧（デスクトップ）と同じく原価合計 */}
+              {r.kind === "COST" ? (
+                <Text c="dimmed" size="sm">
+                  {`${tr("sales.trialEstimates.costTotal")} `}
+                  <MoneyText
+                    value={Math.round(headlineCost(r, pricingOptions))}
+                  />
+                </Text>
+              ) : (
+                <Text fw={700} size="sm">
+                  <MoneyText value={headlinePrice(r, pricingOptions)} />
+                </Text>
+              )}
               <Text c="dimmed" size="xs">
                 {fmt.dateTime(r.updatedAt)}
               </Text>

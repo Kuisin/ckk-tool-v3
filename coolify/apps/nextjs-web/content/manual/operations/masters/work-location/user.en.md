@@ -1,7 +1,7 @@
 ---
 title: "Work Location — User Manual"
 description: "An app for registering the machines and areas where work is really done, such as NC lathe no. 1. They become selectable in the work plan of a work order."
-screenshots: [master-work-location-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01, master-work-location-qr-01, master-work-location-qr-print-01]
+screenshots: [master-work-location-01, master-work-location-models-01, master-work-location-model-new-01, master-work-location-group-new-01, master-work-location-add-01, master-work-location-types-01, master-work-location-qr-01, master-work-location-qr-print-01]
 ---
 This app is for registering the **machines and areas where work is really done**, such as NC旋盤 1号機 (NC lathe no. 1). The operation code is `MS0D`.
 
@@ -27,6 +27,7 @@ There are three apps about places, and they are easy to mix up. Please take care
 - For each machine you can decide **how many jobs can be put on it at the same time** (the capacity).
 - You can check how many work plans are using that machine right now.
 - You can add your own **types** for sorting the groups.
+- You can register **machine models** that group machines of the same type, and set which model each machine is. Machining programs are assigned to machine models.
 
 ## Words used on this page
 
@@ -35,6 +36,7 @@ There are three apps about places, and they are easy to mix up. Please take care
 - **Capacity** … the number of jobs that can be put on that place at the same time. Leave it empty and there is no limit.
 - **計画 / 実績** (plan / actual counts) … the number of work plans and work actuals that use that place.
 - **Type** … the division used for sorting the groups. 「機械」 (machine) and 「エリア」 (area) are there from the start.
+- **Machine model** … a name that groups machines of the same type (for example NC旋盤 A型, NC lathe type A). Choose one per machine. Machining programs on [drawings](/manual/en/operations/production/design-file/user) are assigned to machine models, so one program is enough however many machines of that type you have.
 
 ## Before you start
 
@@ -42,16 +44,26 @@ There are three apps about places, and they are easy to mix up. Please take care
 - A group is given a site. Please register the [site (拠点)](/manual/en/operations/masters/plant/user) first.
 - You register **the group first and the machine after that**. You cannot register a machine on its own without making a group.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  plant["Site"] --> group["Group<br/>(e.g. NC lathe)"]
+  group --> loc["Work location<br/>(e.g. NC lathe no. 1)"]
+  loc -.-> wo["Chosen as where the work is done<br/>in a work order's work plan"]
+```
+
 ## How to read the screen
 
 This app is not split into a list and a detail screen. **You do everything on one screen.**
 
 ![Work location screen](../../../assets/screenshots/master-work-location-01.png)
 
-- At the top right of the screen there are the 「**種別管理**」 (Manage types) and 「**グループ追加**」 (Add group) buttons.
+- At the top of the screen there are two tabs, 「**作業場所**」 (Work locations) and 「**機種**」 (Machine models). The Work locations tab opens first.
+- At the top right of the screen there are the 「**種別管理**」 (Manage types) and 「**グループ追加**」 (Add group) buttons (「**機種を追加**」 (Add machine model) on the Machine models tab).
 - The groups are shown as cards. The top of a card shows the code, name, type, site and status of that group.
 - At the right of a card there are the 「**場所を追加**」 (Add location), 「**QR印刷**」 (Print QR), 「**編集**」 (Edit) and 「**削除**」 (Delete) buttons. 「QR印刷」 cannot be pressed while the group has no locations.
-- The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **キャパシティ** (capacity) / **計画 / 実績** (plan / actual counts) / **状態** (status).
+- The table inside a card lists the machines of that group in the order **コード** (code) / **名称** (name) / **機種** (machine model) / **キャパシティ** (capacity) / **計画 / 実績** (plan / actual counts) / **状態** (status).
 - When nothing is registered yet, 「**作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。**」 (no work locations are registered; create a group such as a machine kind or area, and add physical places under it, one machine or one area at a time) is shown.
 
 ## Make a group
@@ -75,15 +87,36 @@ Once the group is made, register the machines inside it one at a time.
 1. On the card of the group you want to add to, press 「**場所を追加**」 (Add location).
 2. Enter text that stands for this machine in 「**コード**」 (code), for example `NC-01`.
 3. Enter the number of jobs that can be on it at the same time in 「**キャパシティ**」 (capacity). If it is one at a time on one machine, that is `1`. Leave it empty for "no limit".
-4. Enter the name of the machine in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 1号機 (NC lathe no. 1).
-5. Enter a number in 「**表示順**」 (display order).
-6. Press 「**追加**」 (Add).
+4. In 「**機種**」 (machine model), choose this machine's model (register the [machine models](#machine-models) first). Leave it empty for places without a model, such as areas or benches.
+5. Enter the name of the machine in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 1号機 (NC lathe no. 1).
+6. Enter a number in 「**表示順**」 (display order).
+7. Press 「**追加**」 (Add).
 
 ![Screen for adding a work location](../../../assets/screenshots/master-work-location-add-01.png)
 
 The machines you register are listed in the table on that group's card. Use the buttons at the right of a table row to edit or delete it.
 
 > 💡 If you set the capacity to `1`, it is easier to notice when two or more jobs are on that machine at the same time.
+
+## Register machine models [#machine-models]
+
+**Machine models**, which group machines of the same type, are registered on the 「**機種**」 (Machine models) tab.
+
+![Machine models tab](../../../assets/screenshots/master-work-location-models-01.png)
+
+1. Open the 「**機種**」 (Machine models) tab at the top of the screen.
+2. Press 「**機種を追加**」 (Add machine model) at the top right.
+3. Enter text that stands for the model in 「**コード**」 (code), for example `NC-LATHE-A`.
+4. Enter the model's name in 「**名称（日本語）**」 (name, Japanese), for example NC旋盤 A型 (NC lathe type A). Names in English and Chinese can be added with 「多言語」 (Translations).
+5. Enter 「**メーカー**」 (maker), 「**表示順**」 (display order) and 「**備考**」 (notes) if needed.
+6. Press 「**追加**」 (Add).
+
+![Screen for adding a machine model](../../../assets/screenshots/master-work-location-model-new-01.png)
+
+The table lists **code / name / maker / number of machines and programs / status** for each model. After registering, edit the machines on the Work locations tab and choose their 「**機種**」 (machine model).
+
+- When a step is worked on a machine that has a model, the step execution screen lists the machining programs for that model first, marked 「**この機種用**」 (for this machine model).
+- A model used by machines or programs cannot be deleted. When it is no longer used, turn off 「**有効**」 (active) to disable it (a disabled model is no longer offered for new choices).
 
 ## Add more types
 
@@ -120,7 +153,7 @@ The print sheet opens in a new tab. Print it on plain A4 paper as-is, cut along 
 
 In the 「**作業計画**」 (work plan) and 「**作業実績**」 (work actuals) of a step on a work order, you can choose 「**作業場所（任意）**」 (work location, optional) for each row. The chosen location is shown in the lists, and can also be seen on the shared tablet screen on the floor.
 
-When a step is started or resumed from a shared floor tablet, the tablet's **default work location** is recorded on the actual automatically (set in [Kiosk devices](/manual/en/operations/system/kiosk-device/user#field-default-work-location)). Scanning a work-location QR overrides it.
+When a step is started or resumed from a shared floor tablet, the tablet's **default work location** is recorded on the actual automatically (set in [Devices](/manual/en/operations/system/kiosk-device/user#field-default-work-location)). Scanning a work-location QR overrides it.
 
 [Process steps](/manual/en/operations/masters/process-step/user#field-allowed-locations) can also restrict which work locations a step may use, by type or by individual location.
 
@@ -132,15 +165,18 @@ Every field on the Work location screen.
 
 | Field | What to enter |
 |-------|---------------|
-| [Plant](#field-plant) | Which plant the work location belongs to |
+| [Site](#field-plant) | Which site the work location belongs to |
 | [Code / name (ja, en)](#field-code) | The work location's code and name, selectable as where a step is carried out |
 | [Type](#field-type) | The kind of work location |
 | [Capacity](#field-capacity) | A guide to how much it can handle at once |
+| [Machine model](#field-machine-model) | The machine model of this machine |
 | [Sort order / active / notes](#field-sort-order) | Ordering, whether it is offered, and notes |
+| [Machine model code / name](#field-machine-model-code) | The machine model's code and name (Machine models tab) |
+| [Maker](#field-machine-model-maker) | The maker of the machine model (Machine models tab, optional) |
 
-### Plant [#field-plant]
+### Site [#field-plant]
 
-Which plant the work location belongs to. When picking where a step runs, **only that plant's work locations** are offered.
+Which site the work location belongs to. When picking where a step runs, **only that site's work locations** are offered.
 
 ### Code / name (ja, en) [#field-code]
 
@@ -154,9 +190,21 @@ The kind of work location. It is used to narrow the list.
 
 A guide to how much it can handle at once. Enter 1 for a single machine, or how many fit at once for an area.
 
+### Machine model [#field-machine-model]
+
+The machine model of this machine. Machining programs are assigned to machine models, so programs for the model chosen here are shown first as 「**この機種用**」 (for this machine model) on the step execution screen. Leave it empty for areas and benches.
+
 ### Sort order / active / notes [#field-sort-order]
 
 Ordering, whether it is offered, and notes.
+
+### Machine model code / name [#field-machine-model-code]
+
+The machine model's code and name, chosen from both machines and machining programs.
+
+### Maker [#field-machine-model-maker]
+
+The maker of the machine model (optional).
 
 ## Questions and problems
 
@@ -177,6 +225,9 @@ A. There is a group that has chosen that type. First change 「**種別**」 (ty
 
 **Q. I see 「存在しない種別です（先に種別を追加してください）」 (this type does not exist; please add the type first).**
 A. The type you tried to choose is not registered yet. Add it in 「**種別管理**」 (Manage types) and then save the group.
+
+**Q. I see that a machine model cannot be deleted because machines or programs use it.**
+A. Some machines have that model selected, or some machining programs are assigned to it. Do not delete it — turn off 「**有効**」 (active) on the machine model's edit screen instead.
 
 **Q. I want to register warehouses and shelves. Is this the right place?**
 A. No. Places where things are kept are registered in [storage location (保管場所)](/manual/en/operations/masters/storage-location/user).

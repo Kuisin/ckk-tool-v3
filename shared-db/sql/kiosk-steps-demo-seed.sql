@@ -17,13 +17,10 @@ DECLARE
   v_sys uuid := '00000000-0000-0000-0000-000000000000';
   v_demo1 uuid;
   v_customer uuid;
-  v_oa_ym char(6);
-  v_oa_seq int;
+  v_oa uuid;
   v_so uuid;
   v_wo uuid;
   v_wo_number int;
-  v_wo_ym char(6);
-  v_wo_doc_seq int;
   v_tpl int;
   v_step_cutting uuid;
   v_step_machining uuid;
@@ -51,20 +48,20 @@ BEGIN
   END IF;
 
   -- 注文請書: 最新の 1 件へ相乗り（branch=90 でアプリ採番と衝突しない）
-  SELECT year_month, seq INTO v_oa_ym, v_oa_seq
-    FROM app.order_acceptances ORDER BY year_month DESC, seq DESC LIMIT 1;
-  IF v_oa_ym IS NULL THEN
+  SELECT id INTO v_oa
+    FROM app.order_acceptances ORDER BY fiscal_year DESC, doc_seq DESC, id DESC LIMIT 1;
+  IF v_oa IS NULL THEN
     RAISE EXCEPTION 'no order_acceptances found';
   END IF;
 
   -- 注文明細（既存注文請書の branch=90 行。製品 1 = テスト製品１・数量 50）
   -- 顧客・作成者はヘッダ（order_acceptances）から読むため行には持たない。
   INSERT INTO app.order_lines
-    (id, acceptance_year_month, acceptance_seq, branch, sort_order, product_id,
+    (id, acceptance_id, branch, sort_order, item_id,
      order_type, quantity, unit_price, amount, delivery_date, status, is_locked,
      notes, confirmed_at, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), v_oa_ym, v_oa_seq, 90, 90, 1, 'PRODUCTION',
+    (gen_random_uuid(), v_oa, 90, 90, 1, 'PRODUCTION',
      50, 1200, 60000, v_today + 14, 'CONFIRMED', false,
      'kiosk-demo-seed', now(), now(), now())
   RETURNING id INTO v_so;
@@ -77,27 +74,15 @@ BEGIN
     updated_at = now()
   RETURNING last_sequence INTO v_wo_number;
 
-  -- 書類番号（WOR-YYYYMM-NNNNN）: nextjs-web allocateDocumentKey と同じ upsert
-  v_wo_ym := to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYYYMM');
-  INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
-  VALUES ('WORK_ORDER_DOC', 'WOR', v_wo_ym, 1, now())
-  ON CONFLICT (key) DO UPDATE SET
-    last_sequence = CASE
-      WHEN app.numbering_sequences.last_year_month = EXCLUDED.last_year_month
-        THEN app.numbering_sequences.last_sequence + 1
-      ELSE 1
-    END,
-    last_year_month = EXCLUDED.last_year_month,
-    updated_at = now()
-  RETURNING last_sequence INTO v_wo_doc_seq;
+  -- 書類番号（WOR-FFFF-NNNNN）は DB が INSERT 時に払い出す（app.assign_document_number）
 
   -- 指示書（承認済 — キオスクから開始できる状態）
   INSERT INTO app.work_orders
-    (id, work_order_number, year_month, seq, product_id, type, planned_quantity,
+    (id, work_order_number, product_item_id, type, planned_quantity,
      status, approval_status, approved_at, history, notes,
      created_by, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), v_wo_number, v_wo_ym, v_wo_doc_seq, 1, 'MANUFACTURE', 50,
+    (gen_random_uuid(), v_wo_number, 1, 'MANUFACTURE', 50,
      'APPROVED', 'APPROVED', now(),
      jsonb_build_array(jsonb_build_object(
        'action', 'CREATE', 'user', v_sys::text, 'at', now()::text,

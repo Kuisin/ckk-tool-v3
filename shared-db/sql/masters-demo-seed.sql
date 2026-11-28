@@ -171,6 +171,26 @@ VALUES
    '2026-07-01T10:12:00+09', '2026-07-01T10:12:00+09')
 ON CONFLICT (code) DO NOTHING;
 
+-- ── 機種（MS0D「機種」タブ）と機械への割り当て ───────────────────────────────
+-- 加工プログラムは機種に当てる（design_program_machine_models）。NC旋盤 2 台は
+-- 同じ機種なので、プログラムは 1 本で両方に「この機種用」として出る。
+INSERT INTO app.machine_models (code, name, maker, sort_order, is_active, notes, created_at, updated_at)
+VALUES
+  ('NC-LATHE-A', '{"ja": "NC旋盤 A型", "en": "NC lathe type A", "zh": "数控车床 A 型"}'::jsonb,
+   'デモ工機', 10, true, NULL, '2026-07-01T10:20:00+09', '2026-07-01T10:20:00+09'),
+  ('MC-V5', '{"ja": "マシニング V5", "en": "Machining center V5", "zh": "加工中心 V5"}'::jsonb,
+   'デモ工機', 20, true, NULL, '2026-07-01T10:20:00+09', '2026-07-01T10:20:00+09'),
+  ('GRINDER-C', '{"ja": "円筒研磨機 C型", "en": "Cylindrical grinder type C", "zh": "外圆磨床 C 型"}'::jsonb,
+   'デモ研削', 30, true, NULL, '2026-07-01T10:20:00+09', '2026-07-01T10:20:00+09')
+ON CONFLICT (code) DO NOTHING;
+
+UPDATE app.work_locations wl
+   SET machine_model_id = mm.id
+  FROM (VALUES ('NC-01', 'NC-LATHE-A'), ('NC-02', 'NC-LATHE-A'), ('MC-01', 'MC-V5'),
+               ('GR-01', 'GRINDER-C'), ('GR-02', 'GRINDER-C')) AS v(loc, model)
+  JOIN app.machine_models mm ON mm.code = v.model
+ WHERE wl.code = v.loc AND wl.machine_model_id IS NULL;
+
 -- ── 工程マスタの許可作業場所（MS08 — 段加工は「機械」種別 + 研磨機 1号機）──
 -- 1 行 = 種別 or 個別のどちらか一方。行が無い工程は無制限。
 -- 固定 id + setval — テーブルに unique 制約が無いので再実行の重複を防ぐ。
@@ -247,7 +267,8 @@ UPDATE app.material_diameters            SET created_at='2026-07-01T09:00:00+09'
 UPDATE app.material_length_variants      SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.material_types                SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.material_type_prices          SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
-UPDATE app.materials                     SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
+-- 素材・製品は app.items（品目統合の第 3 段で旧 2 表は消えた）。
+UPDATE app.items                         SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09';
 UPDATE app.plants                        SET created_at='2026-07-01T09:00:00+09', updated_at='2026-07-01T09:00:00+09'
   WHERE updated_at > '2026-07-31T00:00:00+09';
 COMMIT;

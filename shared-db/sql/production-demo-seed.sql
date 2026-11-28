@@ -33,7 +33,10 @@ BEGIN;
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:work-orders:main', true, '指示書（マニュアル撮影用）', now()),
   ('app:my-tasks:main',    true, '未処理一覧（マニュアル撮影用）', now()),
-  ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now())
+  ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now()),
+  -- 自社法人 (MS0I) と 作業場所一覧 (PD09) — main での公開は未定。撮影 DB に限り有効化。
+  ('app:master-own-companies:main', true, '自社法人（マニュアル撮影用）', now()),
+  ('app:work-location-board:main',  true, '作業場所一覧（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
@@ -69,8 +72,8 @@ ON CONFLICT (user_id, plant_id) DO NOTHING;
 -- 旧モデルで「下書きの明細（order_acceptance_items）」と「確定した受注
 -- （sales_orders）」が別テーブルだったものが 1 テーブルに寄った形で、
 -- 画面上も 下書き 1 行 + 確定 2 行 として並ぶ。
-INSERT INTO app.order_lines (id, acceptance_year_month, acceptance_seq, branch,
-  sort_order, product_id, product_text, order_type, quantity, unit_price, amount,
+INSERT INTO app.order_lines (id, acceptance_id, branch,
+  sort_order, item_id, product_text, order_type, quantity, unit_price, amount,
   delivery_date, status, lot_number, is_locked, end_user_bp_id, confirmed_at,
   created_at, updated_at)
 VALUES
@@ -80,12 +83,12 @@ VALUES
   -- 「次のステップ: 出荷書の作成」が出るのに出荷書フォームは「受注数量まで
   -- 出荷済みです」と断る、という食い違いをデモデータ自身が作っていた。
   -- 割当（work_order_order_lines）の合計 110 本も受注数以下に収まる。
-  ('e0000000-0000-4000-8000-000000000001'::uuid, '202607', 3, 1, 1,
+  ('e0000000-0000-4000-8000-000000000001'::uuid, 'e5400000-0000-4000-8000-000000000003'::uuid, 1, 1,
    9001, NULL, 'PRODUCTION'::app."ORDER_TYPE", 150, 3220, 483000,
    '2026-08-20', 'IN_PRODUCTION'::app."ORDER_LINE_STATUS", 9001, false, NULL,
    '2026-07-14T09:30:00+09',
    '2026-07-14T09:30:00+09', '2026-07-16T08:30:00+09'),
-  ('e0000000-0000-4000-8000-000000000002'::uuid, '202607', 3, 2, 2,
+  ('e0000000-0000-4000-8000-000000000002'::uuid, 'e5400000-0000-4000-8000-000000000003'::uuid, 2, 2,
    9002, NULL, 'PRODUCTION'::app."ORDER_TYPE", 100, 1850, 185000,
    '2026-09-15', 'CONFIRMED'::app."ORDER_LINE_STATUS", 9002, false, NULL,
    '2026-07-14T09:35:00+09',
@@ -95,7 +98,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ── 製品 9001 の工程ルート「標準工程」v1 ────────────────────────────────────
 -- 使用依存を満たす 6 工程: 素材出し → 切断 → センタレス（外注: デモ研磨工業）
 -- → 段加工 → 段加工検査 → 段加工検査承認。
-INSERT INTO app.product_process_routes (id, product_id, name, is_active, notes,
+INSERT INTO app.product_process_routes (id, item_id, name, is_active, notes,
   created_by, created_at, updated_at)
 VALUES (9001, 9001,
   '{"ja": "標準工程", "en": "Standard route"}'::jsonb, true, NULL,
@@ -141,21 +144,69 @@ VALUES
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- ── 準備工程リスト（全製品で共通）v1 ────────────────────────────────────────
+-- 素材出し → 切断 → センタレス → 全長合わせ。
+--
+-- これが無いと、デモ DB では **新しい指示書を 1 件も保存できない**: 製造工程リストは
+-- 準備工程を含まない（20261019 で分離）ので、段加工の使用依存「全長合わせ」を
+-- 満たす工程がどこにも無く、フォームが「工程構成にエラーがあります」で止まる。
+-- 上の「標準工程」v1 に残っている準備工程の行は分離前の履歴で、新規の指示書には
+-- 使われない。業務の通し操作（tools/docs-screenshots/walkthroughs/production.ts）が
+-- 指示書を実際に保存するので、ここで揃えておく。
+-- 準備工程リストは製品にも顧客にも紐づかない（CHECK product_process_routes_kind_columns）。
+INSERT INTO app.product_process_routes (id, kind, item_id, customer_bp_id, name, is_active, notes,
+  created_by, created_at, updated_at)
+VALUES (9002, 'PREP'::app."PROCESS_ROUTE_KIND", NULL, NULL,
+  '{"ja": "標準の準備工程", "en": "Standard preparation"}'::jsonb, true, NULL,
+  'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+  '2026-07-14T10:00:00+09', '2026-07-14T10:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('app.product_process_routes', 'id'),
+              GREATEST((SELECT MAX(id) FROM app.product_process_routes), 9002));
+
+INSERT INTO app.product_process_route_versions (id, route_id, version, notes,
+  created_by, created_at)
+VALUES ('dc040000-0000-4000-8000-000000000002'::uuid, 9002, 1, NULL,
+  'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-14T10:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.product_process_route_version_steps (id, route_version_id,
+  process_step_id, sort_order, execution_location, plant_id, supplier_bp_id, work_hours)
+VALUES
+  ('dc042000-0000-4000-8000-000000000001'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'MATERIAL_ISSUE'), 1,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0.5),
+  ('dc042000-0000-4000-8000-000000000002'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'CUTTING'), 2,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 2.0),
+  ('dc042000-0000-4000-8000-000000000003'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'CENTERLESS'), 3,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 1.0),
+  ('dc042000-0000-4000-8000-000000000004'::uuid, 'dc040000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.process_step_catalog WHERE code = 'LENGTH_ADJUST'), 4,
+   'INTERNAL'::app."STEP_EXECUTION",
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0.5)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── 指示書 #9001〜#9004（固定番号 — 採番と衝突しないよう sequence を追従）──────
 -- 承認は「第一/第二」固定ではなくなり（approval_flows が段数を決める）、
 -- 指示書側は 依頼 / 最終承認 / 差し戻し だけを持つ:
 --   requested_1st_* → requested_*、approved_1st/2nd_* → approved_*（最終）
 --   approval_status の PENDING_1ST → PENDING
 -- 各段の記録は approval_requests / approval_records 側にある。
-INSERT INTO app.work_orders (id, work_order_number, year_month, seq, product_id, type,
-  planned_quantity, material_id, status, approval_status, route_version_id,
+INSERT INTO app.work_orders (id, work_order_number, legacy_number, product_item_id, type,
+  planned_quantity, material_item_id, status, approval_status, route_version_id,
   requested_at, requested_by, approved_at, approved_by, started_at, completed_at,
   history, notes, created_by, created_at, updated_at)
 VALUES
   -- #9001: 進行中（受注 50 + 予備 5 = 55。承認記録あり・工程は下の steps 参照）
-  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, '202607', 9001,
+  ('dc000000-0000-4000-8000-000000009001'::uuid, 9001, 'WOR-202607-09001',
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   55, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   55, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'IN_PROGRESS'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
    '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -169,9 +220,9 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-14T10:30:00+09', '2026-07-21T09:00:00+09'),
   -- #9002: 承認依頼中（PENDING_1ST — PD03 の主役。approval_requests 行あり）
-  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, '202607', 9002,
+  ('dc000000-0000-4000-8000-000000009002'::uuid, 9002, 'WOR-202607-09002',
    9002, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   100, (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   100, (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    'PENDING_APPROVAL'::app."WORK_ORDER_STATUS", 'PENDING'::app."WORK_ORDER_APPROVAL_STATUS",
    NULL,
    '2026-07-20T09:30:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -181,7 +232,7 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T15:00:00+09', '2026-07-20T09:30:00+09'),
   -- #9003: 下書き（在庫分 — 編集・コピー・キャンセル可の状態バリエーション）
-  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003, '202607', 9003,
+  ('dc000000-0000-4000-8000-000000009003'::uuid, 9003, 'WOR-202607-09003',
    9001, 'FROM_STOCK'::app."WORK_ORDER_TYPE",
    10, NULL,
    'DRAFT'::app."WORK_ORDER_STATUS", 'NONE'::app."WORK_ORDER_APPROVAL_STATUS",
@@ -190,9 +241,9 @@ VALUES
    NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-19T16:20:00+09', '2026-07-19T16:20:00+09'),
   -- #9004: 完了（全工程完了 → 良品 55 を製品在庫ロット 9004 として入庫済み）
-  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, '202607', 9004,
+  ('dc000000-0000-4000-8000-000000009004'::uuid, 9004, 'WOR-202607-09004',
    9001, 'MANUFACTURE'::app."WORK_ORDER_TYPE",
-   60, (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   60, (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    'COMPLETED'::app."WORK_ORDER_STATUS", 'APPROVED'::app."WORK_ORDER_APPROVAL_STATUS",
    'dc040000-0000-4000-8000-000000000001'::uuid,
    '2026-07-08T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
@@ -221,18 +272,6 @@ INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence
 VALUES ('WORK_ORDER', 'WO', NULL, 9004, '2026-07-21T09:00:00+09')
 ON CONFLICT (key) DO UPDATE
   SET last_sequence = GREATEST(app.numbering_sequences.last_sequence, 9004),
-      updated_at = EXCLUDED.updated_at;
-
--- 書類番号（WOR-YYYYMM-NNNNN）の採番も固定 seq へ追従
-INSERT INTO app.numbering_sequences (key, prefix, last_year_month, last_sequence, updated_at)
-VALUES ('WORK_ORDER_DOC', 'WOR', '202607', 9004, '2026-07-21T09:00:00+09')
-ON CONFLICT (key) DO UPDATE
-  SET last_year_month = GREATEST(app.numbering_sequences.last_year_month, EXCLUDED.last_year_month),
-      last_sequence = CASE
-        WHEN app.numbering_sequences.last_year_month >= EXCLUDED.last_year_month
-          THEN app.numbering_sequences.last_sequence
-        ELSE EXCLUDED.last_sequence
-      END,
       updated_at = EXCLUDED.updated_at;
 
 -- ── 工程ステップ ─────────────────────────────────────────────────────────────
@@ -423,6 +462,49 @@ VALUES
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-21T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
+-- ── 素材発注書（PD03 の種別バリエーション + 素材タブ「次回入荷」/ATP 入荷行）──
+-- 90101 = 承認依頼中（PD03 に teal バッジで並ぶ）/ 90102 = 発注済（入荷予定）。
+-- 番号は DB が払い出す。旧番号（legacy_number）は 90xxx 帯のまま — 撮影の URL が
+-- 旧番号で開くため。承認依頼が参照（doc_ref）を引くので、承認依頼より先に入れる。
+INSERT INTO app.material_purchase_orders (id, legacy_number, supplier_bp_id, status,
+  total_amount, currency, purchase_date, requested_at, requested_by,
+  approved_at, approved_by, ordered_at, ordered_by, history, notes,
+  created_by, created_at, updated_at)
+VALUES
+  ('dc060000-0000-4000-8000-000000000001'::uuid, 'PO-202607-90101',
+   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
+   'REQUESTED'::app."PURCHASE_STATUS", 124250, 'JPY', NULL,
+   '2026-07-21T10:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   NULL, NULL, NULL, NULL,
+   '[{"action": "CREATE", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T09:50:00+09:00"},
+     {"action": "REQUEST", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T10:00:00+09:00"}]'::jsonb,
+   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-21T09:50:00+09', '2026-07-21T10:00:00+09'),
+  ('dc060000-0000-4000-8000-000000000002'::uuid, 'PO-202607-90102',
+   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
+   'ORDERED'::app."PURCHASE_STATUS", 220000, 'JPY', '2026-07-15',
+   '2026-07-14T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-14T15:00:00+09', '00000000-0000-0000-0000-000000000000'::uuid,
+   '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '[{"action": "ORDER", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-15T09:00:00+09:00"}]'::jsonb,
+   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   '2026-07-14T10:50:00+09', '2026-07-15T09:00:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.material_purchase_order_items (id, purchase_order_id, item_id,
+  quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
+  plant_id, notes, sort_order)
+VALUES
+  ('dc061000-0000-4000-8000-000000000001'::uuid, 'dc060000-0000-4000-8000-000000000001'::uuid,
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
+   50, '本', 2485, 124250, 'JPY', '2026-08-20', 0,
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
+  ('dc061000-0000-4000-8000-000000000002'::uuid, 'dc060000-0000-4000-8000-000000000002'::uuid,
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
+   200, '本', 1100, 220000, 'JPY', '2026-08-10', 0,
+   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── 承認依頼・承認記録（PD03 横断受信箱 + 指示書の承認記録リスト）──────────────
 -- targetType = @@map 名 / targetId = 業務キー（指示書 = 番号文字列, PO = PO-…,
 -- 注文請書 = ORD-…）。ORD-202607-00003 は sales-demo-seed の REQUESTED 行に対応。
@@ -469,9 +551,11 @@ FROM snap s CROSS JOIN (VALUES
    'APPROVED', '2026-07-15T10:00:00+09', NULL),
   ('dc030000-0000-4000-8000-000000000003', 'work_orders', '9002', 1, 2,
    'PENDING',  '2026-07-20T09:30:00+09', '納期優先でお願いします'),
-  ('dc030000-0000-4000-8000-000000000004', 'order_acceptances', 'ORD-202607-00003', 1, 1,
+  ('dc030000-0000-4000-8000-000000000004', 'order_acceptances',
+   (SELECT doc_ref FROM app.order_acceptances WHERE id = 'e5400000-0000-4000-8000-000000000003'), 1, 1,
    'PENDING',  '2026-07-07T13:50:00+09', NULL),
-  ('dc030000-0000-4000-8000-000000000005', 'material_purchase_orders', 'PO-202607-90101', 1, 1,
+  ('dc030000-0000-4000-8000-000000000005', 'material_purchase_orders',
+   (SELECT doc_ref FROM app.material_purchase_orders WHERE id = 'dc060000-0000-4000-8000-000000000001'), 1, 1,
    'PENDING',  '2026-07-21T10:00:00+09', NULL)
 ) AS v(id, target_type, target_id, step_no, step_count, status, requested_at, notes)
 ON CONFLICT (id) DO NOTHING;
@@ -485,48 +569,6 @@ VALUES
   ('dc031000-0000-4000-8000-000000000002'::uuid, 'dc030000-0000-4000-8000-000000000002'::uuid,
    '00000000-0000-0000-0000-000000000000'::uuid, NULL,
    'APPROVED'::app."APPROVAL_ACTION", NULL, '2026-07-15T14:00:00+09')
-ON CONFLICT (id) DO NOTHING;
-
--- ── 素材発注書（PD03 の種別バリエーション + 素材タブ「次回入荷」/ATP 入荷行）──
--- 90101 = 承認依頼中（PD03 に teal バッジで並ぶ）/ 90102 = 発注済（入荷予定）。
--- 番号は 90xxx 帯 — 購買デモシードのアプリ採番帯（00001〜）と衝突しない。
-INSERT INTO app.material_purchase_orders (id, po_number, supplier_bp_id, status,
-  total_amount, currency, purchase_date, requested_at, requested_by,
-  approved_at, approved_by, ordered_at, ordered_by, history, notes,
-  created_by, created_at, updated_at)
-VALUES
-  ('dc060000-0000-4000-8000-000000000001'::uuid, 'PO-202607-90101',
-   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
-   'REQUESTED'::app."PURCHASE_STATUS", 124250, 'JPY', NULL,
-   '2026-07-21T10:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   NULL, NULL, NULL, NULL,
-   '[{"action": "CREATE", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T09:50:00+09:00"},
-     {"action": "REQUEST", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-21T10:00:00+09:00"}]'::jsonb,
-   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-21T09:50:00+09', '2026-07-21T10:00:00+09'),
-  ('dc060000-0000-4000-8000-000000000002'::uuid, 'PO-202607-90102',
-   (SELECT id FROM app.business_partners WHERE bp_code = 'BP-90004'),
-   'ORDERED'::app."PURCHASE_STATUS", 220000, 'JPY', '2026-07-15',
-   '2026-07-14T11:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-14T15:00:00+09', '00000000-0000-0000-0000-000000000000'::uuid,
-   '2026-07-15T09:00:00+09', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '[{"action": "ORDER", "user": "a0b1c2d3-0000-4000-8000-000000005107", "at": "2026-07-15T09:00:00+09:00"}]'::jsonb,
-   NULL, 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
-   '2026-07-14T10:50:00+09', '2026-07-15T09:00:00+09')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO app.material_purchase_order_items (id, purchase_order_id, material_id,
-  quantity, unit, unit_price, amount, currency, expected_at, received_quantity,
-  plant_id, notes, sort_order)
-VALUES
-  ('dc061000-0000-4000-8000-000000000001'::uuid, 'dc060000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
-   50, '本', 2485, 124250, 'JPY', '2026-08-20', 0,
-   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0),
-  ('dc061000-0000-4000-8000-000000000002'::uuid, 'dc060000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
-   200, '本', 1100, 220000, 'JPY', '2026-08-10', 0,
-   (SELECT id FROM app.plants WHERE code = 'F01'), NULL, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 保管場所 × 棚（ロケーションタブ・保管場所列・在庫移動の前提）──────────────
@@ -556,50 +598,121 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('app.storage_shelves', 'id'),
               GREATEST((SELECT MAX(id) FROM app.storage_shelves), 9121));
 
+-- ── 製品 9001 の要求素材（仕掛品の再設計 — 半製品の行き先を決める材料）────────
+-- 半製品は 材種 × 径 × 長 の仕掛ブランクに置く（20261126200000_wip_backfill）。
+-- 長さは製品の要求長から取るので、要求寸法が無い製品の半製品は「未分類」になる。
+-- 名前どおり φ6×60 の B01A0001 を要求させる（入っていれば触らない）。
+UPDATE app.items
+   SET requires_material_type_id = (SELECT id FROM app.material_types WHERE code = 'B01A0001'),
+       requires_diameter_mm = 6,
+       requires_length_mm = 60,
+       updated_at = '2026-07-01T09:10:00+09'
+ WHERE id = 9001 AND requires_length_mm IS NULL
+   AND EXISTS (SELECT 1 FROM app.material_types WHERE code = 'B01A0001');
+
 -- ── 製品在庫（完成品 / 半製品 / 未割当 / 移動先棚のバリエーション）─────────────
-INSERT INTO app.product_inventory (id, product_id, plant_id, lot_number,
-  quantity, reserved_quantity, is_semi_finished, source_step_id,
-  storage_location_id, shelf_id, location, notes, updated_at)
+-- 在庫は app.item_inventory の 1 本（製品・素材の区別は品目が持つ）。
+-- 単位は行に持つ（旧 product_inventory は持たず、マスタから引いていた）。
+INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
+  quantity, reserved_quantity, source_step_id,
+  storage_location_id, shelf_id, unit, location, notes, updated_at)
 VALUES
   -- #9004 完了ロットの完成品（受注 50 を予約中 → 利用可能 5）
   ('dc050000-0000-4000-8000-000000000001'::uuid, 9001,
    (SELECT id FROM app.plants WHERE code = 'F01'), 9004,
-   55, 50, false, NULL, 9101, 9111, NULL, NULL, '2026-07-18T16:05:00+09'),
-  -- #9001 切断工程で発生した半製品（source_step = 切断）
-  ('dc050000-0000-4000-8000-000000000002'::uuid, 9001,
-   (SELECT id FROM app.plants WHERE code = 'F01'), 9001,
-   2, 0, true, 'dc011000-0000-4000-8000-000000000002'::uuid,
-   9101, 9113, NULL, NULL, '2026-07-16T11:35:00+09'),
+   55, 50, NULL, 9101, 9111, '本', NULL, NULL, '2026-07-18T16:05:00+09'),
   -- 保管場所未割当の例（在庫移動の移動元）
   ('dc050000-0000-4000-8000-000000000003'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   30, 0, false, NULL, NULL, NULL, NULL, NULL, '2026-07-17T10:10:00+09'),
+   30, 0, NULL, NULL, NULL, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   -- 未割当 → 第一倉庫 A-2 へ 10 本移動した移動先バケット
   ('dc050000-0000-4000-8000-000000000004'::uuid, 9002,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   10, 0, false, NULL, 9101, 9112, NULL, NULL, '2026-07-17T10:10:00+09'),
+   10, 0, NULL, 9101, 9112, '本', NULL, NULL, '2026-07-17T10:10:00+09'),
   ('dc050000-0000-4000-8000-000000000005'::uuid, 9003,
    (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
-   12, 0, false, NULL, 9102, 9121, NULL, NULL, '2026-07-10T14:00:00+09')
+   12, 0, NULL, 9102, 9121, '本', NULL, NULL, '2026-07-10T14:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
+-- ── 仕掛品（半製品）──────────────────────────────────────────────────────────
+-- 仕掛品は 仕掛ブランク（材種 × 径 × 長）× 加工状態（済んだ形を変える工程の並び）
+-- × 目標製品 の行に置く。ブランクと加工状態は DB の関数で寄せる（アプリの計上と
+-- 同じ作り方）:
+--   -0002 #9001 切断の途中で振り分けた分 → 切断は済んでいない → φ6×60・状態 []
+--   -0006 #9004 段加工まで済んだ分 → 切断・センタレス・段加工 済 → φ6×60 で、
+--         製品 9001 の工程の先頭部分 = 使い回せる仕掛品
+--   -0007 ロットも発生工程も無い半製品 → 「未分類」（品目は製品 9002 のまま）
+-- 製品 9001 に要求寸法が無い DB（上の UPDATE が効かなかった）では -0002 / -0006 も
+-- 「未分類」に落ちる — アプリの計上（ブランクが決まらない指示書）と同じ扱い。
+WITH blank AS (
+  SELECT app.wip_blank_item_id(i.requires_material_type_id, i.requires_diameter_mm,
+                               i.requires_length_mm) AS id
+    FROM app.items i
+   WHERE i.id = 9001
+     AND i.requires_material_type_id IS NOT NULL
+     AND i.requires_diameter_mm IS NOT NULL
+     AND i.requires_length_mm IS NOT NULL
+),
+-- 発生工程までに済んだ、加工状態に数える工程（工程順）。
+-- upto_sort = その工程を含める位置（振り分けた分は発生工程を含めない）。
+src (inv_id, wo_id, lot, upto_sort, source_step_id, qty, updated_at) AS (
+  VALUES
+    ('dc050000-0000-4000-8000-000000000002'::uuid,
+     'dc000000-0000-4000-8000-000000009001'::uuid, 9001, 1,
+     'dc011000-0000-4000-8000-000000000002'::uuid, 2, '2026-07-16T11:35:00+09'::timestamptz),
+    ('dc050000-0000-4000-8000-000000000006'::uuid,
+     'dc000000-0000-4000-8000-000000009004'::uuid, 9004, 4,
+     'dc014000-0000-4000-8000-000000000004'::uuid, 3, '2026-07-18T16:05:00+09'::timestamptz)
+),
+path AS (
+  SELECT src.inv_id,
+         coalesce((SELECT array_agg(s.process_step_id ORDER BY s.sort_order)
+                     FROM app.work_order_steps s
+                     JOIN app.process_step_catalog c ON c.id = s.process_step_id
+                    WHERE s.work_order_id = src.wo_id
+                      AND s.sort_order <= src.upto_sort
+                      AND s.status = 'COMPLETED'
+                      AND c.affects_wip_state), '{}'::int[]) AS step_ids
+    FROM src
+)
+INSERT INTO app.item_inventory (id, item_id, plant_id, lot_number,
+  quantity, reserved_quantity, source_step_id, wip_state_id, aimed_item_id,
+  storage_location_id, shelf_id, unit, location, notes, updated_at)
+SELECT src.inv_id,
+       coalesce((SELECT id FROM blank), 9001),
+       (SELECT id FROM app.plants WHERE code = 'F01'), src.lot,
+       src.qty, 0, src.source_step_id,
+       CASE WHEN EXISTS (SELECT 1 FROM blank) THEN app.wip_state_id(path.step_ids)
+            ELSE app.wip_unclassified_state_id() END,
+       9001, 9101, 9113, '本', NULL, NULL, src.updated_at
+  FROM src JOIN path ON path.inv_id = src.inv_id
+ WHERE NOT EXISTS (SELECT 1 FROM app.item_inventory ii WHERE ii.id = src.inv_id)
+UNION ALL
+-- 出どころの分からない半製品（「未分類」の例）
+SELECT 'dc050000-0000-4000-8000-000000000007'::uuid, 9002,
+       (SELECT id FROM app.plants WHERE code = 'F01'), NULL,
+       4, 0, NULL, app.wip_unclassified_state_id(), 9002,
+       9102, 9121, '本', NULL, '旧システムからの繰越', '2026-07-05T10:00:00+09'
+ WHERE NOT EXISTS (SELECT 1 FROM app.item_inventory ii
+                    WHERE ii.id = 'dc050000-0000-4000-8000-000000000007'::uuid);
+
 -- ── 素材在庫（予約 > 在庫 の ATP マイナス例を 1 行含む）───────────────────────
-INSERT INTO app.material_inventory (id, material_id, plant_id,
+INSERT INTO app.item_inventory (id, item_id, plant_id,
   quantity, reserved_quantity, unit, storage_location_id, shelf_id,
   location, notes, updated_at)
 VALUES
   ('dc051000-0000-4000-8000-000000000001'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B060-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B060-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    80, 55, '本', 9102, 9121, NULL, NULL, '2026-07-15T09:10:00+09'),
   -- 予約 100 > 在庫 20 → 利用可能マイナス（ATP タイムラインの赤字例。
   -- PO-202607-90102 の入荷予定 200 本が 2026-08-10 に補う）
   ('dc051000-0000-4000-8000-000000000002'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B04A0001-B040-310'),
+   (SELECT id FROM app.items WHERE code = 'B04A0001-B040-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    20, 100, '本', 9102, NULL, NULL, NULL, '2026-07-20T09:35:00+09'),
   ('dc051000-0000-4000-8000-000000000003'::uuid,
-   (SELECT id FROM app.materials WHERE code = 'B01A0001-B080-310'),
+   (SELECT id FROM app.items WHERE code = 'B01A0001-B080-310' AND item_type = 'MATERIAL'),
    (SELECT id FROM app.plants WHERE code = 'F01'),
    40, 0, '本', NULL, NULL, NULL, NULL, '2026-07-10T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
@@ -674,5 +787,84 @@ VALUES
    '在庫移動: 未割当 → 第一倉庫 / A-2', 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
    '2026-07-17T10:10:00+09')
 ON CONFLICT (id) DO NOTHING;
+
+-- ── 工程納期（工程ごとの期限）────────────────────────────────────────────────
+-- 指示書 #9001 の段加工と段加工検査に入れておく。無いと、工程カード・フロー図・
+-- 作業場所一覧 (PD09)・共有端末のどこにも納期の印が出ず、画面で確かめられない。
+-- デモの日付（2026-07）に合わせた固定値なので、いまは「期限超過」の赤い印になる。
+UPDATE app.work_order_steps SET due_date = '2026-07-25'
+ WHERE id = 'dc011000-0000-4000-8000-000000000004'::uuid AND due_date IS NULL;
+UPDATE app.work_order_steps SET due_date = '2026-07-28'
+ WHERE id = 'dc011000-0000-4000-8000-000000000005'::uuid AND due_date IS NULL;
+
+-- ── 加工プログラム（設計図の版ごと）────────────────────────────────────────
+-- デモ商事向けの系列（9001 × デモ商事 v1）= 指示書 #9001 が使う版。ここに置くと、
+-- 設計図の版の画面・指示書の工程の実行画面・共有端末の工程画面に出る。
+-- 1 本のプログラムが複数の工程を受け持てる（切断 + センタレス）。対象は機種
+-- （masters-demo-seed の machine_models — NC旋盤 1・2 号機は同じ NC旋盤 A型）。
+-- ファイルは付けない（番号だけ控えて実体は機械側、という使い方）。
+--
+-- 版と使用記録のデモ:
+--   - 段加工（荒・仕上げ）は v1 が #9001 の段加工（進行中）で使われ、そのあと
+--     v2 を作った形 — 版の画面では v2 が現行版、v1 が「過去の版」に「使用済み」で
+--     並び、#9001 の段加工の実行画面には**開始したときの v1** が出続ける。
+--   - 素材の切断・外径は #9001 の切断（完了）で使用済み。
+--   - 段加工（マシニング用）は未使用（その場で直せる・削除できる）。
+INSERT INTO app.design_programs (id, design_version_id, program_key, revision,
+  superseded_at, name, program_number, notes, sort_order, created_by,
+  created_at, updated_at)
+SELECT v.id, 'd9000000-0000-4000-8000-000000000003'::uuid, v.program_key, v.revision,
+       v.superseded_at::timestamptz, v.name, v.program_number, v.notes, v.sort_order,
+       'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+       v.created_at::timestamptz, v.created_at::timestamptz
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'da000000-0000-4000-8000-000000000001'::uuid, 1,
+     NULL, '素材の切断・外径', 'O1001', '突き出し 65mm。チャック圧は低めに。', 0,
+     '2026-07-05T13:00:00+09'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid, 1,
+     '2026-07-22T10:00:00+09', '段加工（荒・仕上げ）', 'O1201', '仕上げ代 0.05mm。', 1,
+     '2026-07-05T13:00:00+09'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid, 2,
+     NULL, '段加工（荒・仕上げ）', 'O1202', '仕上げ代 0.03mm に変更（v2）。', 1,
+     '2026-07-22T10:00:00+09'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'da000000-0000-4000-8000-000000000003'::uuid, 1,
+     NULL, '段加工（マシニング用）', 'O2201', NULL, 2,
+     '2026-07-05T13:00:00+09')
+  ) AS v(id, program_key, revision, superseded_at, name, program_number, notes, sort_order, created_at)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO app.design_program_steps (program_id, process_step_id)
+SELECT v.program_id, c.id
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'CUTTING'),
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'CENTERLESS'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'STEP_MACHINING'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'STEP_MACHINING'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'STEP_MACHINING')
+  ) AS v(program_id, code)
+  JOIN app.process_step_catalog c ON c.code = v.code
+ON CONFLICT DO NOTHING;
+
+INSERT INTO app.design_program_machine_models (program_id, machine_model_id)
+SELECT v.program_id, mm.id
+  FROM (VALUES
+    ('da000000-0000-4000-8000-000000000001'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000002'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000004'::uuid, 'NC-LATHE-A'),
+    ('da000000-0000-4000-8000-000000000003'::uuid, 'MC-V5')
+  ) AS v(program_id, code)
+  JOIN app.machine_models mm ON mm.code = v.code
+ON CONFLICT DO NOTHING;
+
+-- 使用記録（工程を開始したときに出ていた版）。
+INSERT INTO app.work_order_step_programs (step_id, program_id, recorded_at)
+VALUES
+  ('dc011000-0000-4000-8000-000000000002'::uuid, 'da000000-0000-4000-8000-000000000001'::uuid,
+   '2026-07-16T09:10:00+09'),
+  ('dc011000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000002'::uuid,
+   '2026-07-21T09:00:00+09'),
+  ('dc011000-0000-4000-8000-000000000004'::uuid, 'da000000-0000-4000-8000-000000000003'::uuid,
+   '2026-07-21T09:00:00+09')
+ON CONFLICT DO NOTHING;
 
 COMMIT;

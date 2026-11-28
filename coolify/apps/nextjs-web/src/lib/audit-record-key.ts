@@ -1,8 +1,10 @@
 /**
  * audit-record-key.ts — audit-record-key-core.ts の続き。server-only.
  *
- * `numberToUuid` 形（保存済みの一意な番号 → uuid PK）だけは 1 クエリが要る
- * ので、ここに分離した（core 側は素の TS のまま・vitest で全形をテストする）。
+ * 1 クエリが要る形だけをここに分離した（core 側は素の TS のまま・vitest で
+ * 全形をテストする）:
+ *  - `docKey` 形で、番号だけ・旧番号で渡されたもの（法人を引く）
+ *  - `numberToUuid` 形（保存済みの一意な番号 → uuid PK）
  * `recordAudit` は既に async・best-effort・トランザクション外なので、この
  * 1 クエリを足すコストは許容できる。
  *
@@ -19,66 +21,51 @@ import {
   resolveAuditRecordKeySync,
 } from "./audit-record-key-core";
 import { prisma } from "./db";
-import { parseDocKey, parseOrderLineKey } from "./doc-number";
+import { DOC_TABLE_PREFIX } from "./doc-number";
+import { toDocRef } from "./doc-ref";
 
 export interface AuditKeyResolution {
   key: string | null;
   /** 対象行の created_at。docKey / numberToUuid 形で、かつ解決できたときだけ。 */
   since?: Date;
+  /**
+   * 同じ書類を指す**旧い形のキー**（読み出し専用）。素材発注書・購買依頼・
+   * 設計依頼書・注文明細は、番号設計 PR-C まで行の uuid をキーにしていた。
+   * その頃の監査行を履歴から落とさないために、読み出し側はこれも一緒に引く。
+   */
+  legacyKeys?: string[];
 }
 
-/** docKey 形の複合キーを持つ 7 表 → createdAt を引く 1 クエリ。 */
-async function docKeyCreatedAt(
+/** PR-C より前は uuid をキーにしていた表（{@link AuditKeyResolution.legacyKeys}）。 */
+const UUID_KEYED_BEFORE = new Set([
+  "material_purchase_orders",
+  "purchase_requests",
+  "design_requests",
+  "order_lines",
+]);
+
+/**
+ * docKey 形の表 → 参照（doc_ref / line_ref）で行を引き、created_at と uuid を返す。
+ * 表名は登録簿（DOC_TABLE_PREFIX）にあるものだけ — 値は必ず $1。
+ */
+async function docRowByRef(
   tableName: string,
-  recordId: string,
-): Promise<Date | undefined> {
-  const key = parseDocKey(recordId);
-  if (!key) return undefined;
-  const where = { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } };
-  switch (tableName) {
-    case "quotes":
-      return (
-        await prisma.quote.findUnique({ where, select: { createdAt: true } })
-      )?.createdAt;
-    case "estimates":
-      return (
-        await prisma.estimate.findUnique({ where, select: { createdAt: true } })
-      )?.createdAt;
-    case "price_list_entries":
-      return (
-        await prisma.priceListEntry.findUnique({
-          where,
-          select: { createdAt: true },
-        })
-      )?.createdAt;
-    case "order_acceptances":
-      return (
-        await prisma.orderAcceptance.findUnique({
-          where,
-          select: { createdAt: true },
-        })
-      )?.createdAt;
-    case "delivery_orders":
-      return (
-        await prisma.deliveryOrder.findUnique({
-          where,
-          select: { createdAt: true },
-        })
-      )?.createdAt;
-    case "delivery_notes":
-      return (
-        await prisma.deliveryNote.findUnique({
-          where,
-          select: { createdAt: true },
-        })
-      )?.createdAt;
-    case "invoices":
-      return (
-        await prisma.invoice.findUnique({ where, select: { createdAt: true } })
-      )?.createdAt;
-    default:
-      return undefined;
-  }
+  ref: string,
+): Promise<{ id: string; createdAt: Date } | undefined> {
+  const column =
+    tableName === "order_lines"
+      ? "line_ref"
+      : Object.hasOwn(DOC_TABLE_PREFIX, tableName)
+        ? "doc_ref"
+        : null;
+  if (!column) return undefined;
+  const rows = await prisma.$queryRawUnsafe<{ id: string; created_at: Date }[]>(
+    `SELECT d."id"::text AS id, d."created_at" FROM "app"."${tableName}" d
+      WHERE d."${column}" = $1 LIMIT 1`,
+    ref,
+  );
+  const row = rows[0];
+  return row ? { id: row.id, createdAt: row.created_at } : undefined;
 }
 
 /** numberToUuid 形（保存済みの一意な番号 / 特殊キー → uuid）。 */
@@ -92,27 +79,6 @@ async function resolveLookupKey(
     : ({ id: true } as const);
 
   switch (tableName) {
-    case "material_purchase_orders": {
-      const row = await prisma.materialPurchaseOrder.findUnique({
-        where: { poNumber: recordId },
-        select,
-      });
-      return row ? { key: row.id, since: row.createdAt } : { key: null };
-    }
-    case "purchase_requests": {
-      const row = await prisma.purchaseRequest.findUnique({
-        where: { requestNumber: recordId },
-        select,
-      });
-      return row ? { key: row.id, since: row.createdAt } : { key: null };
-    }
-    case "design_requests": {
-      const row = await prisma.designRequest.findUnique({
-        where: { requestNumber: recordId },
-        select,
-      });
-      return row ? { key: row.id, since: row.createdAt } : { key: null };
-    }
     case "form_responses": {
       const row = await prisma.formResponse.findUnique({
         where: { responseNumber: recordId },
@@ -143,21 +109,6 @@ async function resolveLookupKey(
       });
       return row ? { key: row.id, since: row.createdAt } : { key: null };
     }
-    case "order_lines": {
-      const key = parseOrderLineKey(recordId);
-      if (!key) return { key: null };
-      const row = await prisma.orderLine.findUnique({
-        where: {
-          acceptanceYearMonth_acceptanceSeq_branch: {
-            acceptanceYearMonth: key.yearMonth,
-            acceptanceSeq: key.seq,
-            branch: key.branch,
-          },
-        },
-        select,
-      });
-      return row ? { key: row.id, since: row.createdAt } : { key: null };
-    }
     case "users": {
       // 管理画面は uuid をそのまま渡す — 既にキーなのでクエリ不要。
       // プロフィール/アバターは username を渡す — 1 クエリで突合する。
@@ -174,7 +125,8 @@ async function resolveLookupKey(
 }
 
 /**
- * `(tableName, recordId)` → 安定キー。**例外を投げない** — 失敗しても
+ * `(tableName, recordId)` → 安定キー。書類は id（`CKK~QOT-…`）・参照
+ * （`CKK/QOT-…`）・番号だけ・旧番号のどれで渡されてもよい。**例外を投げない** — 失敗しても
  * `recordAudit` の監査書き込み自体を止めないため（呼び出し元の唯一の
  * try/catch を汚さない）。
  *
@@ -191,17 +143,22 @@ export async function resolveAuditRecordKey(
   if (recordId == null || recordId.length === 0) return { key: null };
   try {
     const sync = resolveAuditRecordKeySync(tableName, recordId);
-    if (sync !== undefined) {
-      if (
-        sync !== null &&
-        opts.needSince &&
-        auditKeyShape(tableName) === "docKey"
-      ) {
-        const since = await docKeyCreatedAt(tableName, recordId);
-        return { key: sync, since };
-      }
-      return { key: sync };
+    if (auditKeyShape(tableName) === "docKey") {
+      // 書類番号で指す書類 — キーは法人コード付きの参照（lib/doc-ref-core.ts）。
+      // 法人コード付きで渡されればその場で決まる（sync）。番号だけ・旧番号は
+      // 書類を引く。見つからなければ null（削除済み。record_id だけで残る）。
+      const key =
+        sync === undefined ? await toDocRef(tableName, recordId) : sync;
+      if (key == null) return { key: null };
+      if (!opts.needSince) return { key };
+      const row = await docRowByRef(tableName, key);
+      return {
+        key,
+        since: row?.createdAt,
+        legacyKeys: row && UUID_KEYED_BEFORE.has(tableName) ? [row.id] : [],
+      };
     }
+    if (sync !== undefined) return { key: sync };
     return await resolveLookupKey(tableName, recordId, opts.needSince ?? false);
   } catch (e) {
     console.error("resolveAuditRecordKey failed", tableName, e);

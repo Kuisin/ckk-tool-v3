@@ -1,8 +1,8 @@
 /**
  * data.ts — server-side fetch/mapping for the 見積書 pages.
  *
- * sales.quotes is keyed (year_month, seq) — QOT-YYYYMM-NNNNN is derived and
- * doubles as the URL id.
+ * 番号（QOT-FFFF-NNNNN）は DB が払い出す。行は参照 doc_ref で引き、DTO の
+ * quoteNumber は id の姿（CKK~QOT-2026-00001 — URL・Server Action の引数）。
  */
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
@@ -10,12 +10,9 @@ import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Quote } from "@/components/sales/quotes/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
-import {
-  type DocKey,
-  formatProductNumber,
-  formatQuoteNumber,
-} from "@/lib/doc-number";
+import { type DocKey, docIdOf, formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { TOOL_LABEL_SELECT, toolLabel } from "@/lib/tool-label";
 import { ENTRY_INCLUDE, mapEntry } from "../price-lists/data";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -30,7 +27,9 @@ const QUOTE_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 名称・コードは品目側から読む。
+    // 再研磨の明細は研ぎ直す工具も（他社製品はメーカー名から出す）。
+    include: { item: true, toolItem: { select: TOOL_LABEL_SELECT } },
   },
 };
 
@@ -38,16 +37,18 @@ type QuoteRow = NonNullable<Awaited<ReturnType<typeof findQuoteRow>>>;
 
 function findQuoteRow(key: DocKey) {
   return prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: QUOTE_INCLUDE,
   });
 }
 
 export function mapQuote(r: QuoteRow): Quote {
-  const number = formatQuoteNumber({ yearMonth: r.yearMonth, seq: r.seq });
+  const number = docIdOf(r);
   return {
     id: number,
     quoteNumber: number,
+    legacyNumber: r.legacyNumber,
+    ownCompanyId: r.ownCompanyId,
     customerId: r.customerBpId,
     customerName: localized(r.customerBp.name as LocalizedText | null),
     customerBranchId: r.customerBranchBpId,
@@ -62,12 +63,18 @@ export function mapQuote(r: QuoteRow): Quote {
     notes: r.notes,
     items: r.items.map((it) => ({
       id: it.id,
-      productId: String(it.productId),
+      itemId: String(it.itemId ?? ""),
+      productCode: it.item?.code ?? null,
       productName: (() => {
-        const code = formatProductNumber(it.product.yearMonth, it.product.seq);
-        const nm = localized(it.product.name as LocalizedText | null);
+        const code = formatProductNumber(
+          it.item?.yearMonth ?? null,
+          it.item?.seq ?? null,
+        );
+        const nm = localized(it.item?.name as LocalizedText | null);
         return code ? `${nm} ${code}` : nm;
       })(),
+      toolItemId: it.toolItemId != null ? String(it.toolItemId) : null,
+      toolLabel: it.toolItem ? toolLabel(it.toolItem) : null,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: Number(it.unitPrice),
@@ -99,7 +106,7 @@ export async function fetchQuotes(): Promise<Quote[]> {
       "createdBy",
     ) as Prisma.QuoteWhereInput,
     include: QUOTE_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   return rows.map(mapQuote);
 }
@@ -123,31 +130,46 @@ export async function fetchEntriesForQuote(
   const tiers = await prisma.priceListTier.findMany({
     where: {
       quoteItems: {
-        some: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
+        some: { quote: { docRef: key.docRef } },
       },
     },
-    select: { variant: { select: { entryYearMonth: true, entrySeq: true } } },
+    select: { variant: { select: { entryId: true } } },
   });
-  const seen = new Set<string>();
-  const keys = tiers
-    .map((t) => t.variant)
-    .filter((v) => {
-      const k = `${v.entryYearMonth}-${v.entrySeq}`;
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  if (keys.length === 0) return [];
+  const ids = [...new Set(tiers.map((t) => t.variant.entryId))];
+  if (ids.length === 0) return [];
+  const rows = await prisma.priceListEntry.findMany({
+    where: { id: { in: ids } },
+    include: ENTRY_INCLUDE,
+  });
+  return rows.map(mapEntry);
+}
+
+/**
+ * 顧客 × **発行会社**の価格表エントリ — 保存時の価格解決用（見積書・注文請書・
+ * 出荷の引き直し）。価格表は会社ごとに別々なので、書類の発行会社の価格表だけを
+ * 引く。`ownCompanyId` が null / undefined のときは既定の法人（DB の列既定値と
+ * 同じ — 発行会社を決めずに作られた書類はそこへ入る）。
+ */
+export async function fetchCompanyEntriesForCustomer(
+  customerBpId: string,
+  ownCompanyId: number | null | undefined,
+): Promise<PriceListEntry[]> {
   const rows = await prisma.priceListEntry.findMany({
     where: {
-      OR: keys.map((v) => ({ yearMonth: v.entryYearMonth, seq: v.entrySeq })),
+      customerBpId,
+      ...(ownCompanyId != null
+        ? { ownCompanyId }
+        : { ownCompany: { isDefault: true } }),
     },
     include: ENTRY_INCLUDE,
   });
   return rows.map(mapEntry);
 }
 
-/** 顧客の全価格表エントリ — 見積フォームのライブ価格解決用。 */
+/**
+ * 顧客の全価格表エントリ（全社分）— 見積フォームのライブ価格解決用。
+ * フォームは発行会社で絞ってから使う（price-lists/company-sync entriesForCompany）。
+ */
 export async function fetchEntriesForCustomer(
   customerBpId?: string,
 ): Promise<PriceListEntry[]> {
@@ -172,15 +194,15 @@ export async function fetchCustomerTaxCategories(): Promise<
 }
 
 /**
- * 製品 id → 課税区分（tax_categories.id）。**価格表に載っている製品だけ**に絞る —
+ * 品目 id → 課税区分（tax_categories.id）。**価格表に載っている製品だけ**に絞る —
  * 見積フォームが選べるのはその製品だけなので、全製品を配ると props が無駄に太る。
  */
 export async function fetchProductTaxCategories(
-  productIds: readonly number[],
+  itemIds: readonly number[],
 ): Promise<Record<string, number | null>> {
-  if (productIds.length === 0) return {};
-  const rows = await prisma.product.findMany({
-    where: { id: { in: [...new Set(productIds)] } },
+  if (itemIds.length === 0) return {};
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] } },
     select: { id: true, taxCategoryId: true },
   });
   return Object.fromEntries(

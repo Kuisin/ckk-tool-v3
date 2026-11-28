@@ -1,9 +1,10 @@
 /**
  * model.ts — 購買依頼 (PU01) view-model types + pure helpers.
  *
- * Model (app.purchase_requests — uuid PK + request_number 文字列 unique):
- *   依頼番号 PRQ-YYYYMM-NNNNN は nextDocumentNumber("PURCHASE_REQUEST") で
- *   採番して文字列保存する。URL id = request_number。
+ * Model (app.purchase_requests — uuid PK + doc_ref unique):
+ *   依頼番号 PRQ-FFFF-NNNNN は DB が INSERT 時に払い出す（自社法人 × 会計年度）。
+ *   画面の requestNumber は **id の姿**（`CKK~PRQ-2026-00001`）— URL と
+ *   Server Action にそのまま渡す。表示は docNo / <DocNumber> で番号だけにする。
  *   承認フロー DRAFT→REQUESTED→APPROVED→ORDERED（+REJECTED / CANCELLED）は
  *   遷移列（requestedAt/By …）+ history Json で記録する（素材発注書と同型）。
  *   APPROVED から「発注書へ変換」で material_purchase_orders の DRAFT を生成し
@@ -23,7 +24,10 @@ export type PurchaseRequestStatus =
 
 /** 一覧 (PU01) の1行。 */
 export interface PurchaseRequestRow {
+  /** id の姿（`CKK~PRQ-2026-00001`）。 */
   requestNumber: string;
+  /** 旧番号（PRQ-YYYYMM-NNNNN）。検索用。 */
+  legacyNumber: string | null;
   requesterName: string;
   /** 先頭明細の素材コード（他 N 件表示用）。 */
   primaryMaterial: string | null;
@@ -37,8 +41,8 @@ export interface PurchaseRequestRow {
 /** 依頼明細（purchase_request_items）。 */
 export interface PurchaseRequestItemView {
   id: string;
-  /** 素材の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  materialId: string;
+  /** 選んだ素材の品目 id（items.id）を文字列で保持 — SearchSelect の値と揃える。 */
+  itemId: string;
   materialCode: string;
   materialName: string;
   plantId: string | null;
@@ -62,7 +66,10 @@ export interface PurchaseRequestHistoryView {
 export interface PurchaseRequestView {
   /** DB uuid — 内部参照用。 */
   id: string;
+  /** id の姿（`CKK~PRQ-2026-00001`）。 */
   requestNumber: string;
+  /** 旧番号（番号設計の移行前の番号）。無ければ null。 */
+  legacyNumber: string | null;
   status: PurchaseRequestStatus;
   purpose: string | null;
   requesterName: string;
@@ -71,7 +78,7 @@ export interface PurchaseRequestView {
   orderedAt: string | null;
   cancelledAt: string | null;
   cancelReason: string | null;
-  /** 変換で生成した発注書番号（ORDERED 時のみ）。 */
+  /** 変換で生成した発注書（ORDERED 時のみ）。id の姿（`CKK~PO-2026-00001`）。 */
   purchaseOrderNumber: string | null;
   notes: string | null;
   items: PurchaseRequestItemView[];

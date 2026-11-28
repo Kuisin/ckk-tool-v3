@@ -19,8 +19,9 @@ import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, targetPlantsInScope } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { onMaterialReceipt } from "@/lib/inventory";
+import { movementOpener, onMaterialReceipt } from "@/lib/inventory";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
+import { findOpenPoConflicts, openPoErrorMessage } from "@/lib/open-po-guard";
 import { learnPurchaseAliases } from "@/lib/purchase-intake";
 import {
   type ActionResult,
@@ -36,9 +37,8 @@ const MAX_LINES = 200;
 
 function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   const line = z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -50,8 +50,8 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     /** 学習用 — 書類に印字されていた表記（そのまま）。 */
     materialText: z.string().nullable(),
     materialCode: z.string().nullable(),
-    /** 学習用 — 突合が入れていた素材 id（人の訂正だけを覚えるための比較元）。 */
-    draftMaterialId: z.string().nullable().optional(),
+    /** 学習用 — 突合が入れていた品目 id（人の訂正だけを覚えるための比較元）。 */
+    draftItemId: z.string().nullable().optional(),
   });
 
   return z.object({
@@ -60,6 +60,8 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     extractedSupplierName: z.string().nullable(),
     /** 学習用 — 突合が入れていた仕入先 id。 */
     draftSupplierBpId: z.string().nullable().optional(),
+    /** 1 件登録と同じ確認（発注済み・未入荷ありの素材を別の購入として入れる）。 */
+    acknowledgeOpenPo: z.boolean().optional().default(false),
     lines: z
       .array(line)
       .min(1, tr("purchase.intake.selectAtLeastOneLine"))
@@ -67,7 +69,7 @@ function intakeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   });
 }
 
-export type DeliveryIntakeInput = z.infer<ReturnType<typeof intakeInputSchema>>;
+export type DeliveryIntakeInput = z.input<ReturnType<typeof intakeInputSchema>>;
 
 /**
  * 納品書 1 枚ぶんの入荷をまとめて登録する。
@@ -87,6 +89,20 @@ export async function createReceiptsFromDelivery(
   }
   const v = parsed.data;
 
+  // 1 件登録と同じ確認 — 発注した素材を納品書から直接調達として入れると、
+  // あとで発注書の「入荷完了」で二重に入庫する。
+  if (!v.acknowledgeOpenPo) {
+    const conflicts = await findOpenPoConflicts(
+      v.lines.map((l) => ({
+        itemId: Number(l.itemId),
+        supplierBpId: v.supplierBpId,
+      })),
+    );
+    if (conflicts.length > 0) {
+      return actionError(openPoErrorMessage(conflicts, tr));
+    }
+  }
+
   // 入荷先拠点は自分の拠点集合の中（1 件登録と同じ PLANT ∪ OWN 規則）。
   const plantIds = v.lines.map((l) => (l.plantId ? Number(l.plantId) : null));
   if (!targetPlantsInScope(authz.access, authz.userId, plantIds)) {
@@ -94,44 +110,51 @@ export async function createReceiptsFromDelivery(
   }
 
   try {
-    // 単位は素材マスタの単位で固定 — 「本」の台帳へ「kg」を足させない。
+    // 単位は素材（品目）の単位で固定 — 「本」の台帳へ「kg」を足させない。
     // 行ごとに引かず 1 回でまとめて読む。
-    const materialIds = [...new Set(v.lines.map((l) => Number(l.materialId)))];
-    if (materialIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+    const itemIds = [...new Set(v.lines.map((l) => Number(l.itemId)))];
+    if (itemIds.some((id) => !Number.isInteger(id) || id <= 0)) {
       return actionError(tr("common.targetRecordNotFound"));
     }
-    const materials = await prisma.material.findMany({
-      where: { id: { in: materialIds } },
+    const items = await prisma.item.findMany({
+      where: { id: { in: itemIds }, itemType: "MATERIAL" },
       select: { id: true, unit: true },
     });
-    const unitById = new Map(materials.map((m) => [m.id, m.unit]));
-    if (unitById.size !== materialIds.length) {
+    const unitById = new Map(items.map((m) => [m.id, m.unit]));
+    if (unitById.size !== itemIds.length) {
       return actionError(tr("common.targetRecordNotFound"));
     }
 
     const actor = await getCurrentActorId();
+    // 入出庫伝票の番号は DB が INSERT 時に払い出す。
+    // **納品書 1 枚 = 伝票 1 枚**（明細が N 行）— 取り込んでいる出来事は
+    // 「この納品書が届いた」の 1 回で、入荷行が何行に割れるかは都合に過ぎない。
     // **1 トランザクション**: 全行の作成 + 在庫計上。1 行でも落ちれば全部戻る。
     const created = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        cause: "MATERIAL_RECEIPT",
+        sourceType: "material_receipts",
+      });
       const ids: string[] = [];
       for (const line of v.lines) {
-        const materialId = Number(line.materialId);
+        const itemId = Number(line.itemId);
         const row = await tx.materialReceipt.create({
           data: {
-            materialId,
+            itemId,
             supplierBpId: v.supplierBpId,
             // 納品書からの取込は発注明細に紐付けない（どの明細の分納かは
             // 紙からは決まらない — 発注入荷は PU02 の「入荷完了」が作る）。
             purchaseOrderItemId: null,
             plantId: line.plantId ? Number(line.plantId) : null,
             quantity: line.quantity,
-            unit: unitById.get(materialId) as string,
+            unit: unitById.get(itemId) as string,
             receivedAt: new Date(line.receivedAt),
             notes: line.notes.trim() || null,
             createdBy: actor,
           },
           select: { id: true },
         });
-        await onMaterialReceipt(row.id, tx);
+        await onMaterialReceipt(row.id, tx, openMovement);
         ids.push(row.id);
       }
       return ids;
@@ -145,11 +168,11 @@ export async function createReceiptsFromDelivery(
         tableName: "material_receipts",
         recordId: id,
         after: {
-          materialId: Number(line.materialId),
+          itemId: Number(line.itemId),
           supplierBpId: v.supplierBpId,
           plantId: line.plantId ? Number(line.plantId) : null,
           quantity: line.quantity,
-          unit: unitById.get(Number(line.materialId)),
+          unit: unitById.get(Number(line.itemId)),
           receivedAt: line.receivedAt,
           source: "delivery-note-intake",
         },
@@ -164,14 +187,14 @@ export async function createReceiptsFromDelivery(
       lines: v.lines.map((l) => ({
         materialText: l.materialText,
         materialCode: l.materialCode,
-        materialId: l.materialId,
-        draftMaterialId: l.draftMaterialId,
+        itemId: l.itemId,
+        draftItemId: l.draftItemId,
       })),
       actorId: actor,
     });
 
     revalidatePath(BASE_PATH);
-    revalidatePath("/production/inventory");
+    revalidatePath("/inventory");
     return actionOk({ ids: created });
   } catch (e) {
     // 在庫ガード（lib/inventory）の業務エラーは構造化ノートなので翻訳して返す。

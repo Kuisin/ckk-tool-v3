@@ -1,8 +1,9 @@
 /**
  * data.ts — 納品書 (SH02) ページのサーバーサイド取得・マッピング。
  *
- * app.delivery_notes は (year_month, seq) の複合キー — 表示番号
- * DRN-YYYYMM-NNNNN は導出（保存しない）で、URL id を兼ねる。
+ * 納品書番号 DRN-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。行は
+ * 参照 doc_ref（`CKK/DRN-…`）で引き、画面の DTO は id（`CKK~DRN-…`）で持つ
+ * — URL id を兼ねる（lib/doc-number.ts）。
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
@@ -13,12 +14,14 @@ import type {
   DeliveryNoteStatus,
 } from "@/components/shipping/delivery-notes/model";
 import { checkPermission } from "@/lib/authz";
+import { customerFacingProductLabel } from "@/lib/customer-product-code-core";
+import { fetchCustomerProductLabels } from "@/lib/customer-product-codes";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatDocNumber,
+  docIdOf,
   formatProductNumber,
-  orderLineNumberOf,
+  orderLineIdOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -30,15 +33,12 @@ const DELIVERY_NOTE_INCLUDE = {
   // 1 出荷書は複数の注文明細を束ねられるので、明細行から番号を集める。
   deliveryOrder: {
     include: {
+      // 税率スナップショットを持たない旧データのフォールバック元
+      // （請求書・見積書と同じく「顧客の課税区分」へ落ちる）。
+      customerBp: { select: { customerAttrs: { select: { taxType: true } } } },
       items: {
         select: {
-          orderLine: {
-            select: {
-              acceptanceYearMonth: true,
-              acceptanceSeq: true,
-              branch: true,
-            },
-          },
+          orderLine: { select: { lineRef: true } },
         },
       },
     },
@@ -50,7 +50,8 @@ const DELIVERY_NOTE_INCLUDE = {
   createdByUser: { select: { displayName: true } },
   items: {
     orderBy: { sortOrder: "asc" as const },
-    include: { product: true },
+    // 品目統合 第 2 段 C — 表示は品目側から読む。
+    include: { item: true },
   },
 };
 
@@ -58,7 +59,7 @@ type DeliveryNoteRow = NonNullable<Awaited<ReturnType<typeof findRow>>>;
 
 function findRow(key: DocKey) {
   return prisma.deliveryNote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     include: DELIVERY_NOTE_INCLUDE,
   });
 }
@@ -69,9 +70,10 @@ function productLabel(
     name: unknown;
     yearMonth: string | null;
     seq: number | null;
-  },
+  } | null,
   locale = "ja",
 ): string {
+  if (!p) return "—";
   const code = formatProductNumber(p.yearMonth, p.seq);
   const name = localized(p.name as LocalizedText | null, locale);
   return code ? `${name} ${code}` : name;
@@ -86,33 +88,31 @@ function mapDeliveryNote(
   r: DeliveryNoteRow,
   forDocument = false,
 ): DeliveryNote {
-  const number = formatDocNumber("DRN", {
-    yearMonth: r.yearMonth,
-    seq: r.seq,
-  });
+  // 画面の DTO は id（法人コード + 番号）で持つ — 表示側が番号だけにする。
+  const number = docIdOf(r);
   const recipientDocumentLocale =
     r.recipientBranchBp?.documentLocale ?? r.recipientBp.documentLocale ?? null;
   const loc = forDocument ? (recipientDocumentLocale ?? "ja") : "ja";
   const items = r.items.map((it) => ({
     id: it.id,
-    productId: String(it.productId),
-    productName: productLabel(it.product, loc),
+    itemId: String(it.itemId ?? ""),
+    productCode: it.item?.code ?? null,
+    productName: productLabel(it.item, loc),
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
     amount: it.amount != null ? Number(it.amount) : null,
+    taxRate: it.taxRate != null ? Number(it.taxRate) : null,
     notes: it.notes,
   }));
   return {
     id: number,
     deliveryNumber: number,
-    deliveryOrderNumber: formatDocNumber("DOR", {
-      yearMonth: r.deliveryOrderYearMonth,
-      seq: r.deliveryOrderSeq,
-    }),
+    legacyNumber: r.legacyNumber,
+    deliveryOrderNumber: docIdOf(r.deliveryOrder),
     orderLineNumbers: [
       ...new Set(
         r.deliveryOrder.items
-          .map((it) => (it.orderLine ? orderLineNumberOf(it.orderLine) : null))
+          .map((it) => (it.orderLine ? orderLineIdOf(it.orderLine) : null))
           .filter((n): n is string => n != null),
       ),
     ],
@@ -140,6 +140,7 @@ function mapDeliveryNote(
     totalAmount: r.includePrice
       ? items.reduce((sum, it) => sum + (it.amount ?? 0), 0)
       : null,
+    customerTaxType: r.deliveryOrder.customerBp.customerAttrs?.taxType ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -158,7 +159,7 @@ export async function fetchDeliveryNotes(): Promise<DeliveryNote[]> {
       ownColumn: "createdBy",
     }) as Prisma.DeliveryNoteWhereInput,
     include: DELIVERY_NOTE_INCLUDE,
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    orderBy: [{ fiscalYear: "desc" }, { docSeq: "desc" }, { id: "desc" }],
   });
   // 引数付きで渡さない（`map(mapDeliveryNote)` は添字が第 2 引数に入るため）。
   return rows.map((r) => mapDeliveryNote(r));
@@ -198,5 +199,24 @@ async function fetchDeliveryNoteRow(
   ) {
     return null;
   }
-  return mapDeliveryNote(row, forDocument);
+  const note = mapDeliveryNote(row, forDocument);
+  // 相手の品番を品名欄に併記する（顧客品番 — MS04）。**宛先の取引先**で引く
+  // ので、閲覧者が誰でも同じものが出る（書類の言語と同じ考え方）。登録が
+  // 無ければ自社の品名だけ = 従来どおり。1 件取得のときだけ行う — 一覧で
+  // やると 1 行ごとに引くことになる。
+  const labels = await fetchCustomerProductLabels(
+    row.recipientBpId,
+    note.items.map((it) => Number(it.itemId)),
+  );
+  if (labels.size === 0) return note;
+  return {
+    ...note,
+    items: note.items.map((it) => ({
+      ...it,
+      productName: customerFacingProductLabel(
+        it.productName,
+        labels.get(Number(it.itemId)),
+      ),
+    })),
+  };
 }

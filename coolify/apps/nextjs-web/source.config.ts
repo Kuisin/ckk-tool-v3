@@ -10,11 +10,23 @@
  * 配信のため processed Markdown を含める。
  */
 
-import { defineConfig, defineDocs } from "fumadocs-mdx/config";
+import { remarkMdxMermaid } from "fumadocs-core/mdx-plugins/remark-mdx-mermaid";
+import {
+  defineConfig,
+  defineDocs,
+  frontmatterSchema,
+} from "fumadocs-mdx/config";
+import { z } from "zod";
+import { remarkManualVideo } from "./src/lib/remark-manual-video";
 
 export const manual = defineDocs({
   dir: "content/manual",
   docs: {
+    // `_openapi` は fumadocs-openapi が生成するリファレンスの目印
+    // （content/manual/integration/reference — 生成物。api-docs-sync.test.ts）。
+    schema: frontmatterSchema.extend({
+      _openapi: z.looseObject({}).optional(),
+    }),
     postprocess: { includeProcessedMarkdown: true },
   },
 });
@@ -42,5 +54,17 @@ export default defineConfig({
      * ローカル画像（public/ 配下）は従来どおり測られる。
      */
     remarkImageOptions: { external: false },
+    /**
+     * ```mermaid フェンスを `<Mermaid chart="…" />` に置き換える（描くのは
+     * components/docs/Mermaid.tsx — ブラウザ側）。操作ページの中の小さな図
+     * （状態の移り変わりなど）用で、プロセス編のスイムレーン図（tools/swimlane →
+     * ビルド時 SVG）はそのまま。
+     */
+    /**
+     * ```video フェンス（中身は動画の id）を `<ManualVideo id="…" />` に置き換える
+     * （components/docs/ManualVideo.tsx）。動画そのものはビルドに入らない —
+     * デプロイ後に録画アプリが書き出し、ページを開いたときに有無を見る。
+     */
+    remarkPlugins: [remarkMdxMermaid, remarkManualVideo],
   },
 });

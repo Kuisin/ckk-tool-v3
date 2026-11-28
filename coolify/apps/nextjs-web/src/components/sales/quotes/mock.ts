@@ -33,7 +33,7 @@ const fixtureTr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 /** Fixture-bound resolver — 価格表 fixtures + (顧客 × 製品 × 種別 × 数量). */
 export function resolveUnitPrice(
   customerId: string,
-  productId: string,
+  itemId: string,
   orderType: string,
   quantity: number,
   tr: Tr,
@@ -42,7 +42,7 @@ export function resolveUnitPrice(
   return resolveUnitPriceFromEntries(
     MOCK_PRICE_ENTRIES,
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     tr,
@@ -67,7 +67,7 @@ export function priceEntriesForQuote(q: Quote, tr: Tr) {
 function buildItem(
   id: string,
   customerId: string,
-  productId: string,
+  itemId: string,
   productName: string,
   orderType: string,
   quantity: number,
@@ -78,7 +78,7 @@ function buildItem(
 ): QuoteItem {
   const resolved = resolveUnitPrice(
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     fixtureTr,
@@ -87,8 +87,13 @@ function buildItem(
   const discountAmount = resolved?.discountAmount ?? 0;
   return {
     id,
-    productId,
+    itemId,
+    // 価格の試験しか使わない見本なので、帳票にしか出ない製品コードは持たせない
+    // （採番前のレガシー品目と同じ形 = 欄が空で刷られる）。
+    productCode: null,
     productName,
+    toolItemId: null,
+    toolLabel: null,
     orderType,
     quantity,
     unitPrice,
@@ -108,8 +113,8 @@ function buildItem(
  * 各行の単価は (顧客 × 製品 × 注文種別 × 数量) の価格表 tier から解決される。
  */
 const TIERED_QUOTE: Quote = {
-  id: "QOT-202602-00012",
-  quoteNumber: "QOT-202602-00012",
+  id: "CKK~QOT-2026-00012",
+  quoteNumber: "CKK~QOT-2026-00012",
   customerId: "bp-001",
   customerName: "株式会社ABC製作所",
   customerBranchId: "bp-001-t",
@@ -185,8 +190,8 @@ const TIERED_QUOTE: Quote = {
 };
 
 const SINGLE_QUOTE: Quote = {
-  id: "QOT-202603-00021",
-  quoteNumber: "QOT-202603-00021",
+  id: "CKK~QOT-2026-00021",
+  quoteNumber: "CKK~QOT-2026-00021",
   customerId: "bp-002",
   customerName: "合同会社XYZ工業",
   customerBranchId: null,

@@ -78,6 +78,7 @@
     "disabled2": "無効化しました",
     "display": "表示",
     "error2": "エラー",
+    "warning": "注意",
     "category": "カテゴリ",
     "apps": "アプリ",
     "unknownError": "不明なエラー",
@@ -435,6 +436,13 @@
     "workOrderNumber": "指示書番号",
     "reserved": "予約数",
     "lotNumber": "ロット番号",
+    "markingNumber": "印字番号",
+    "markingPerPiece": "1 本ずつ",
+    "markingPerLine": "明細ごと",
+    "markingRange": "{first} 〜 {last}",
+    "markingNotIssued": "未採番（注文確定時に採番）",
+    "markingPerSplit": "分割ごと",
+    "markingSplit": "分割 {split}",
     "orderLineNumber": "注文明細番号",
     "notPlanned": "未手配",
     "forStock": "在庫向け",
@@ -488,6 +496,7 @@
     "lineNotesOptional": "行の備考（任意）",
     "addLine": "明細を追加",
     "requestNumber": "依頼番号",
+    "legacyNumber": "旧番号",
     "approvedAt": "承認日時",
     "requestedDate2": "希望納期",
     "searchProducts": "製品を検索",
@@ -557,7 +566,6 @@
     "priceEstimateResult": "価格試算結果",
     "materialPriceHistory": "素材価格推移",
     "baseUnitPriceQuantityScalingIs": "基準単価（数量スケールは価格表の倍率で設定）",
-    "baseQuantity": "基準数量",
     "minimumUnitPrice": "最低単価",
     "estimatedUnitPriceBase": "見積単価（基準）",
     "costBreakdownPerPiece": "原価内訳（1本あたり）",
@@ -643,6 +651,7 @@
     "products": "製品",
     "defectType": "不良種類",
     "product": "製品",
+    "standardPrice": "標準価格",
     "guest": "ゲスト",
     "site": "拠点",
     "detail": "詳細",
@@ -804,7 +813,21 @@
     "priceListInactive": "価格表が無効",
     "priceListExpired": "価格表の有効期間外",
     "dateFrom": "開始日",
-    "dateTo": "終了日"
+    "dateTo": "終了日",
+    "billTo": "請求先",
+    "stockTake": "棚卸",
+    "stockMovement": "入出庫伝票",
+    "invoicePayment": "請求書の入金",
+    "notPendingApproval": "承認依頼中ではありません",
+    "designVersion": "設計図の版",
+    "priceListUnapproved": "価格表が承認待ち",
+    "issuingCompany": "発行会社",
+    "issuingCompanyDesc": "この書類を発行する自社法人。作成後は変えられません",
+    "issuingCompanyNotAllowed": "選択した発行会社では書類を作成できません。所属拠点の自社法人から選択してください",
+    "selectIssuingCompany": "発行会社を選択",
+    "selectIssuingCompanyDesc": "同じ番号の書類が複数の発行会社にあります。開く書類の発行会社を選んでください。",
+    "workOrderAbort": "指示書の打ち切り",
+    "designProgramChange": "加工プログラムの変更"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -992,6 +1015,7 @@
       "PRODUCTION": "本番",
       "TEST": "テスト",
       "SAMPLE": "サンプル",
+      "REGRIND": "再研磨",
       "OTHER": "その他"
     },
     "PERMISSION_ACTION_LABEL": {
@@ -1017,6 +1041,7 @@
     "PROCESS_CATEGORY_LABEL": {
       "MATERIAL_PREP": "材料準備",
       "MACHINING": "加工",
+      "REGRIND": "再研磨",
       "COATING": "コーティング",
       "INSPECTION": "検査",
       "APPROVAL": "検査承認",
@@ -1065,9 +1090,11 @@
     },
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "在庫分",
-      "MANUFACTURE": "製造分"
+      "MANUFACTURE": "製造分",
+      "REGRIND": "再研磨"
     },
     "INSPECTION_STATUS_LABEL": {
+      "APPROVED": "承認済",
       "PENDING": "未実施",
       "PASS": "合格",
       "FAIL": "不合格"
@@ -1157,7 +1184,8 @@
       "APPROVE_1ST": "第一承認",
       "APPROVE_2ND": "第二承認",
       "REJECT": "差し戻し",
-      "CANCEL": "キャンセル"
+      "CANCEL": "キャンセル",
+      "ABORT": "打ち切り"
     },
     "DESIGN_HISTORY_ACTION_LABEL": {
       "CREATE": "作成",
@@ -1174,8 +1202,9 @@
     },
     "DESIGN_FILE_ROLE_LABEL": {
       "PREVIEW": "プレビュー",
-      "BLUEPRINT": "図面データ",
-      "REFERENCE": "参考資料"
+      "BLUEPRINT": "2D 原図",
+      "REFERENCE": "参考資料",
+      "MODEL": "3D 原図"
     },
     "STEP_EXECUTION_LABEL": {
       "INTERNAL": "社内",
@@ -1198,6 +1227,51 @@
     "DELIVERY_TOLERANCE_BASIS_LABEL": {
       "PERCENT": "パーセント（%）",
       "QUANTITY": "数量"
+    },
+    "INVENTORY_MOVEMENT_CAUSE_LABEL": {
+      "MANUAL": "手動",
+      "OUTSOURCE_ISSUE": "外注支給",
+      "OUTSOURCE_RETURN": "外注戻り",
+      "SALES_RETURN": "返品",
+      "REGRIND_RECEIPT": "再研磨受入",
+      "WIP_RECLASSIFY": "仕掛品の分類",
+      "WORK_ORDER_COMPLETION": "指示書完了",
+      "DELIVERY_SHIPMENT": "出荷",
+      "MATERIAL_RECEIPT": "素材入荷",
+      "STOCK_TRANSFER": "在庫移動",
+      "STOCK_RESERVATION": "引当予約",
+      "RESERVATION_RELEASE": "予約解除",
+      "ADJUSTMENT": "棚卸調整",
+      "OTHER": "不明（移行前）",
+      "WORK_ORDER_ABORT": "指示書打ち切り"
+    },
+    "TRANSACTION_TYPE_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "RESERVE": "予約",
+      "RELEASE": "予約解除",
+      "ADJUST": "棚卸調整"
+    },
+    "INVENTORY_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材"
+    },
+    "ITEM_TYPE_LABEL": {
+      "PRODUCT": "製品",
+      "MATERIAL": "素材",
+      "REGRIND": "再研磨",
+      "BLANK": "仕掛ブランク"
+    },
+    "STOCK_REQUIREMENT_ROW_KIND_LABEL": {
+      "past": "実績",
+      "now": "いま",
+      "supply": "供給予定",
+      "demand": "需要予定"
+    },
+    "MOVEMENT_DIRECTION_LABEL": {
+      "IN": "入庫",
+      "OUT": "出庫",
+      "TRANSFER": "移動"
     }
   },
   "status": {
@@ -1492,6 +1566,14 @@
           "label": "エクスポート済"
         }
       },
+      "AccountingDocument": {
+        "POSTED": {
+          "label": "転記済み"
+        },
+        "REVERSED": {
+          "label": "反対仕訳済み"
+        }
+      },
       "ApprovalRequest": {
         "PENDING": {
           "label": "承認依頼中"
@@ -1549,6 +1631,62 @@
         },
         "REVOKED": {
           "label": "取り消し"
+        }
+      },
+      "StockTake": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "COUNTING": {
+          "label": "記入中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
+        },
+        "CANCELLED": {
+          "label": "キャンセル"
+        }
+      },
+      "StockTakeApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
+        }
+      },
+      "DesignVersion": {
+        "DRAFT": {
+          "label": "下書き"
+        },
+        "REQUESTED": {
+          "label": "承認依頼中"
+        },
+        "CONFIRMED": {
+          "label": "確定"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
+        }
+      },
+      "PriceListApproval": {
+        "NONE": {
+          "label": "—"
+        },
+        "PENDING": {
+          "label": "承認依頼中"
+        },
+        "APPROVED": {
+          "label": "承認済"
+        },
+        "REJECTED": {
+          "label": "差し戻し"
         }
       }
     }
@@ -1675,6 +1813,10 @@
       "api_client": {
         "label": "外部 API クライアントの管理",
         "summary": "社外のシステムが業務データを機械的に読むための資格情報を管理します。トークンの発行と有効化は 1 件ずつ承認を受けます。読める範囲は、そのクライアントに割り当てたロールが決めます。"
+      },
+      "estimate_cost": {
+        "label": "価格試算の原価",
+        "summary": "価格試算の原価合計・粗利と、計算基準ごとの原価の印を見られます。持たない人には原価合計・粗利が表示されません。見積単価には関係しません。"
       }
     },
     "PERMISSION_GROUP_LABEL": {
@@ -1725,7 +1867,7 @@
         },
         "reveal_settings_code": {
           "label": "端末設定コードの表示",
-          "description": "その端末の設定画面（左上 5 タップ）を解錠するコードを表示する"
+          "description": "その端末の設定画面（左下 5 タップ）を解錠するコードを表示する"
         },
         "regenerate_settings_code": {
           "label": "端末設定コードの再生成",
@@ -1840,6 +1982,10 @@
         "activate": {
           "label": "API クライアントの有効化",
           "description": "作っただけでは何も通らないクライアントを、実際に業務データを読める状態にする"
+        },
+        "webhook_manage": {
+          "label": "API の外向き Webhook の管理",
+          "description": "業務データの変化を外部へ送る口を作る・広げる。送信先の追加・URL の変更・署名鍵の再発行・有効化が対象"
         }
       }
     },
@@ -1875,7 +2021,10 @@
       "amount": "金額 (円)",
       "deliveryDate": "納期",
       "tax": "消費税（10%）",
-      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。"
+      "validityStrip": "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。",
+      "lineDiscount": "値引き",
+      "lineDiscountNote": "※ {label}: -¥{amount}",
+      "toolLine": "研ぎ直す工具: {tool}"
     },
     "DELIVERY_NOTE": {
       "regNumber": "登録番号:",
@@ -1923,6 +2072,7 @@
       "PRODUCTION": "本番",
       "TEST": "テスト",
       "SAMPLE": "サンプル",
+      "REGRIND": "再研磨",
       "OTHER": "その他"
     },
     "DELIVERY_METHOD": {
@@ -1988,7 +2138,7 @@
       "generateInvoices": "請求書生成",
       "createAnInvoice": "請求書を作成",
       "exported": "エクスポート済",
-      "yayoiAccountingCsv": "弥生会計 CSV",
+      "accountingCsv": "会計連携CSV",
       "shipmentsCovered": "対象出荷",
       "thereAreNoShipmentsToBill": "請求対象の出荷がありません",
       "notGeneratedUseGenerateInvoices": "未生成（「請求書を生成」で作成します）",
@@ -1998,7 +2148,6 @@
       "confirmGeneratingInvoices": "請求書生成の確認",
       "theBillingClosingWasRun": "締日処理を実行しました",
       "runTheBillingClosing": "締日処理の実行",
-      "aggregatesTheMonthSUnbilledShipments": "対象月の未請求出荷（出荷済・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
       "years": "年",
       "months": "月",
       "runTheBillingClosing2": "締日処理を実行",
@@ -2009,7 +2158,35 @@
       "shipmentNote": "{quantity} 本・{amount}",
       "titleWithClosingDate": "{customer}（{date} 締め）",
       "shipmentsCoveredWithCount": "対象出荷（{count}）",
-      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。"
+      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。",
+      "dueDate": "支払期日",
+      "monthEnd": "末日",
+      "dayOfMonth": "{day} 日",
+      "termsDayOnly": "締日後の最初の {day} 払い",
+      "termsDaysThenDay": "締日 + {days} 日以降の最初の {day} 払い",
+      "termsDaysOnly": "締日 + {days} 日（支払日の設定なし）",
+      "termsDefault": "締日 + {days} 日（支払サイト・支払日とも未設定の既定）",
+      "generateInvoicesInBulk": "まとめて請求書を生成",
+      "nothingToProcess": "処理できる締日がありません",
+      "selectPendingPastClosingDate": "未処理で、かつ締日を過ぎた行を選んでください",
+      "invoicesWereGenerated": "請求書を {count} 件生成しました",
+      "someCouldNotBeProcessed": "{count} 件は生成できませんでした",
+      "skippedNotReady": "未処理でない・締日前の {count} 件は対象外",
+      "aggregatesUnbilledShipmentsUpToDate": "指定日までに締日が到来し、まだ締めていない顧客の未請求出荷（出荷済・発送のみ）を集計し、締日を過ぎている分はそのまま請求書（下書き）まで作成します。",
+      "targetDate": "指定日",
+      "kind": "実行区分",
+      "kindScheduled": "定期",
+      "kindManual": "手動",
+      "simulate": "試算",
+      "simulateTitle": "締日処理の試算",
+      "simulateDateDescription": "この日に実行したときの結果を見ます（未来の日付も選べます）",
+      "simulateCountsCurrentShipmentsOnly": "いま未請求の出荷だけを数えます。指定日までに新しく出荷される分は含みません。",
+      "simulateClosingCount": "締日 {count} 件",
+      "simulateInvoiceCount": "請求書 {count} 件",
+      "simulateNothingToClose": "締まる分はありません",
+      "simulateInvoiceCreated": "請求書まで作成",
+      "simulateInvoiceNotYet": "翌日から生成",
+      "runsUpToTodayOnly": "実行できるのは今日まで。先の分は試算で見る"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
@@ -2019,13 +2196,13 @@
       "confirmPayment": "入金の確認",
       "handEnteredLinesOnly": "—（手入力の明細のみ）",
       "shipmentWithNoDeliveryNoteIssued": "—（納品書未発行の出荷）",
-      "yayoiAccountingExport": "弥生会計エクスポート",
-      "notExportedTheYayoiCsvIs": "未エクスポート（発行後に弥生CSVを出力します）",
+      "accountingExport": "会計連携",
+      "notExportedAfterIssue": "未エクスポート（発行後に会計連携CSVを出力します）",
       "markAsSent": "送付済みにする",
       "markAsPaid": "入金済みにする",
-      "yayoiAccountingCsv": "弥生会計CSV",
+      "accountingCsv": "会計連携CSV",
       "paymentDue": "支払期限",
-      "yayoiExport": "弥生エクスポート",
+      "accountingExportedAt": "会計連携日時",
       "notExported": "未エクスポート",
       "summary": "摘要",
       "origin": "由来",
@@ -2039,8 +2216,23 @@
       "taxLabelReduced": "消費税（8%）",
       "taxLabelExempt": "消費税（非課税）",
       "taxLabelStandard": "消費税（10%）",
-      "yayoiAccountingCsvAgain": "弥生会計CSV（再出力）",
-      "taxLabelRate": "消費税（{rate}%）"
+      "accountingCsvAgain": "会計連携CSV（再出力）",
+      "taxLabelRate": "消費税（{rate}%）",
+      "issueApprovalRejectedHelp": "発行前承認が差し戻されました。追加費用を見直して再度発行してください。",
+      "paymentApprovalRejectedHelp": "入金の承認が差し戻されました。もう一度「入金」から申請してください。",
+      "issueApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalWaitingHelp": "このグループのメンバーだけが操作できます。",
+      "paymentApprovalApproveHelp": "入金の記録に承認が必要です。内容を確認して承認してください。",
+      "issueApprovalApproveHelpWithCharges": "手動で追加した費用が {count} 件含まれています（合計 {amount}）。内容を確認して承認してください。",
+      "chargesClosedForEditing": "下書きの請求書だけ追加費用を編集できます",
+      "chargesSaveFailed": "追加費用の保存に失敗しました",
+      "chargesHelp": "この請求書へ手動で足す費用（料金マスタからだけ選べます）。発行前に承認が要ります。直せるのは下書きのうちだけです。",
+      "manualInvoiceHelp": "臨時に請求する顧客を選びます。締日を待たず、いま未請求の出荷から請求書（下書き）を作ります。",
+      "unbilledShipments": "未請求の出荷",
+      "noUnbilledShipmentsForCustomer": "未請求の出荷がありません",
+      "createInvoiceFromSelection": "請求書を作成",
+      "someShipmentsNoLongerAvailable": "選んだ出荷の一部が、すでに他の請求で使われています。もう一度選び直してください。",
+      "issuingCompany": "発行元"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -2048,13 +2240,18 @@
       "confirmMarkSentMessage": "請求書 {invoiceNumber} を送付済みにします。",
       "markedSentWithNumber": "請求書 {invoiceNumber} を送付済みにしました",
       "confirmMarkPaidMessage": "請求書 {invoiceNumber} を入金済みにします。",
-      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
+      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました",
+      "approvalRequestedMessage": "承認を依頼しました（請求書 {invoiceNumber}）"
     },
     "closingTable": {
-      "yearLabel": "{year}年",
-      "monthLabel": "{month}月",
       "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
-      "skippedCount": "処理済みスキップ {skipped} 件"
+      "skippedCount": "処理済みスキップ {skipped} 件",
+      "resultModalTitle": "締日処理の結果",
+      "bulkResultModalTitle": "請求書生成の結果",
+      "createdInvoicesHeading": "作成した請求書（{count}）",
+      "noInvoicesCreated": "請求書は作成されませんでした",
+      "failuresHeading": "生成できなかった分（{count}）",
+      "openInvoiceList": "請求書一覧を開く"
     },
     "invoicesActions": {
       "invalidNumber": "請求番号が不正です",
@@ -2063,17 +2260,59 @@
       "onlyIssuedCanMarkSent": "発行済みの請求書のみ送付済みにできます",
       "markSentFailed": "送付処理に失敗しました",
       "onlySentCanMarkPaid": "送付済みの請求書のみ入金済みにできます",
-      "markPaidFailed": "入金処理に失敗しました"
+      "markPaidFailed": "入金処理に失敗しました",
+      "awaitingIssueApproval": "発行前承認の依頼中です",
+      "approvalRequestFailed": "承認依頼の作成に失敗しました",
+      "approvalRequested": "承認を依頼しました",
+      "awaitingPaymentApproval": "入金前承認の依頼中です",
+      "paymentApprovalRequested": "入金の承認を依頼しました"
+    },
+    "accountingDocuments": {
+      "invalidDocumentNumber": "会計文書番号が不正です",
+      "reasonRequired": "反対仕訳の理由を入力してください",
+      "notActivePosted": "この文書はすでに反対仕訳済み、または存在しません",
+      "reversed": "反対仕訳を作成しました",
+      "reverseFailed": "反対仕訳の作成に失敗しました",
+      "createReversal": "反対仕訳を作成",
+      "reverseReasonLabel": "反対仕訳の理由",
+      "confirmReverseTitle": "反対仕訳の確認",
+      "confirmReverseMessage": "この会計文書を反対仕訳します。貸借を入れ替えた新しい文書ができ、元の文書は反対仕訳済みになります（明細は変更されません）。",
+      "activeDocument": "転記済みの文書",
+      "documentHistory": "会計文書履歴",
+      "documentNumber": "文書番号",
+      "postedAtLabel": "転記日時",
+      "reversedAtLabel": "反対仕訳日時",
+      "downloadCsv": "会計連携CSV",
+      "redownloadCsv": "会計連携CSV（再ダウンロード）",
+      "notPostedYet": "まだ転記していません",
+      "needsRepost": "反対仕訳済み — 再度エクスポートすると新しい文書を転記します",
+      "documentsList": "文書履歴",
+      "documentsListDescription": "転記・反対仕訳した会計文書の一覧。行をクリックすると請求書詳細を開きます。"
     },
     "closingActions": {
       "closingDateNotReached": "締日を過ぎるまで処理できません（締日の翌日から）",
       "closingNotFound": "対象の締日処理が見つかりません",
       "generateInvoiceFailed": "請求書の生成に失敗しました",
-      "invalidYearMonth": "対象月の形式が不正です（YYYYMM）",
       "itemNameWithLot": "{name}（ロット {lot}）",
-      "noUnbilledShipmentsForMonth": "対象月に未請求の出荷がありません",
       "pendingOnly": "未処理の締日のみ請求書を生成できます",
-      "runFailed": "締日処理の実行に失敗しました"
+      "runFailed": "締日処理の実行に失敗しました",
+      "invalidDate": "指定日の形式が不正です",
+      "noUnbilledShipmentsUpToDate": "指定日までに未請求の出荷がありません",
+      "futureDateNotRunnable": "未来の日付では実行できません。先の分は試算で確認してください。",
+      "simulateFailed": "試算に失敗しました"
+    },
+    "invoiceTable": {
+      "manualInvoice": "手動請求",
+      "nothingToIssue": "発行できる請求書がありません",
+      "selectDraftInvoices": "下書きの請求書を選んでください",
+      "issuedCount": "{count} 件発行しました",
+      "nothingToMarkPaid": "入金できる請求書がありません",
+      "selectSentInvoices": "送付済みの請求書を選んでください",
+      "paymentProcessedCount": "{count} 件の入金処理を行いました",
+      "nothingToApprove": "承認できる請求書がありません",
+      "selectPendingApprovalInvoices": "承認依頼中の請求書を選んでください",
+      "approvedCount": "{count} 件承認しました",
+      "rejectedCount": "{count} 件差し戻しました"
     }
   },
   "general": {
@@ -2227,6 +2466,7 @@
       "commentTooLong": "コメントが長すぎます",
       "createFailed": "作成に失敗しました",
       "editBlockedWhilePending": "公開の承認依頼中は本文を編集できません（差し戻してから編集するか、決裁を待ってください）",
+      "editBlockedWhileArchived": "アーカイブ中の文書は編集できません。アーカイブを解除してから編集してください",
       "editPermissionDenied": "この文書を編集する権限がありません",
       "invalidShareSettings": "共有設定が不正です",
       "loginRequired": "ログインしてください",
@@ -2250,7 +2490,10 @@
       "savedRevisionNote": "リビジョン {revision} を保存",
       "shareSettingsUpdatedNote": "共有設定を更新（{count} 件）",
       "titleRequired": "タイトルを入力してください",
-      "updateFailed": "更新に失敗しました"
+      "updateFailed": "更新に失敗しました",
+      "archiveBlockedWhilePending": "公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）",
+      "archivedNote": "アーカイブ",
+      "unarchivedNote": "アーカイブを解除"
     },
     "formSchema": {
       "oneLineText": "1行テキスト",
@@ -2449,6 +2692,12 @@
       "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
       "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです",
       "prepRoute": "準備工程リスト",
+      "regrindRoute": "再研磨工程リスト",
+      "regrindQuantities": "再研磨数量",
+      "regrindReceived": "受入",
+      "regrindReturned": "返却",
+      "regrindFinished": "完成",
+      "regrindNotReceivedYet": "未受入",
       "manufacturingRoute": "製造工程リスト",
       "newerVersionExists": "最新 v{version} あり",
       "varianceAllowedBadge": "許可"
@@ -2584,7 +2833,9 @@
       "lotInputWithName": "{name} のロット入力",
       "defaultWithLabel": "既定（{label}）",
       "workHoursWithName": "{name} の作業時間 (h)",
-      "site": "拠点"
+      "site": "拠点",
+      "addRequiredSteps": "必須工程を自動追加（{count}件）",
+      "requiredStepsAdded": "必須工程を自動追加しました: {steps}"
     },
     "stepCard": {
       "othersCount": "ほか {count} 名",
@@ -2632,8 +2883,7 @@
       "selectAWorkLocation": "作業場所を選択してください",
       "start": "開始",
       "end": "終了",
-      "enterStartAndEnd": "開始と終了の時刻を入力してください",
-      "enterQuantity": "数量を入力してください"
+      "enterStartAndEnd": "開始と終了の時刻を入力してください"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量・不良",
@@ -2717,8 +2967,6 @@
       "couldNotRegisterIt": "登録に失敗しました",
       "generic": "・汎用",
       "leaveItBlankForGenericUsed": "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
-      "theSourceDataForTheMachining": "加工プログラムを起こす元データ。この系列の最新図面になります",
-      "drawingFile": "図面データ",
       "aFileSuchAsStlFor": "STL など、画面で形を確かめるためのファイル。無くても登録できます",
       "forPreview3d": "プレビュー用（3D）",
       "descriptionOptionalEGPartDrawing": "説明（任意）— 例: 部品図、寸法表",
@@ -2727,7 +2975,11 @@
       "upTo20mbEach": "1 件 20MB まで",
       "registerAVersion": "版を登録",
       "whatChangedInThisVersion": "この版で何が変わったか",
-      "deleteTheDrawing": "設計図の削除"
+      "deleteTheDrawing": "設計図の削除",
+      "seriesMemo": "系列メモ",
+      "seriesMemoHint": "この製品・受注元の図面すべてに共通するメモ（客先の癖・加工上の注意など）。版ごとの変更点は版のメモ欄へ。",
+      "seriesMemoReadOnlyHint": "この指示書が使う図面（{series}）の全版に共通するメモ。書き直すときは設計図で。",
+      "seriesMemoOpen": "設計図で開く"
     },
     "inventory": {
       "reservationsCount": "予約（{count}）",
@@ -2816,6 +3068,8 @@
       "thisStepHasBeenCancelled": "キャンセル済みの工程です",
       "thisStepHasBeenCancelled2": "この工程はキャンセルされています。",
       "outsourcingSchedule": "外注日程",
+      "custodyHeld": "預け在庫: {supplier} が {quantity} 本を保管中（伝票 {movement}）",
+      "custodyReturned": "預け在庫: 戻り済み（出し {issued} / 戻り {returned}）",
       "outsourcingCost": "外注費",
       "saveTheOutsourcingSchedule": "外注日程を保存",
       "interruptRollBack": "中断（巻き戻し）",
@@ -2844,6 +3098,13 @@
       "thisCustomer": "この顧客",
       "stepFallbackWithId": "工程#{id}",
       "prepRouteHelp": "〇〇出し・受渡し と 材料準備の並び（全製品で共通）。指示書は常に最新の版を使い、指示書ごとに版は選べません。並びを直すときは工程マスタの準備工程リストで新しい版を作ります。",
+      "regrindRouteHelp": "再研磨工程リスト（共通）。製品・顧客に紐づかず、指示書は常に最新版を使います。流し込んだあとの足し引きは可（そのとき出所リンクは外れます）",
+      "noRegrindRouteRegistered": "再研磨工程リストが未登録です（工程マスタ > 再研磨工程リスト）",
+      "regrindRouteUsesLatest": "最新版 v{version}（{date}）を使います",
+      "editRegrindRoutes": "再研磨工程リストを編集",
+      "selectARegrindRoute": "再研磨工程リストを選んでください",
+      "regrindQuantityMatchesTheAllocation": "再研磨は割当数量（{count}）と一致させます（届いた本数は製品受入で記録します）",
+      "regrindTypeLockedByLine": "注文種別が再研磨の明細なので、指示書の種別は再研磨に固定されます",
       "noPrepRouteRegistered": "準備工程リストは未登録です（工程マスタで作成）",
       "showOtherCustomers": "同じ製品の他の受注元の工程リストも表示する",
       "showOtherCustomersHelp": "既定はこの受注元のリストと汎用だけ。他の受注元のリストは選んでから「この受注元に複製」できます。",
@@ -2856,13 +3117,15 @@
       "allowQuantityVariance": "不足 / 超過分も納品してよい",
       "allowQuantityVarianceHelp": "このロットを受注数量ちょうどでなくても出荷できるようにする。どこまでずれてよいかと承認の要否は取引先マスタが決める。",
       "workLocationRequiredPlaceholder": "作業場所（必須）",
-      "timeQuantityInPanelLater": "この工程の計画には時刻・数量も必要です — 作成後に工程の計画パネルで入れてください",
+      "timeQuantityInPanelLater": "この工程の計画には時刻も必要です — 作成後に工程の計画パネルで入れてください",
       "assigneeRequiredPlaceholder": "担当者（必須）",
       "planNeedsAssignee": "担当者が必要な工程があります: {steps}",
       "prepRouteUsesLatest": "最新 v{version}（{date}）を使います",
       "prepStepsReadOnly": "準備工程は共通の準備工程リストから入ります — この画面では編集できません（製造工程だけを編集します）",
       "editPrepRoutes": "準備工程リストを編集（工程マスタ）",
-      "selectAPrepRoute": "準備工程リストを選択してください"
+      "selectAPrepRoute": "準備工程リストを選択してください",
+      "typeFixedByOrderLine": "注文明細の注文種別が「{orderType}」なので、この指示書の種別は決まっています。変えるときは注文請書の明細を直します。",
+      "typeFixedByStockTarget": "在庫向け（注文明細に紐づかない）指示書は製造分だけです。"
     },
     "workOrderDetail": {
       "allocatedOfOrdered": "割当 {allocated} / 受注 {ordered}",
@@ -2880,7 +3143,8 @@
     "workOrderStripSheets": {
       "noWorkOrdersToPrint": "印刷対象の指示書がありません。",
       "actualSizeCheck50mm": "50mm（原寸確認 / 用紙 A4・倍率 100%）",
-      "forStockNoOrderLine": "在庫向け（注文明細なし）"
+      "forStockNoOrderLine": "在庫向け（注文明細なし）",
+      "moreMarkings": "ほか {count} 明細"
     },
     "designFileTable": {
       "byCustomer": "顧客別",
@@ -2890,8 +3154,7 @@
     "designFileVersionForm": {
       "registeringAsResultOfRequest": "設計依頼 {requestNumber} の成果物として登録します。製品「{productLabel}」{customerPart}は依頼で決まっているので変更できません。",
       "andCustomerWithName": "・受注元「{name}」",
-      "referenceWithNumber": "参考資料 {number}",
-      "designFileWasAddedWithVersion": "設計図 v{version} を追加しました"
+      "referenceWithNumber": "参考資料 {number}"
     },
     "stepExecutionView": {
       "stepWithName": "工程: {name}",
@@ -3014,7 +3277,6 @@
       "workLocationRequiredForPlan": "作業計画には作業場所が必要です",
       "planLockedByWorkOrderStatus": "承認依頼中・完了・キャンセルの指示書では作業計画を変更できません",
       "timeRequiredForPlan": "この工程の作業計画には開始・終了時刻が必要です",
-      "quantityRequiredForPlan": "この工程の作業計画には数量が必要です",
       "assigneeRequiredForPlan": "この工程の作業計画には担当者が必要です"
     },
     "workOrderActions": {
@@ -3047,6 +3309,17 @@
       "invalidTarget": "対象が不正です",
       "materialReserveFailedLog": "[work-order] 素材予約に失敗: ",
       "materialReserveNote": "指示書 #{number} 承認による素材予約",
+      "wipReserveFailedLog": "[work-order] 仕掛品の予約に失敗: ",
+      "wipDrawOnlyManufacture": "仕掛品を投入できるのは製造分の指示書だけです",
+      "wipSemiIssueStepMissing": "工程マスタに「半製品出し」がありません（無効になっていないか確認してください）",
+      "wipDrawNotACandidate": "選んだ仕掛品は、もうこの製品に使える候補にありません。選び直してください",
+      "wipDrawDuplicate": "同じ仕掛品が 2 回選ばれています",
+      "wipDrawQuantityInvalid": "仕掛品の投入数は 1 以上の整数で入力してください",
+      "wipDrawQuantityExceedsAvailable": "仕掛品の投入数が利用可能数を超えています",
+      "wipDrawMixedStates": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+      "wipDrawOverrideReasonRequired": "加工状態が合わない仕掛品を使う理由を入力してください",
+      "wipDrawNoLongerAvailable": "投入に選んだ仕掛品がもう足りません（{details}）。指示書を編集して選び直してください",
+      "wipDrawShortageDetail": "必要 {requested} 本に対して利用可能 {available} 本",
       "notPendingApproval": "承認依頼中の指示書ではありません",
       "orderLineFullyAllocated": "注文明細 {number} は受注数量まで手配済みです（残 0）",
       "orderLineNotFound": "対象の注文明細が見つかりません",
@@ -3077,11 +3350,21 @@
       "allocationsMustShareProduct": "1 つの指示書に割り当てる注文明細は同一製品である必要があります",
       "allocationExceedsRemaining": "注文明細 {number} への割当が受注残を超えています（受注数量 {lineQuantity} − 手配済 {otherAllocated} = 残 {remaining}）",
       "stockPlannedQuantityMustMatchAllocation": "在庫分の指示書は予定数量と割当数量を一致させてください",
+      "regrindRouteRequired": "再研磨工程リストを選んでください（有効な再研磨工程リストがあります）",
+      "regrindRouteNotFound": "選んだ再研磨工程リストが見つからないか無効です",
+      "regrindLinesOnly": "再研磨の指示書に割り当てられるのは注文種別が再研磨の明細だけです",
+      "regrindWorkOrderOneLineOnly": "再研磨の指示書に割り当てられる明細は 1 件だけです",
+      "regrindPlannedQuantityMustMatchAllocation": "再研磨の指示書は予定数量 = 割当数量です",
+      "regrindLineRequiresRegrindWorkOrder": "注文種別が再研磨の明細は再研磨の指示書にしか割り当てられません",
+      "regrindOrderRequiresOrderLine": "再研磨の指示書には注文明細が要ります",
+      "externalProductRequiresRegrind": "他社製品の指示書は再研磨だけです（製造分・在庫分は作れません）",
       "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）",
       "plansRequiredBeforeApproval": "承認依頼の前に作業計画（日付 + 作業場所）を入れてください: {steps}",
       "copyRouteFailed": "工程リストの複製に失敗しました",
       "prepRouteRequired": "準備工程リストを選択してください",
-      "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です"
+      "prepRouteNotFound": "選択された準備工程リストが見つからないか、無効です",
+      "regrindLineToolMissing": "注文明細 {number}: 研ぎ直す工具が未選択です",
+      "designFileNotConfirmed": "確定していない版の図面は指示書に固定できません"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
@@ -3090,13 +3373,23 @@
       "memoUpdatedAudit": "設計図 v{version} のメモを更新",
       "notFound": "対象の設計図が見つかりません",
       "referencedByRevisionRequest": "改訂依頼が元図面に指定しているため削除できません",
-      "lockedInUseByWorkOrder": "指示書で使用中のため変更できません",
-      "lockedRequestDeliverable": "設計依頼の成果物なので削除できません（メモは編集できます）"
+      "approvalRequestFailed": "承認依頼を出せませんでした",
+      "approvedRemaining": "承認しました（残り {remaining} 名）",
+      "approvedToNextStep": "承認しました（次の段へ）",
+      "filesAddedAudit": "v{version} にファイルを {count} 件追加",
+      "lockedConfirmed": "確定した版は変更できません",
+      "lockedPendingApproval": "承認依頼中のため変更できません",
+      "notPendingApproval": "承認依頼中の版ではありません",
+      "openVersionExists": "この系列には確定前の版（v{version}）があります。先にそちらを確定するか削除してください",
+      "roleAlreadyAttached": "{role}はすでに載っています。差し替えるときは先に外してください",
+      "specUpdatedAudit": "v{version} の仕様を更新",
+      "versionDeletedAudit": "下書きの版 v{version} を削除"
     },
     "inventoryActions": {
       "exceedsAvailable": "移動可能数を超えています（利用可能 {free} — 予約分は移動できません）",
       "quantityRequired": "数量を入力してください",
       "sameLocation": "移動元と移動先が同じ場所です",
+      "custodyNotTransferable": "外注が預かっている在庫はここからは動かせません。戻りは工程の入荷日で計上されます",
       "selectTargetPlant": "移動先の拠点を選択してください",
       "sourceInventoryNotFound": "移動元の在庫が見つかりません",
       "targetLocationMismatch": "移動先の保管場所が移動先拠点と一致しません",
@@ -3157,7 +3450,6 @@
       "targetProductNotSpecified": "対象の製品が指定されていません",
       "invalidOrderingCustomer": "受注元の指定が不正です",
       "invalidDesignRequest": "設計依頼の指定が不正です",
-      "selectTheDrawingFile": "図面データを選択してください",
       "isTooLargeMax20mb": "{name} が大きすぎます（1 件 20MB まで）"
     },
     "workflowIssues": {
@@ -3188,6 +3480,393 @@
       "toleranceBottom": "公差 Bottom",
       "upperLimit": "上限",
       "lowerLimit": "下限"
+    },
+    "movements": {
+      "movementNumber": "伝票番号",
+      "cause": "事由",
+      "sourceDocument": "元書類",
+      "searchByNumber": "伝票番号で検索",
+      "noMovements": "入出庫伝票がありません",
+      "storageLocation": "保管場所・棚",
+      "truncatedNotice": "直近 1000 件のみ表示しています。これより古い伝票は絞り込んでも出てきません。"
+    },
+    "stockTakes": {
+      "actions": {
+        "cancelFailed": "キャンセルに失敗しました",
+        "cannotCancelNow": "いまはキャンセルできません（下書き・記入中のみ）",
+        "cannotSubmitNow": "いまは提出できません（1 件以上カウントしてください）",
+        "countsSaved": "記入を保存しました",
+        "createFailed": "作成に失敗しました",
+        "noLinesToCount": "数える対象がありません",
+        "notEditableNow": "いまは記入できません",
+        "notPendingApproval": "承認依頼中ではありません",
+        "saveCountsFailed": "記入の保存に失敗しました",
+        "selectAPlant": "拠点を選択してください",
+        "stateChanged": "状態が変わっています。再読み込みしてください",
+        "submitFailed": "提出に失敗しました"
+      },
+      "detail": {
+        "bookQuantity": "帳簿数",
+        "confirmCancelBody": "{number} をキャンセルします。この操作は取り消せません。",
+        "confirmedAtLabel": "確定日時",
+        "countedProgress": "{counted}/{total} 件入力済み",
+        "countedQuantity": "実測数",
+        "countsSaved": "記入を保存しました",
+        "createdAtLabel": "作成日時",
+        "difference": "差異",
+        "item": "対象",
+        "linesTitle": "対象バケット（{count}）",
+        "movementTitle": "入出庫伝票",
+        "noDifferenceNoMovement": "差異なし（伝票は起票していません）",
+        "notConfirmedYet": "未確定",
+        "notCounted": "未カウント",
+        "numberLabel": "棚卸番号",
+        "stageConfirmed": "確定",
+        "stageCounting": "記入",
+        "stageDraft": "下書き",
+        "summaryLine": "記入 {counted}/{total} 件・差異 {diffCount} 件（過 +{over} ・ 不足 −{under}）",
+        "unassignedLocation": "未割当"
+      },
+      "form": {
+        "created": "作成しました",
+        "createdBody": "{number} を作成しました",
+        "newTitle": "新規棚卸",
+        "sectionDescription": "拠点全体、または保管場所を絞って対象バケットを取り込みます。",
+        "sectionTitle": "棚卸情報",
+        "selectAPlant": "拠点を選択",
+        "selectAPlantFirst": "先に拠点を選択",
+        "selectAStorageLocation": "保管場所を選択（任意）"
+      },
+      "table": {
+        "approvalStatus": "承認状態",
+        "emptyMessage": "棚卸はまだありません",
+        "lineCount": "明細数",
+        "number": "棚卸番号",
+        "searchPlaceholder": "棚卸番号・拠点・保管場所で検索",
+        "storageLocation": "保管場所"
+      }
+    },
+    "designVersion": {
+      "addFiles": "ファイルを追加",
+      "blueprintSlotHint": "図脳 SXF（.sfc）・DXF・DWG など。.sfc を選ぶと表題欄と寸法を読んで仕様を埋めます",
+      "checkTheSpec": "仕様の入力を確認してください",
+      "confirmCardDesc": "確定すると、この版が指示書・製品マスタで使われます。確定後は変更できません",
+      "confirmCardTitle": "確定待ちの下書きです",
+      "confirmModalMessage": "確定した版は変更できません。仕様とファイルを確認してから確定してください。",
+      "confirmModalTitle": "v{version} を確定",
+      "confirmedBy": "確定",
+      "confirmedToast": "確定しました",
+      "deleteVersion": "版を削除",
+      "deleteVersionConfirm": "下書きの版 v{version} と、載っているファイルを削除します。この操作は取り消せません。",
+      "draftCreated": "下書きの版 v{version} を作りました",
+      "filesAdded": "ファイルを追加しました",
+      "filesHint": "どれも任意です。確定するまでは後から追加・削除できます",
+      "latestConfirmed": "確定済みの最新版",
+      "latestConfirmedVersion": "確定済み v{version}",
+      "modelSlotHint": "STEP・IGES・CIM3D など。画面では表示できない形式はダウンロードのみです",
+      "noConfirmedVersion": "確定済みの版なし",
+      "noFiles": "ファイルはありません",
+      "noSpec": "仕様は未設定です",
+      "openVersion": "v{version} を開く",
+      "referenceSlotHint": "部品図・寸法表など。何枚でも追加できます",
+      "removeFile": "ファイルを外す",
+      "removeFileConfirm": "「{filename}」をこの版から外して削除します。",
+      "saveDraft": "下書きを保存",
+      "spec": "仕様",
+      "stageDraft": "作成",
+      "superseded": "新しい版があります",
+      "sxfApplyFailed": "図面から読んだ値を仕様に反映できませんでした",
+      "sxfCheckHint": "読み取った値は保存前に確認してください。図面に書かれていない項目は変わりません",
+      "sxfCustomerMatched": "得意先名「{name}」から受注元を選びました",
+      "sxfCustomerNotMatched": "得意先名「{name}」に当たる受注元が 1 社に決まりませんでした。受注元は手で選んでください",
+      "sxfDimensions": "外径 φ{diameter} / 全長 {length}",
+      "sxfRead": "図面から {count} 項目を読み取りました",
+      "sxfSheet": "図番 {sheet}",
+      "sxfUnreadable": "SXF として読めませんでした",
+      "sxfUnreadableHint": "ファイルは添付できますが、仕様は手で入力してください。図脳RAPID の「SXF形式」で書き出した .sfc だけを読めます",
+      "titleBlock": "図面情報",
+      "titleBlockHint": "図面の表題欄に書かれていること。図脳 SXF（.sfc）を選ぶと自動で入ります",
+      "versionCount": "全 {count} 版",
+      "titleBlockField": {
+        "productName": "品名",
+        "drawingNumber": "図面番号",
+        "toolNumber": "工具番号",
+        "material": "材質",
+        "surfaceTreatment": "表面処理",
+        "flutes": "刃数",
+        "helix": "ネジレ",
+        "marking": "刻印",
+        "drawnAt": "作成年月日"
+      },
+      "confirm": "確定",
+      "extract": {
+        "fromDrawing": "図面",
+        "editManually": "手入力",
+        "manual": "手入力",
+        "drawingValue": "図面: {value}",
+        "revert": "図面の値に戻す",
+        "summaryTitle": "図面「{file}」から読み取りました",
+        "summaryCounts": "{read} 項目を読み取り（手入力 {overridden} 項目）・{at}",
+        "summaryHint": "図面から読んだ欄は読み取り専用です。欄の「手入力」で上書きでき、図面の値は入力欄の上（欄の説明）に残ります。",
+        "detach": "読み取りを外す",
+        "viewSummary": "図面「{file}」から {read} 項目（手入力 {overridden} 項目）・{at}"
+      },
+      "seriesOption": "{name}（{count} 版）",
+      "allSeries": "すべての受注元"
+    },
+    "stepDueDate": {
+      "badge": "工程納期 {date}",
+      "label": "工程納期",
+      "labelWithStep": "{step} の工程納期",
+      "builderHelp": "工程ごとの締切（任意）。過ぎて未完了の工程は工程カードとフロー図で赤く表示されます。承認後は工程実行画面の計画パネルで直せます。",
+      "panelHelp": "この工程をいつまでに終えるか（任意）",
+      "notSet": "未設定",
+      "saved": "工程納期を保存しました",
+      "locked": "この工程の納期は変更できません（完了・キャンセル済み、または承認依頼中の指示書です）",
+      "couldNotSave": "工程納期を保存できませんでした",
+      "auditChanged": "工程納期を {date} に変更"
+    },
+    "workLocationBoard": {
+      "title": "作業場所一覧",
+      "date": "日付",
+      "today": "今日",
+      "time": "時刻",
+      "workOrder": "指示書",
+      "product": "製品",
+      "step": "工程",
+      "assignee": "担当者",
+      "status": "状態",
+      "carriedOver": "持ち越し（{date}）",
+      "working": "作業中",
+      "helpToday": "今日の計画に加え、前日以前から持ち越した未完了の工程と、その作業場所で作業中の工程も表示しています。",
+      "helpOtherDay": "この日の作業計画を作業場所ごとに表示しています。",
+      "empty": "この日の作業計画はありません",
+      "noLocation": "作業場所なし",
+      "count": "{count} 件"
+    },
+    "designPrograms": {
+      "title": "加工プログラム",
+      "description": "この版から起こした加工プログラム。対象の機種を選び、1 本が複数の工程を受け持てます。工程で使われたプログラムは直さず新しい版を作ります。変更は承認設定の「加工プログラムの変更」を通ります（段が無ければすぐ反映）。図面の確定後も変更できます。",
+      "none": "加工プログラムはありません",
+      "name": "プログラム名",
+      "programNumber": "プログラム番号",
+      "machineModels": "機種",
+      "machineModelsHint": "空 = 機種を問わない。工程実行画面では、計画・実績の機械の機種と一致するプログラムが先頭に並びます",
+      "anyModel": "機種を問わない",
+      "modelMatch": "この機種用",
+      "steps": "工程",
+      "file": "プログラムファイル",
+      "chooseFile": "ファイルを選択",
+      "noFile": "ファイルなし",
+      "fileKept": "今のファイルのまま",
+      "currentFile": "今のファイル: {name}",
+      "keepFile": "そのまま",
+      "replaceFile": "差し替える",
+      "removeFile": "外す",
+      "add": "プログラムを追加",
+      "nameRequired": "プログラム名を入力してください",
+      "stepsRequired": "工程を選択してください",
+      "fromVersion": "設計図 v{version}",
+      "fromRecord": "この工程を開始したときの版を表示しています",
+      "revision": "v{revision}",
+      "used": "使用済み（{count} 工程）",
+      "unused": "未使用",
+      "retired": "廃止",
+      "pendingBadge": "承認依頼中",
+      "actionEdit": "直す",
+      "actionRevise": "新しい版を作る",
+      "actionDelete": "削除",
+      "actionRetire": "廃止する",
+      "usedHint": "この版は工程で使われているため直せません。変えるときは新しい版を作ってください（今の版はそのまま残ります）。",
+      "history": "過去の版（{count}）",
+      "supersededAt": "{at} まで",
+      "requestedBy": "{name}・{at} 申請",
+      "requestNote": "申請メモ",
+      "requestNoteHint": "何をなぜ変えるのか（承認者に見えます）",
+      "submitRequest": "申請する",
+      "requested": "承認を依頼しました",
+      "applied": "反映しました",
+      "failedTitle": "反映できなかった申請: {kind}「{name}」",
+      "invalidPayload": "加工プログラムの内容が正しくありません",
+      "invalidReference": "存在しない工程または機種が選ばれています",
+      "fileMissing": "プログラムファイルを選んでください",
+      "alreadyPending": "このプログラムには承認待ちの申請があります",
+      "changeNotFound": "加工プログラムの変更申請が見つかりません",
+      "applyFailed": "加工プログラムの変更を反映できませんでした",
+      "requestedAudit": "加工プログラムの{kind}を申請「{name}」",
+      "appliedAudit": "設計図 v{version}：加工プログラム「{name}」の{kind}を反映",
+      "applyFailedAudit": "加工プログラムの変更を反映できませんでした: {error}",
+      "rejectedAudit": "加工プログラムの変更を差し戻し（理由: {reason}）",
+      "kind": {
+        "ADD": "追加",
+        "EDIT": "変更",
+        "REVISE": "新しい版",
+        "DELETE": "削除",
+        "RETIRE": "廃止"
+      },
+      "modalTitle": {
+        "ADD": "加工プログラムを追加",
+        "EDIT": "「{name}」を直す",
+        "REVISE": "「{name}」の新しい版（v{revision}）を作る",
+        "DELETE": "「{name}」を削除",
+        "RETIRE": "「{name}」を廃止"
+      },
+      "modalHint": {
+        "ADD": "新しいプログラム（v1）を申請します。",
+        "EDIT": "まだ工程で使われていない版を、その場で直します。",
+        "REVISE": "今の版は工程で使われているので残し、変更した内容で次の版を作ります。これから開始する工程には新しい版が出ます。",
+        "DELETE": "どの版もまだ工程で使われていないので、プログラムごと削除します。",
+        "RETIRE": "工程で使われた版があるので削除はできません。廃止すると、これから開始する工程には出なくなります（使った記録と版は残ります）。"
+      },
+      "premise": {
+        "notFound": "基にしたプログラムが見つかりません",
+        "notCurrent": "基にした版はもう最新ではありません（先に別の変更が反映されました）",
+        "retired": "このプログラムは廃止されています",
+        "used": "この版は工程で使われたため、その場では直せません。新しい版を作ってください",
+        "keyUsed": "工程で使われた版があるため削除できません。廃止してください"
+      }
+    },
+    "wipRecording": {
+      "title": "在庫に置く仕掛品",
+      "description": "半製品として在庫に置く分は、加工状態と仕上がり寸法ごとに分けて在庫に入ります。",
+      "state": "加工状態",
+      "stateUnprocessed": "未加工（形を変える工程なし）",
+      "kindDefect": "半製品に振り分けた分",
+      "kindBranchTerminal": "分岐の終端（半製品在庫へ）",
+      "finishedDiameter": "仕上がり径 (mm)",
+      "finishedLength": "仕上がり長 (mm)",
+      "finishedSize": "仕上がり寸法",
+      "defaultsToBlank": "形を変える工程が済んでいないため、未入力なら仕掛ブランクの寸法（φ{diameter} × {length}）になります。",
+      "path": "通ってきた経路",
+      "pathHint": "手前に合流があるため、加工状態が一通りに決まりません。品物が通ってきた経路を確かめてください。",
+      "recommended": "推奨（本流）",
+      "issues": {
+        "finishedDiameterRequired": "仕上がり径を入力してください",
+        "finishedLengthRequired": "仕上がり長を入力してください",
+        "finishedDiameterInvalid": "仕上がり径は 0 より大きい数値を入力してください",
+        "finishedLengthInvalid": "仕上がり長は 0 より大きい数値を入力してください",
+        "pathChoiceRequired": "品物が通ってきた経路を選択してください",
+        "pathChoiceInvalid": "選択した経路がこの工程の候補にありません。画面を読み込み直してください"
+      }
+    },
+    "wipDraw": {
+      "title": "使える仕掛品",
+      "description": "在庫に置いてある仕掛品のうち、この製品の続きに使えるものです。選ぶと、その加工状態で済んでいる工程を飛ばし、半製品出しから始まる指示書になります。目標製品が違う仕掛品も使えます。",
+      "group": {
+        "exact": {
+          "title": "ちょうど",
+          "description": "径も長さも同じ仕掛品"
+        },
+        "longer": {
+          "title": "長い",
+          "description": "径は同じで長い仕掛品（切って使う）"
+        },
+        "largerDiameter": {
+          "title": "太い",
+          "description": "径が太い仕掛品（削って使う。長さは足りている）"
+        },
+        "other": {
+          "title": "加工状態が合わない",
+          "description": "寸法は使えるが、済んだ工程がこの製品の工程の先頭部分になっていない"
+        }
+      },
+      "available": "利用可能数",
+      "reservedNote": "予約 {count}",
+      "pendingElsewhere": "ほかの指示書が {count} 本を選択中（未承認）",
+      "blankSize": "ブランク {size}",
+      "skippedSteps": "飛ばす工程",
+      "noSkip": "飛ばす工程はありません",
+      "drawQuantity": "投入数（本）",
+      "selectRow": "ロット {lot} の仕掛品を投入する",
+      "mixedStatesHint": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+      "notPermitted": "在庫を閲覧する権限がないため、仕掛品の候補を表示できません。",
+      "productNotReady": "この製品には要求素材（材種・径・長）が設定されていないため、使える仕掛品を探せません。",
+      "empty": "この製品に使える仕掛品は在庫にありません。",
+      "onlyOther": "加工状態がこの製品の工程に合う仕掛品はありません。",
+      "showOther": "加工状態が合わない仕掛品（{count} 件）を表示",
+      "hideOther": "加工状態が合わない仕掛品を隠す",
+      "otherWarning": "これらの仕掛品は、この製品の工程に無い加工が済んでいるか、工程の順序が違います。使うには現物を確かめたうえで理由を入力してください（操作履歴に残ります）。",
+      "summary": "投入 {total} 本 / 予定数量 {planned} 本",
+      "lessThanPlanned": "予定数量より少ない",
+      "moreThanPlanned": "予定数量より多い",
+      "startsFromSemiIssue": "この指示書は半製品出しから始まります。使用素材は使いません（素材の予約も取りません）。選んだ仕掛品は承認のときに予約され、完了のときに在庫から落ちます。",
+      "willSkip": "仕掛品で済んでいるので、この指示書では行わない工程",
+      "redo": "もう一度行う工程",
+      "redoHelp": "仕掛品では済んでいるが、この指示書でも行う工程（長い仕掛品を切り直す、など）。",
+      "oversizeHint": "長い・太い仕掛品を選んでいます。寸法を合わせる工程（切断・研削）がこの指示書に残っているか確かめてください。済んでいる工程でやり直すものは「もう一度行う工程」で選びます。",
+      "overrideReason": "加工状態が合わない仕掛品を使う理由",
+      "overrideReasonHelp": "操作履歴に残り、承認者にも表示されます。",
+      "missingSelection": "選んでいた仕掛品のうち {count} 件が、もう候補にありません（在庫が無くなったか、工程の構成が変わりました）。",
+      "dropMissing": "選択から外す",
+      "skippedBadge": "仕掛品で済み",
+      "fixBeforeSaving": "「使える仕掛品」の選択に不備があります。赤い表示を解消してください。",
+      "issue": {
+        "notACandidate": "候補に無い仕掛品が選ばれています",
+        "duplicate": "同じ仕掛品が 2 回選ばれています",
+        "quantityInvalid": "投入数は 1 以上の整数で入力してください",
+        "quantityExceedsAvailable": "投入数が利用可能数を超えています",
+        "mixedStates": "加工状態の違う仕掛品は 1 枚の指示書に混ぜられません",
+        "overrideReasonRequired": "理由を入力してください"
+      },
+      "startState": "開始状態",
+      "startStateHelp": "在庫の仕掛品から始める指示書です。この加工状態で済んでいる工程は行いません。",
+      "skippedInThisOrder": "飛ばした工程",
+      "drawsTitle": "投入する仕掛品",
+      "drawLine": "{blank} ／ ロット {lot} ／ {quantity} 本",
+      "drawAimed": "目標製品: {product}",
+      "drawReserved": "予約済 {count} 本",
+      "drawNotReserved": "未予約（承認のときに予約します）",
+      "overrideReasonLabel": "加工状態が合わない仕掛品を使う理由: {reason}"
+    },
+    "workOrderAbort": {
+      "menu": "打ち切り",
+      "title": "指示書の打ち切り",
+      "description": "進行中の指示書を止め、流れの途中にある良品を仕掛品として在庫へ戻します。戻さない分は廃棄として記録します。指示書は打ち切り済み（キャンセル）になり、注文明細は未手配に戻ります。",
+      "noPositions": "流れの途中に良品はありません。打ち切ると在庫へ戻す品はなく、指示書だけが終わります。",
+      "inStep": "工程内",
+      "waiting": "工程待ち",
+      "waitingBetween": "{from} → {to}",
+      "atPosition": "{quantity} 本",
+      "returnQuantity": "仕掛品として戻す数",
+      "scrapQuantity": "廃棄",
+      "scrapHint": "戻さない分は廃棄として記録します",
+      "reason": "打ち切りの理由",
+      "reasonPlaceholder": "例: 受注の取り消し、図面の変更",
+      "approvalNote": "承認設定で「指示書の打ち切り」に段があるときは承認を経て適用されます。段が無ければすぐに適用されます。",
+      "confirm": "打ち切る",
+      "appliedToast": "打ち切りました",
+      "appliedToastMessage": "流れの途中の品を仕掛品として在庫へ戻しました",
+      "requestedToast": "打ち切りを申請しました",
+      "requestedToastMessage": "承認されると適用されます",
+      "appliedTitle": "打ち切り済み",
+      "appliedDescription": "{at} に打ち切りました。理由: {reason}。仕掛品として戻した数 {returned} 本 / 廃棄 {scrap} 本。",
+      "failedTitle": "打ち切りを適用できませんでした",
+      "failedDescription": "{error} 指示書は進行中のままです。いまの状態で打ち切りを申請し直してください。",
+      "pendingTitle": "打ち切り承認依頼中",
+      "approvalTitle": "打ち切りの承認",
+      "pendingDescription": "{requestedBy} さんの申請（{stepLabel}）。理由: {reason}。仕掛品として戻す数 {returned} 本 / 廃棄 {scrap} 本。承認されるまで指示書は進行中のままです。",
+      "rejectTitle": "打ち切りを差し戻す",
+      "rejectHelp": "差し戻すと申請は閉じ、指示書は進行中のまま続きます。",
+      "rejectedToastMessage": "指示書は進行中のままです",
+      "abortedBadge": "打ち切り",
+      "pendingBadge": "打ち切り承認依頼中",
+      "reasonRequired": "打ち切りの理由を入力してください",
+      "positionsChanged": "工程の状態が変わりました。画面を読み込み直してください",
+      "quantityMismatch": "戻す数と廃棄の合計を、その位置の本数に合わせてください",
+      "block": {
+        "notInProgress": "打ち切れるのは進行中の指示書だけです",
+        "typeNotAbortable": "打ち切れるのは製造分の指示書だけです",
+        "pending": "この指示書の打ち切りは承認依頼中です"
+      },
+      "requestedNote": "打ち切りを申請（理由: {reason}）",
+      "notFound": "打ち切りの申請が見つかりません",
+      "alreadyProcessed": "この打ち切りの申請は処理済みです",
+      "payloadBroken": "打ち切りの申請内容を読み取れません",
+      "premiseChanged": "申請してから工程が進んだため適用しませんでした（食い違い {count} 件）。",
+      "applyFailedNote": "打ち切りを適用できませんでした: {error}",
+      "appliedNote": "打ち切り（理由: {reason}）— 仕掛品として戻した数 {returned} 本 / 廃棄 {scrap} 本",
+      "applyFailedShort": "打ち切りに失敗しました",
+      "rejectedNote": "打ち切りの申請を差し戻し（理由: {reason}）"
     }
   },
   "purchase": {
@@ -3222,7 +3901,15 @@
       "filesCount": "{count} 件",
       "removeFile": "{name} を取り消す",
       "enterAUnit": "単位を入力してください",
-      "registrationFailed": "素材入荷の登録に失敗しました"
+      "registrationFailed": "素材入荷の登録に失敗しました",
+      "openPo": {
+        "title": "この素材は発注済みで、まだ届いていない分があります",
+        "body": "発注書で注文した素材が届いたときは、素材発注書の「分割入荷」（または「入荷完了」）で記録してください。ここで登録すると発注書の残数量が減らず、あとで「入荷完了」を押したときに同じ素材がもう一度在庫に入ります。",
+        "line": "{po}: 残り {remaining} {unit}",
+        "open": "発注書を開く",
+        "acknowledge": "発注書とは別の購入として登録する",
+        "blocked": "発注済みで未入荷の発注書があります（{list}）。発注した分は素材発注書の「分割入荷」で記録してください。別の購入として登録するときは、確認にチェックしてから保存してください。"
+      }
     },
     "outsourceOrders": {
       "editOutsourceOrder": "外注依頼 編集",
@@ -3263,7 +3950,7 @@
       "receiptNote": "{quantity} {unit}・{date}",
       "confirmCancelBody": "素材発注書 {number} をキャンセルします。この操作は取り消せません。",
       "confirmOrderBody": "素材発注書 {number} を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。",
-      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。",
+      "confirmCompleteBody": "明細 {count} 件の残り全量を入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。一部だけ届いたときは「分割入荷」で記録してください（素材入荷 (PU03) で登録すると発注書の残りが減らず、二重に入庫します）。",
       "receiveActionsDescription": "入荷完了は残数量をまとめて入荷します。一部だけ届いたときは分割入荷、残りが届かないときは未入荷のまま完了にしてください。",
       "partialReceipt": "分割入荷",
       "confirmPartialReceipt": "分割入荷の登録",
@@ -3642,7 +4329,11 @@
       "loginScreenLanguageDefault": "既定（日本語）",
       "hoursValue": "{n} 時間",
       "minutesValue": "{n} 分",
-      "daysValue": "{n} 日"
+      "daysValue": "{n} 日",
+      "mapShort": "マップ",
+      "inUseBy": "{name} が利用中",
+      "lastActivityAt": "最終アクティビティ {at}",
+      "androidApiWithPatch": "API {sdk}（パッチ {patch}）"
     },
     "links": {
       "links": "リンク管理",
@@ -3796,7 +4487,16 @@
       "criterionWasDeleted": "「{name}」を削除しました",
       "thisCriterionsValueLabel": "この基準の値:",
       "intermediateOrNotApplicable": "（中間/対象外）",
-      "quantityPcs": "{quantity} 本"
+      "quantityPcs": "{quantity} 本",
+      "description": "説明",
+      "descriptionHint": "価格試算の画面で、この費目の横のヒントボタン（ⓘ）に表示されます。空欄ならボタンは出ません。",
+      "costMode": "原価の扱い",
+      "costModeHint": "「原価と売価に数える」は原価合計に残り、小計に足す項目なら見積単価にも入ります。「原価のみに含める」は原価合計にだけ数え、最低単価・見積単価には足しません（小計に足す項目のときだけ選べます）。",
+      "costModeNone": "原価に数えない",
+      "costModeCostAndPrice": "原価と売価に数える",
+      "costModeCostOnly": "原価のみに含める",
+      "costOnlyBadge": "原価のみ",
+      "costBadge": "原価"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "キーは英字/アンダースコア始まりの識別子にしてください",
@@ -3887,8 +4587,7 @@
       "notificationTypesSentImmediately": "即時に送る通知の種別",
       "theMaximumListedInOneEmail": "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
       "itemsPerEmail": "1 通の件数",
-      "maxItems": "最大件数",
-      "resetToDefault": "元に戻す"
+      "maxItems": "最大件数"
     },
     "productTypeEditForm": {
       "enterTheTypeNameInJapanese": "種別名（日本語）を入力してください",
@@ -4000,6 +4699,8 @@
       "loginHistoryLast30Days": "ログイン履歴（直近 30 日）",
       "thereAreNoLoginRecordsIn": "この期間のログイン記録はありません",
       "registeredDevicesWeb": "登録端末（Web）",
+      "loginHistoryNeedsPersonalData": "ログイン履歴と登録端末を見るには「個人データの閲覧」（personal_data）の権限が必要です。",
+      "openLoginHistory": "ログイン履歴（SY0D）を開く",
       "passwordAndSso": "パスワード + SSO",
       "plantLabelDisabled": "{label}（無効）",
       "requestApprovalButton": "承認を依頼",
@@ -4172,7 +4873,13 @@
         "orphanRecoveredLog": "[intake] 孤児 .processing を回収: {name}",
         "alreadyImportedSkipLog": "[intake] {name} → {number} (取込済み・スキップ)",
         "numberBurnFailedLog": "[intake] 番号の焼き込みに失敗: {name}"
-      }
+      },
+      "intakeCompanyTitle": "取込口の自社法人",
+      "intakeCompany": "自社法人",
+      "intakeCompanyDefault": "既定の法人",
+      "intakeCompanyDesc": "取込フォルダ（メール・外部連携からの取込を含む）で作る注文請書の発行元です。注文請書の自社法人は作成後に変えられないので、変更はこれから取り込む分にだけ効きます。画面からアップロードした分は、アップロードした人の所属拠点の自社法人が 1 つに決まればそれを使います。",
+      "intakeCompanySaved": "取込口の自社法人を保存しました",
+      "intakeCompanyInvalid": "有効な自社法人を選択してください"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "アカウントを作成しました（既定は無効です）",
@@ -4222,7 +4929,9 @@
       "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
       "viewingHistory": "閲覧記録",
       "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
-      "ipAddress": "IP アドレス"
+      "ipAddress": "IP アドレス",
+      "documentLinks": "書類リンク",
+      "documentLinksIntro": "アカウントに紐づかないリンク（書類の「ポータル共有」や見積書のメール送付で発行したもの）も含め、直近 100 件を表示します。"
     },
     "privileged": {
       "approveTab": "承認する",
@@ -4296,7 +5005,9 @@
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
       "unknownDevice": "不明な端末",
-      "success": "成功"
+      "success": "成功",
+      "loginCount": "{count} 回",
+      "lastSeenAt": "最終 {at}"
     },
     "displayContentEditor": {
       "templateSettings": "{name}の設定",
@@ -4379,7 +5090,8 @@
     "loginAttemptDrawer": {
       "theAutomationFlagNavigatorwebdriverIs": "自動操作フラグ（navigator.webdriver）が立っています",
       "theDeviceSClockIsMinutes": "端末の時計がサーバーと {minutes} 分ずれています",
-      "scanKindContentNotStored": "{scanKind}（内容は保存していません）"
+      "scanKindContentNotStored": "{scanKind}（内容は保存していません）",
+      "collectedSignals": "収集シグネチャ（v{version}）"
     },
     "kioskDeviceLogsModal": {
       "durationMinutes": "{minutes}分",
@@ -4433,7 +5145,8 @@
       "appNotFound": "対象のアプリが見つかりません",
       "flagDescription": "{label}（{operationCode}）の {env} 表示",
       "invalidEnv": "環境の指定が不正です",
-      "updateFailed": "フラグの更新に失敗しました"
+      "updateFailed": "フラグの更新に失敗しました",
+      "lockedByFeature": "このアプリは開発中の機能のため、この環境では切り替えられません"
     },
     "displaysActions": {
       "activateFailed": "有効化に失敗しました",
@@ -4536,6 +5249,7 @@
       "cardAlreadyAssigned": "このカードは割当済です。別のユーザーに割り当てるには先に取り消してください",
       "onlyUnassignedCardsCanBeAssigned": "未割当のカードのみ割り当てできます",
       "targetUserNotFoundOrInactive": "対象のユーザーが見つかりません（無効ユーザー不可）",
+      "userHasSuspendedCard": "このユーザーには一時停止中のカードがあります。再開するか、取り消してから割り当ててください",
       "userAlreadyHasAssignedCardLong": "このユーザーには既に割当済のカードがあります。先に既存カードを取り消してください",
       "assignFailed": "カードの割当に失敗しました",
       "userAlreadyHasAssignedCardShort": "このユーザーには既に割当済のカードがあります",
@@ -4722,7 +5436,8 @@
     "kioskSettings": {
       "stepExecution": "工程実行",
       "workOrderScan": "指示書スキャン",
-      "workLocationBoard": "作業場所の工程"
+      "workLocationBoard": "作業場所の工程",
+      "workOrderList": "指示書一覧"
     },
     "portalGuide": {
       "guide": "案内",
@@ -4732,6 +5447,98 @@
       "activateBeforeIssuing": "有効化してから発行してください（未有効化のアカウントではログインできません）。",
       "noActiveAccounts": "この取引先には有効なポータルアカウントがありません。",
       "couldNotIssueTheGuide": "案内を発行できませんでした。"
+    },
+    "accounting": {
+      "accounting": "会計連携",
+      "description": "請求書から出す仕訳 CSV の形。行ごとの科目コードはマスタ側（税区分 MS0F / 取引先 MS01）にあり、ここが持つのは形と、マスタが空だったときの既定。",
+      "notYetVendorLayout": "既定の列は「科目コードで出す一般的な形」で、会計ソフトの正式な受入レイアウトではありません。受入レイアウト表を受け取ったら、この画面の列と既定コードを合わせてください。",
+      "format": "出力形式",
+      "formatDescription": "会計ソフトの受入が要求する文字コード・改行・日付の書き方。",
+      "encoding": "文字コード",
+      "newline": "改行",
+      "dateFormat": "日付の書式",
+      "headerRow": "ヘッダ行を出す",
+      "quoteMode": "引用符の付け方",
+      "amountStyle": "金額の書き方",
+      "filenameSuffix": "ファイル名の接尾辞",
+      "columns": "列レイアウト",
+      "columnsDescription": "何を、どの順で、どんな見出しで出すか。上から順に 1 列目・2 列目…になる。",
+      "columnHeader": "見出し",
+      "columnField": "出力する項目",
+      "constant": "固定文字列",
+      "addColumn": "列を追加",
+      "accounts": "既定の科目コード",
+      "accountsDescription": "マスタ側の科目コードが空のときに使う。空のままなら、その欄は空欄で出力される。",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
+      "receivableAccountCode": "売掛金 科目コード",
+      "salesAccountCode": "売上高 科目コード",
+      "taxAccountCode": "仮受消費税 科目コード",
+      "deptCode": "部門コード",
+      "defaultTaxCode": "既定の消費税コード",
+      "salesByOrderType": "注文種別ごとの売上高 科目コード",
+      "salesByOrderTypeDescription": "注文種別ごとに売上高の科目を分けるときに使う（再研磨の売上を製品と別の科目へ、など）。入れた種別だけが税区分マスタ・既定の科目より先に効く。空欄の種別は従来どおり。",
+      "orderType": "注文種別",
+      "followTaxCategory": "税区分・既定に従う",
+      "taxCodeRules": "税率別の消費税コード",
+      "taxCodeRulesDescription": "税区分マスタに消費税コードが入っていないときに、税率から引く。",
+      "taxRate": "税率",
+      "taxRatePercent": "税率(%)",
+      "debitTaxCode": "借方 消費税コード",
+      "creditTaxCode": "貸方 消費税コード",
+      "addTaxCodeRule": "税率を追加",
+      "preview": "プレビュー",
+      "previewNote": "10% と 8% が混ざった作り話の請求書 1 通を、いまの設定で出力した結果。注文種別ごとの売上科目（再研磨など）を入れていれば、その種別の明細も 1 本ずつ含めて出す。",
+      "saved": "会計連携の設定を更新しました",
+      "sampleCustomerName": "株式会社サンプル工業"
+    },
+    "accountingField": {
+      "date": "伝票日付",
+      "dateYear": "年",
+      "dateMonth": "月",
+      "dateDay": "日",
+      "slipNo": "伝票番号",
+      "rowIndex": "行番号",
+      "voucherNo": "証憑番号",
+      "debitAccountCode": "借方 科目コード",
+      "debitSubCode": "借方 補助科目",
+      "debitDeptCode": "借方 部門",
+      "debitTaxCode": "借方 消費税コード",
+      "debitAmount": "借方 金額",
+      "creditAccountCode": "貸方 科目コード",
+      "creditSubCode": "貸方 補助科目",
+      "creditDeptCode": "貸方 部門",
+      "creditTaxCode": "貸方 消費税コード",
+      "creditAmount": "貸方 金額",
+      "taxRatePercent": "税率(%)",
+      "memo": "摘要",
+      "invoiceNumber": "請求番号",
+      "customerCode": "顧客コード",
+      "customerName": "顧客名",
+      "constant": "固定文字列",
+      "empty": "空欄"
+    },
+    "scalePreset": {
+      "title": "数量スケール",
+      "summary": "{count}段階の倍率表（価格表の数量段階の初期値）",
+      "description": "価格表で新しいバリアントを作るときの数量段階の初期値です。開始数量と倍率だけを持ち、範囲（〜何本）は次の行の開始数量から決まります。",
+      "previewBase": "試算用の基準単価",
+      "previewBaseHint": "単価の列を読み合わせるための入力です。保存されません。",
+      "colFrom": "開始数量",
+      "colRange": "範囲",
+      "colMultiplier": "倍率",
+      "colUnitPrice": "単価",
+      "addRow": "範囲を追加",
+      "removeRow": "行を削除",
+      "resetToDefault": "初期値に戻す",
+      "resetConfirmTitle": "初期値に戻す",
+      "resetConfirmMessage": "編集中の内容を標準の表に置き換えます。保存するまで反映されません。",
+      "saved": "数量スケールを更新しました",
+      "saveFailed": "数量スケールの保存に失敗しました",
+      "issueEmpty": "行を 1 つ以上追加してください",
+      "issueFirstNotOne": "最初の行の開始数量は 1 にしてください",
+      "issueNotInteger": "{row} 行目の開始数量は 1 以上の整数にしてください",
+      "issueNotAscending": "{row} 行目の開始数量は、前の行より大きくしてください",
+      "issueBadMultiplier": "{row} 行目の倍率は 0.01 以上にしてください"
     }
   },
   "portal": {
@@ -4890,7 +5697,25 @@
       "canApproveScopeLimited": "{total}名 承認可（{count}名は範囲限定）",
       "noDocumentPermission": "この書類を閲覧・編集できる権限がありません: {names}",
       "noPermissionCount": "{total}名中 {count}名 権限なし",
-      "scopeIsLimited": "権限の範囲が限定されています（対象外の書類は承認できません）: {names}"
+      "scopeIsLimited": "権限の範囲が限定されています（対象外の書類は承認できません）: {names}",
+      "policy": {
+        "label": "承認を使う",
+        "onHelp": "承認依頼は下の段を順に通ります。",
+        "onEmptyHelp": "段が 1 つも無いため、承認依頼を出せません。段を設定するか、承認を使わない設定にしてください。",
+        "offHelp": "承認なしで進めます（承認依頼を押すとその場で承認済になります）。段は残っていますが使いません。",
+        "offBadge": "承認なし",
+        "notSetYet": "まだ設定していません（いまの動きを表示しています）",
+        "saveFailed": "承認の使用設定を保存できませんでした"
+      },
+      "stepNumber": "第{n}段",
+      "ruleCountBadge": "条件付き {count} 本",
+      "requiredPermissionLine": "承認に必要な権限: {permission} の閲覧または編集",
+      "setUp": "設定",
+      "permissionNote": "{target}の承認・差し戻しには、「{permission}」を閲覧または編集できる権限（<mono>{code}:READ / UPDATE</mono>）が要ります。誰が承認するかは、この画面で指定した{who}だけで決まります。書類を開けない人は、指定しても承認できません（権限はユーザー管理 SY01 のロールで決まります）。",
+      "noConditionalFlows": "条件付きフローはありません。すべての{target}が既定フローで進みます。",
+      "priorityBadge": "優先 {n}",
+      "stepsLine": "段: {steps}",
+      "catchAll": "条件なし — すべての{target}に一致します（キャッチオール）。"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
@@ -4915,7 +5740,7 @@
       "newApprovalGroup": "承認グループ 新規作成",
       "whichDocumentAndWhichStepIt": "どの書類の何段目で使うかは「承認フロー」で決めます。",
       "deleteTheApprovalGroup": "承認グループの削除",
-      "itCannotBeDeletedWhileApproval": "このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。",
+      "itCannotBeDeletedWhileApproval": "承認フローの段（条件付きフロー・独自値の追加承認・フォームの承認を含む）や検査表テンプレートで使われているグループは削除できません。無効化をご検討ください。メンバー・代理設定はグループと一緒に削除されます。",
       "enableTheApprovalGroup": "承認グループの有効化",
       "timeLimited": "期間限定",
       "theyCanApproveAsAMember": "この期間だけこのグループの一員として承認できます。期間外は承認者に\n            出てきません。",
@@ -5023,20 +5848,20 @@
       "theBusinessPartnerWasCreated": "取引先を作成しました",
       "newBusinessPartner": "取引先 新規作成",
       "formatBpNnnnnNumberedAutomatically": "形式: BP-NNNNN（自動採番）",
-      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。",
+      "chooseInWhatCapacityThisPartner": "この取引先をどの立場で使うかを選ぶ。複数選択でき、後から付け外しできる。",
       "youCanRegisterItWithNo": "ロール未設定でも登録できます。書類で選べるようにするには、あとで\n            ロールを付けてください。",
-      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法（bp_customer_attrs）。",
+      "closingDayPaymentTermsAndInvoice": "締日・支払条件・請求方法。",
       "customerInformation": "顧客情報",
       "legacyCustomerCodeOptional": "旧顧客コード（任意）",
       "billThisPartnerItself": "この取引先自身に請求",
       "n31EndOfMonth": "31 = 月末",
       "paymentTermsDays": "支払サイト（日数）",
       "consigneeForConsignmentSales": "委託先（委託販売の対象）",
-      "theSalesRepsForThisCustomer": "この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
-      "endUserSpecificAttributesBpEnd": "需要家固有属性（bp_end_user_attrs）。",
+      "theSalesRepsForThisCustomer": "この顧客を担当する営業。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
+      "endUserSpecificAttributesBpEnd": "最終需要家としての情報。",
       "endUserInformation": "最終需要家情報",
       "automotiveParts": "自動車部品",
-      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム（bp_vendor_attrs）。",
+      "typePaymentTermsAndStandardLead": "種別・支払条件・標準リードタイム。",
       "supplierAndSubcontractorInformation": "仕入先・外注先情報",
       "legacySupplierCodeOptional": "旧仕入先コード（任意）",
       "bankAccountForPayments": "支払振込先の口座情報。",
@@ -5071,7 +5896,13 @@
       "varianceApprovalWithinHelp": "範囲に収まっている過不足でも、出荷書の確定前に承認を通す。",
       "varianceApprovalOutside": "許容範囲外は承認を要求する",
       "varianceApprovalOutsideHelp": "外すと範囲外の過不足も決裁なしで通る。範囲の設定が意味を持たなくなるので、通常は付けたままにする。",
-      "approvalNotRequired": "不要"
+      "approvalNotRequired": "不要",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV の借方（売掛金）に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
+      "receivableAccountCode": "売掛金 科目コード",
+      "receivableSubAccountCode": "補助科目コード（得意先）",
+      "receivableSubAccountCodeHint": "会計ソフト側の得意先コード。社内の顧客コードとは別物なので、流用しない。"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -5213,7 +6044,8 @@
       "templateCountValue": "{count}件の検査表",
       "toggleRequiredFor": "{name} の 必須 / 任意 を切り替える",
       "markedRequired": "必須にしました",
-      "markedOptional": "任意にしました"
+      "markedOptional": "任意にしました",
+      "autoComputedRange": "自動計算: 下限 {min} 〜 上限 {max}{unit}"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -5225,10 +6057,6 @@
       "disable": "無効化する",
       "thereAreNoComponents": "構成要素がありません",
       "codeNumbering": "採番構成",
-      "materialTypeCode": "材種コード =",
-      "manufacturerGrade2ShapeKind4": "[メーカー][材種2桁][形状][種類4桁]",
-      "materialTypeFinishDia103": "[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]",
-      "codesAreEmbeddedInCompositeCodes": "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。",
       "addDiameter": "直径の追加",
       "addKind": "種類の追加",
       "addLengthVariant": "全長の追加",
@@ -5236,7 +6064,8 @@
       "addManufacturerGrade": "メーカー材種の追加",
       "addShape": "形状の追加",
       "addSurfaceFinish": "黒皮・研磨区分の追加",
-      "codePreview": "コード: {code}"
+      "codePreview": "コード: {code}",
+      "codeStructureNote": "材種コード = <doc>[メーカー][材種2桁][形状][種類4桁]</doc>、素材コード = <doc>[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]</doc>。コードは合成コードに埋め込まれるため削除できません（無効化のみ）。直径・全長は素材作成時にも自動登録されます。"
     },
     "materialTypes": {
       "notConvertedLegacy": "未変換（レガシー）",
@@ -5278,7 +6107,7 @@
     "materials": {
       "nominalDiameter": "呼び径",
       "productsUsingIt": "使用製品",
-      "productsSpecifyMaterialAsTypeDiameter": "製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には\n              直接紐付きません。この素材は在庫管理で使用します。",
+      "productsSpecifyMaterialAsTypeDiameter": "製品の素材は設計図の版（PD06）が「材種 + 直径 + 全長」で指定するため、特定の素材には直接紐付きません。この素材は在庫管理で使用します。",
       "nominalDiameterMm": "呼び径 (mm)",
       "theMaterialWasCreated": "素材を作成しました",
       "newMaterial": "素材 新規作成",
@@ -5314,7 +6143,7 @@
       "eGF01": "例: F01",
       "eGHonshaKojo": "例: ほんしゃこうじょう",
       "contactAndAddress": "連絡先・住所",
-      "regionsCoveredByRegionScopePermissions": "REGION スコープ権限の対象地域",
+      "regionsCoveredByRegionScopePermissions": "地域単位の権限で、この拠点が含まれる地域",
       "selectARegion": "地域を選択",
       "eG1234567": "例: 123-4567",
       "eG0312345678": "例: 03-1234-5678",
@@ -5328,7 +6157,7 @@
       "thereAreNoSites": "拠点がありません",
       "theRegionWasAdded": "地域を追加しました",
       "addARegion": "地域の追加",
-      "itCannotBeChangedBecauseRegion": "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
+      "itCannotBeChangedBecauseRegion": "地域単位の権限設定がこのコードを参照しているため変更できません",
       "eGJp": "例: jp",
       "eGJapan": "例: 日本",
       "theRegionWasEnabled": "地域を有効化しました",
@@ -5337,7 +6166,7 @@
       "addARegion2": "地域を追加",
       "sites": "拠点数",
       "thereAreNoRegionsCreateOne": "地域がありません — 「地域を追加」から作成してください",
-      "theRegionCodeIsTheIdentifier": "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
+      "theRegionCodeIsTheIdentifier": "地域コードは地域単位の権限設定から参照されるため、作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
       "deleteConfirm": "拠点「{name}」を削除します。この操作は取り消せません。",
       "deleteRegionConfirm": "地域「{code} {name}」を削除します。この操作は取り消せません。",
       "deleted": "拠点「{name}」を削除しました",
@@ -5408,6 +6237,8 @@
       "stepUpdated": "工程を更新しました",
       "finalInspectionStep": "最終検査工程",
       "theFinalInspectionChecklistIsRecorded": "最終検査・出荷前確認（3項目の確認・予備在庫・棚包→納品書発行→出荷許可）をこの工程の実行画面で記録します。記録は指示書 1 件に 1 行で、印の付いた工程を工程リストに入れない指示書には最終検査がありません。",
+      "affectsWipState": "加工状態に数える",
+      "affectsWipStateHelp": "品物の形を変える工程で立てます。仕掛品の加工状態（済んだ工程の並び）にこの工程が入ります。検査・承認や在庫を動かすだけの工程では外します。",
       "approvalStepsHaveNoQuantity": "検査承認工程は数量を持ちません（数量管理は「なし」になります）。前の工程の検査表を見て承認する工程で、物を加工する工程ではないためです。",
       "workLocationRequired": "作業計画に作業場所が必要",
       "workLocationRequiredHelp": "承認依頼の前に、この工程の作業計画へ作業場所を入れることを求めます。在庫を動かすだけの工程など、場所に意味の無い工程では外してください。使える場所の範囲は下の「許可作業場所」で決めます。",
@@ -5415,8 +6246,6 @@
       "planRequiredFieldsHelp": "承認依頼の前に、この工程の作業計画に何が入っている必要があるか。計画日は常に必須です。",
       "planTimeRequired": "作業計画に開始・終了時刻が必要",
       "planTimeRequiredHelp": "時間帯まで決めてから承認に出す工程で立てます。",
-      "planQuantityRequired": "作業計画に数量が必要",
-      "planQuantityRequiredHelp": "計画を数量で分割する工程（担当者ごとに何本、など）で立てます。",
       "planTime": "開始・終了時刻",
       "routeKind": "工程リスト",
       "routeKindPrep": "準備",
@@ -5426,18 +6255,23 @@
       "planRequiredShort": "計画必須",
       "planFieldLocationShort": "場所",
       "planFieldTimeShort": "時刻",
-      "planFieldQuantityShort": "数量",
       "planAssigneeRequired": "作業計画に担当者が必要",
       "planAssigneeRequiredHelp": "承認依頼の前に担当者まで決めてから出す工程で立てます。既定では担当者は任意で、承認後に現場で決められます。",
-      "planFieldAssigneeShort": "担当"
+      "planFieldAssigneeShort": "担当",
+      "workOrderTypes": "使える指示書種別",
+      "workOrderTypesShort": "指示書種別",
+      "workOrderTypesHelp": "この工程を載せてよい指示書の種別です。1 つ以上選んでください。",
+      "workOrderTypesPinnedHelp": "この工程は「{type}」の開始工程なので種別を変えられません。在庫の消費・預り品の計上がこの種別であることに依っています。",
+      "workOrderTypesPinnedBadge": "開始工程のため変更不可",
+      "pickAtLeastOneWorkOrderType": "使える指示書種別を 1 つ以上選んでください",
+      "routeKindRegrind": "再研磨",
+      "routeKindRegrindHelp": "再研磨カテゴリの工程は共通の再研磨工程リストにだけ入ります（製造工程リストには入りません）。",
+      "routeKindAlsoRegrind": "「使える指示書種別」に再研磨を含めると、再研磨工程リストにも入れられます。"
     },
     "products": {
       "specification": "仕様",
-      "noSpecificationIsRegistered": "仕様は登録されていません",
       "priceListEntry": "価格表エントリ",
       "thereAreNoPriceListEntries": "この製品の価格表エントリはありません",
-      "checkTheProductTypeSFields": "製品種別の項目を確認してください",
-      "checkTheExtraFields": "追加項目を確認してください",
       "theProductWasCreated": "製品を作成しました",
       "newProduct": "製品 新規作成",
       "formatPrdYyyymmNnnnNumberedAutomatically": "形式: PRD-YYYYMM-NNNN（自動採番）",
@@ -5457,7 +6291,6 @@
       "duplicateTheProduct": "製品の複製",
       "duplicatedFrom": "複製元",
       "theProductCodeIsAssignedAutomatically": "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
-      "carriesOverTheSourceSMaterial": "複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）",
       "stepListRoute": "工程リスト（ルート）",
       "newRoute": "ルート新規作成",
       "noStepListIsRegisteredFor": "この製品の工程リストは未登録です。ルートを作成すると指示書作成時に工程構成をプリフィルできます。",
@@ -5494,7 +6327,15 @@
         "notADate": "{name} は日付で入力してください",
         "invalidFormat": "{name} は形式が正しくありません"
       },
-      "taxCategoryHint": "空欄なら税区分マスタの既定に従います。取引先に課税区分が設定されていれば、そちらが優先されます。"
+      "taxCategoryHint": "空欄なら税区分マスタの既定に従います。取引先に課税区分が設定されていれば、そちらが優先されます。",
+      "externalProduct": "他社製品",
+      "externalProductHint": "他社が作った工具を再研磨のために預かるときの品目。製造工程リスト・製造分の指示書・本番/テスト/サンプルの明細では選べません（再研磨専用）。",
+      "makerName": "メーカー名",
+      "externalBadge": "他社製",
+      "noConfirmedSpec": "確定した設計図の版がまだありません。仕様（材種・寸法・製品項目）は設計図で登録します。",
+      "registerSpecInDrawing": "設計図で仕様を登録",
+      "specFromVersion": "設計図 v{version}（{series}）の仕様",
+      "specLivesInDrawing": "仕様（材種・寸法・製品項目）は設計図の版が持つため複製しません。複製した製品の図面は設計図で登録してください。"
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -5542,7 +6383,7 @@
       "groupDeleted": "グループ「{name}」を削除しました",
       "deleteWorkLocationConfirm": "作業場所「{name}」を削除します。この操作は取り消せません。",
       "workLocationDeleted": "作業場所「{name}」を削除しました",
-      "workLocationInUse": "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+      "workLocationInUse": "この場所は {details} から参照されています（削除できません — 無効化をご検討ください）。",
       "jobsWithCount": "{count} 作業"
     },
     "bpModals": {
@@ -5660,7 +6501,10 @@
       "unsupportedFormat": "この形式は取り込めません（{reason}）。書き出したファイルをそのまま入れてください",
       "formatMismatch": "形式が違います",
       "noTemplatesToExport": "書き出す検査表がありません",
-      "relatedStepNotFound": "関連工程「{code}」が見つかりません"
+      "relatedStepNotFound": "関連工程「{code}」が見つかりません",
+      "exportUseCase": "別の環境へ持っていくときや、控えを取るときに使います。",
+      "createdItem": "{code}（v{version}・項目 {items} 件）",
+      "rowError": "{row} 行目: {message}"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "エービーシーセイサクショ"
@@ -5736,7 +6580,11 @@
     "plantForm": {
       "enterSiteCode": "拠点コードを入力してください",
       "siteUpdatedMessage": "拠点を更新しました",
-      "editTitle": "拠点 編集 — {code}"
+      "editTitle": "拠点 編集 — {code}",
+      "ownCompany": "自社法人",
+      "ownCompanyDesc": "この拠点が属する法人。拠点を持つ書類（注文請書・出荷書・素材発注書・入出庫伝票など）はこの法人を発行元にします。見積書は作成時の発行会社（または既定の法人）で決まり、拠点では決まりません。未設定は既定の法人",
+      "ownCompanyPlaceholder": "既定の法人",
+      "ownCompanyDefault": "既定の法人"
     },
     "materialTypeForm": {
       "selectAManufacturer2": "メーカーを選択してください",
@@ -5871,6 +6719,7 @@
       "referencedByWorkOrdersCannotDelete": "このルートのバージョンを参照する指示書が {count} 件あるため削除できません。無効化を検討してください。",
       "sameAsLatestVersion": "最新バージョン v{version} と同じ構成です（変更がありません）",
       "targetProductNotFound": "対象の製品が見つかりません",
+      "externalProductNoRoute": "他社製品には製造工程リストを作れません（再研磨専用の品目です）",
       "targetRouteNotFound": "対象の工程ルートが見つかりません",
       "updateFailed": "工程ルートの更新に失敗しました"
     },
@@ -5909,8 +6758,6 @@
       "execDependencyCycle": "実行依存が循環しています（{path}）"
     },
     "productsActions": {
-      "diameterRange": "直径は {min}〜{max}mm で入力してください",
-      "lengthRange": "全長は {min}〜{max}mm で入力してください",
       "createFailed": "製品の作成に失敗しました",
       "updateFailed": "製品の更新に失敗しました",
       "referencedCannotDelete": "この製品を参照するデータ（価格表・見積書・注文明細・設計・検査表など）が存在するため削除できません。無効化を検討してください。",
@@ -5941,7 +6788,8 @@
       "auditWorkLocationUpdated": "作業場所「{name}」を更新",
       "auditWorkLocationDeleted": "作業場所を削除",
       "usedByOrderAcceptances": "注文請書の出荷作業場所 {count} 件",
-      "usedByProcessSteps": "工程の許可作業場所 {count} 件"
+      "usedByProcessSteps": "工程の許可作業場所 {count} 件",
+      "usedByOrderLines": "注文明細の出荷作業場所 {count} 件"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -6076,7 +6924,10 @@
       "numberConditionSummary": "{label}が {value} {op}",
       "selectConditionSummary": "{label}が「{value}」{op}",
       "deliveryTotalQuantity": "出荷数量の合計",
-      "fromPlant": "出荷元拠点"
+      "fromPlant": "出荷元拠点",
+      "plant": "拠点",
+      "differenceCount": "差異の件数",
+      "cases": "件"
     },
     "inspectionTemplateExcel": {
       "sheetName": "検査表"
@@ -6095,6 +6946,13 @@
       "intro": "〇〇出し・受渡し と 材料準備（切断・センタレス・全長合わせ・C面）の並び。製品にも受注元にも紐づかない共通のリストで、指示書は「準備工程リスト + 製品の製造工程リスト」を合わせて工程を作ります。",
       "empty": "準備工程リストは未登録です",
       "editorHelp": "準備工程だけを選びます。開始工程（〇〇出し・受渡し）はちょうど 1 つ必要です。製造側との依存は指示書で 2 本を合わせたときに検証されます。"
+    },
+    "regrindRoutes": {
+      "title": "再研磨工程リスト",
+      "newRegrindRoute": "再研磨工程リスト 新規作成",
+      "intro": "顧客の工具を預かって研ぎ直す手順（製品受入（再研磨）→ 研磨 → コーティング（任意）→ 検査（任意））。製品にも受注元にも紐づかない共通のリストで、再研磨の指示書は常にここの最新版を使います。自社在庫は動かず、受け入れた工具は顧客の預り品として記録されます。",
+      "empty": "再研磨工程リストは未登録です",
+      "editorHelp": "選べるのは、工程マスタ（MS08）の「使える指示書種別」に再研磨を含む工程だけです。開始工程は 製品受入（再研磨）です。"
     },
     "taxCategories": {
       "title": "税区分",
@@ -6142,7 +7000,241 @@
       "selectEffectiveFrom": "適用開始日を選択してください",
       "rateRange": "税率は 0 以上 100 以下で入力してください",
       "useDefault": "既定に従う",
-      "followProduct": "製品に従う"
+      "followProduct": "製品に従う",
+      "accountingSection": "会計連携",
+      "accountingSectionHint": "仕訳 CSV に出す科目コード。空欄なら会計連携（SY0J）の既定に従う。",
+      "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
+      "taxCode": "消費税コード",
+      "salesAccountCode": "売上高 科目コード",
+      "taxAccountCode": "仮受消費税 科目コード",
+      "cannotUnsetDefault": "既定の税区分は外せません。先に別の税区分を既定にしてください。"
+    },
+    "chargeItems": {
+      "pageTitle": "料金マスタ",
+      "newChargeItem": "料金項目を新規作成",
+      "editTheChargeItem": "料金項目を編集",
+      "deleteTheChargeItem": "料金項目を削除",
+      "disableTheChargeItem": "料金項目を無効化",
+      "enableTheChargeItem": "料金項目を有効化",
+      "empty": "料金項目はまだありません",
+      "codeHelp": "料金項目を識別するコード（作成後は変更できません）",
+      "codePlaceholder": "SHIPPING など",
+      "amountMode": "金額の決まり方",
+      "modeFixed": "固定",
+      "modeVariable": "可変",
+      "modeFixedHelp": "料金マスタの金額をそのまま使います。使うときに変えられません",
+      "modeVariableHelp": "使うたびに人が入れます。下の金額は入力欄の既定値です",
+      "amount": "金額",
+      "defaultAmount": "既定の金額",
+      "amountFixedHelp": "この項目を足すと必ずこの金額になります",
+      "amountVariableHelp": "空のままにすると、毎回きちんと入力させます",
+      "defaultSuffix": "（既定）",
+      "taxCategoryHelp": "送料は課税、印紙代は非課税、のように項目ごとに決まります。顧客に課税区分が入っていればそちらが優先します",
+      "fixedNeedsAmount": "固定の料金項目には金額が必要です",
+      "created": "料金項目を作成しました",
+      "updated": "{name} を更新しました",
+      "deleted": "{name} を削除しました",
+      "enabled": "{name} を有効化しました",
+      "disabled": "{name} を無効化しました",
+      "deleteConfirm": "{name} を削除します。",
+      "enableConfirm": "{name} を有効化します。",
+      "disableConfirm": "{name} を無効化します。以後この項目は新しく選べなくなりますが、すでに書いた行はそのまま残ります。",
+      "itCannotBeDeletedWhileInUse": "指示書・出荷書で使われている料金項目は削除できません（無効化はできます）",
+      "inUseCannotDelete": "指示書 {workOrders} 件・出荷書 {deliveryOrders} 件で使われているため削除できません",
+      "bulkDeleteChargeItems": "料金項目を一括削除",
+      "bulkDeleteConfirm": "{count} 件の料金項目を削除します。",
+      "bulkDeleted": "{count} 件を削除しました",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "createFailed": "料金項目の作成に失敗しました",
+      "updateFailed": "料金項目の更新に失敗しました",
+      "deleteFailed": "料金項目の削除に失敗しました",
+      "unknownChargeItem": "料金項目が見つかりません",
+      "quantityMin1": "数量は 1 以上の整数で入力してください",
+      "enterAnAmount": "金額を入力してください",
+      "amountCannotBeNegative": "金額にマイナスは入力できません"
+    },
+    "customerProductCodes": {
+      "title": "顧客品番",
+      "help": "この製品を顧客が何と呼ぶか。登録すると、その顧客の注文書は品番で 1 発で突合でき、納品書・請求書の品名欄に相手の品番を併記します。",
+      "empty": "顧客品番は登録されていません",
+      "code": "顧客品番",
+      "codePlaceholder": "相手の品番",
+      "name": "顧客品名",
+      "namePlaceholder": "相手が呼ぶ品名（任意）",
+      "aliases": "別表記",
+      "aliasesPlaceholder": "旧品番など（突合のみ・印字しない）",
+      "addRow": "顧客を追加",
+      "everyRowNeedsCustomerAndCode": "各行に顧客と顧客品番を入力してください",
+      "selectACustomer": "顧客を選択してください",
+      "enterACustomerCode": "顧客品番を入力してください",
+      "duplicateCustomerRow": "同じ顧客の行が 2 つあります。1 顧客につき 1 行にしてください",
+      "duplicateCodeForCustomer": "顧客品番「{code}」が同じ顧客の中で重複しています",
+      "duplicateCodeOnOtherProduct": "顧客品番「{code}」は同じ顧客の別の製品に登録済みです（表記ゆれを含む）",
+      "couldNotSave": "顧客品番の保存に失敗しました"
+    },
+    "regrindItems": {
+      "pageTitle": "再研磨品目",
+      "newRegrindItem": "再研磨品目 新規作成",
+      "formHelp": "研ぎ直しそのものを 1 つの品目として登録します。値段はここに付き、顧客ごとの価格表があればそちらが勝ちます。研ぐ工具は製品マスタで登録します。",
+      "toolClass": "工具の種類",
+      "toolClassHelp": "値段が分かれる単位で書きます",
+      "toolClassPlaceholder": "超硬ヘリカルエンドミル",
+      "location": "加工箇所",
+      "locationHelp": "どこを研ぐか",
+      "locationPlaceholder": "外周 + 溝",
+      "flutes": "刃数",
+      "flutesHelp": "空 = 刃数で値段が変わらない",
+      "sizeMin": "サイズ下限",
+      "sizeMinHelp": "この径を超えるもの",
+      "sizeMax": "サイズ上限",
+      "sizeMaxHelp": "この径以下のもの",
+      "sizeBand": "サイズ帯",
+      "sizeBandOrder": "サイズ上限はサイズ下限より大きくしてください",
+      "standardPrice": "標準価格",
+      "standardPriceHelp": "顧客を問わない定価。空 = 価格表がある顧客にだけ売る",
+      "priceListOnly": "価格表のみ",
+      "keywords": "キーワード",
+      "searchPlaceholder": "コード・名称・工具の種類・加工箇所で検索",
+      "empty": "再研磨品目がありません",
+      "created": "再研磨品目 {code} を作成しました",
+      "updated": "{name} を更新しました",
+      "deleted": "{name} を削除しました",
+      "enabled": "{name} を有効化しました",
+      "disabled": "{name} を無効化しました",
+      "editTheRegrindItem": "再研磨品目の編集",
+      "deleteTheRegrindItem": "再研磨品目の削除",
+      "deleteConfirm": "{name} を削除します。",
+      "itCannotBeDeletedWhileInUse": "注文明細・見積書・価格表で使われている品目は削除できません。",
+      "enableTheRegrindItem": "再研磨品目の有効化",
+      "disableTheRegrindItem": "再研磨品目の無効化",
+      "enableConfirm": "{name} を有効にします。",
+      "disableConfirm": "{name} を無効にします。新しい明細では選べなくなります。",
+      "bulkDeleteRegrindItems": "再研磨品目の一括削除",
+      "bulkDeleteConfirm": "{count} 件の再研磨品目を削除します。",
+      "bulkDeleted": "{count} 件を削除しました",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "inUseCannotDelete": "使用中のため削除できません（注文明細 {orderLines} 件 / 見積 {quotes} 件 / 価格表 {priceLists} 件）",
+      "notFound": "再研磨品目が見つかりません",
+      "createFailed": "再研磨品目の作成に失敗しました",
+      "updateFailed": "再研磨品目の更新に失敗しました",
+      "deleteFailed": "再研磨品目の削除に失敗しました"
+    },
+    "customValueApproval": {
+      "title": "独自値の追加承認",
+      "titleFor": "独自値の追加承認: {label}",
+      "appendedAfterBaseFlow": "この書類に前の書類から引き継いでいない値（独自値）があるときだけ、ここの段が承認フローの後ろに足されます。",
+      "onlyLayerForThisDocument": "この書類は通常の承認フローを持ちません。独自値があるときだけ、ここの段で承認を通ります。",
+      "emptyMeansNoExtraApproval": "段を 1 つも置かなければ追加の承認はありません。変更が効くのは次の承認依頼からです。",
+      "overviewIntro": "書類に前の書類から引き継いでいない値（独自値）があるときだけ、通常の承認フローの後ろに足す段です。通常のフローとは別に、書類ごとに設定します。",
+      "notSet": "未設定（追加の承認なし）",
+      "describePriceList": "独自値: 価格試算を使わない基準単価、価格試算の見積単価と違う基準単価、数量段階の単価の上書き（有効な注文種別のみ）。承認されるまで、この価格表は見積書・注文請書の価格に使われません。",
+      "describeOrderAcceptance": "独自値: 価格表どおりでない明細の単価（上書き・価格表との差異・価格表なし・数量段階なし）。"
+    },
+    "ownCompanies": {
+      "title": "自社法人",
+      "newTitle": "自社法人 新規作成",
+      "editTitle": "{code} を編集",
+      "empty": "自社法人がありません",
+      "code": "法人コード",
+      "codeDesc": "法人を識別する一意のコード。書類番号に入るため作成後は変えられません",
+      "codePlaceholder": "例: CKK",
+      "enterCode": "法人コードを入力してください",
+      "default": "既定",
+      "defaultCompany": "既定の法人",
+      "defaultDesc": "拠点の分からない書類（見積書など）の発行元。常に 1 社だけです",
+      "registrationNo": "登録番号",
+      "registrationNoLabel": "適格請求書発行事業者登録番号",
+      "registrationNoDesc": "見積書・納品書・請求書の発行元欄に刷られます",
+      "registrationNoPlaceholder": "例: T1234567890123",
+      "invalidRegistrationNo": "登録番号は T + 13 桁で入力してください",
+      "fiscalYearStartMonth": "会計年度の開始月",
+      "fiscalYearStartMonthDesc": "書類番号を年度ごとに区切るときの境目（1〜12）",
+      "invalidFiscalMonth": "開始月は 1〜12 で入力してください",
+      "fiscalYearLocked": "この法人はすでに書類番号を発行しているため、会計年度の開始月は変えられません（変えると年度の区切りが発行済みの番号と食い違います）",
+      "fiscalYearLockedError": "この法人はすでに書類番号を発行しているため、会計年度の開始月は変えられません",
+      "monthValue": "{month} 月",
+      "plants": "拠点",
+      "plantCount": "拠点数",
+      "plantsDesc": "この法人に属する拠点。付け替えは拠点マスタ（MS0C）で行います",
+      "noPlants": "この法人に属する拠点はありません",
+      "fax": "FAX",
+      "contact": "連絡先・住所",
+      "bank": "振込先",
+      "bankName": "金融機関",
+      "bankBranch": "支店",
+      "bankAccountType": "口座種別",
+      "bankAccountNumber": "口座番号",
+      "bankAccountHolder": "口座名義",
+      "seal": "社印",
+      "sealDesc": "発行済みの請求書に刷られる印影（PNG / JPG、2MB まで）",
+      "uploadSeal": "印影をアップロード",
+      "removeSeal": "印影を外す",
+      "sealDefaultFallback": "未設定のため、従来の印影を使います",
+      "sealNoneFallback": "未設定のため、請求書に印影は刷られません",
+      "sealTooLarge": "画像は 2MB までです",
+      "sealSaveFailed": "印影を保存できませんでした",
+      "sealUploaded": "印影を保存しました",
+      "sealRemoved": "印影を外しました",
+      "logo": "ロゴ",
+      "logoDesc": "見積書・納品書・請求書などの PDF の見出しに刷るロゴ（PNG / JPG、2MB まで）",
+      "uploadLogo": "ロゴをアップロード",
+      "removeLogo": "ロゴを外す",
+      "logoDefaultFallback": "未設定のため、従来のロゴを使います",
+      "logoNoneFallback": "未設定のため、書類にロゴは刷られません",
+      "logoTooLarge": "画像は 2MB までです",
+      "logoSaveFailed": "ロゴを保存できませんでした",
+      "logoUploaded": "ロゴを保存しました",
+      "logoRemoved": "ロゴを外しました",
+      "previewNoLogo": "ロゴなし",
+      "issuerPreview": "書類の発行元",
+      "issuerPreviewDesc": "見積書・納品書・請求書の発行元欄にこのとおり刷られます",
+      "created": "自社法人を作成しました",
+      "updated": "自社法人を更新しました",
+      "deleted": "自社法人を削除しました",
+      "deleteTitle": "自社法人の削除",
+      "deleteConfirm": "自社法人「{name}」を削除します。この操作は取り消せません。",
+      "deleteWarning": "拠点・請求書に使われている法人と既定の法人は削除できません。",
+      "disableTitle": "自社法人の無効化",
+      "enableTitle": "自社法人の有効化",
+      "disableConfirm": "自社法人「{name}」を無効にします。拠点の選択肢から外れます。",
+      "enableConfirm": "自社法人「{name}」を有効にします。",
+      "notFound": "自社法人が見つかりません",
+      "cannotUnsetDefault": "既定の法人は外せません。別の法人を既定にしてください",
+      "cannotDisableDefault": "既定の法人は無効にできません",
+      "cannotDeleteDefault": "既定の法人は削除できません",
+      "inUse": "拠点 {plants} 件・請求書 {invoices} 件で使われているため削除できません",
+      "createFailed": "自社法人を作成できませんでした",
+      "updateFailed": "自社法人を更新できませんでした",
+      "deleteFailed": "自社法人を削除できませんでした",
+      "codeInvalidChars": "法人コードに「/」「~」と空白は使えません"
+    },
+    "machineModels": {
+      "tabLocations": "作業場所",
+      "tabModels": "機種",
+      "column": "機種",
+      "add": "機種を追加",
+      "addTitle": "機種を追加",
+      "editTitle": "機種を編集",
+      "deleteTitle": "機種を削除",
+      "description": "同じ型の機械をまとめる名前です。機械（作業場所）ごとに 1 つ選び、加工プログラムは機種に当てます。",
+      "empty": "機種が未登録です。「機種を追加」から登録してください。",
+      "maker": "メーカー",
+      "usageHead": "機械 / プログラム",
+      "usage": "機械 {machines} 台 / プログラム {programs} 本",
+      "codePlaceholder": "例: NC-LATHE-A",
+      "namePlaceholder": "例: NC旋盤 A型",
+      "none": "機種なし",
+      "locationHint": "加工プログラムはこの機種で機械に当たります",
+      "created": "機種を追加しました",
+      "updated": "機種を更新しました",
+      "deleted": "機種「{name}」を削除しました",
+      "deleteConfirm": "機種「{name}」を削除しますか？",
+      "inUseWarning": "機械 {machines} 台・プログラム {programs} 本が使っています（削除できません — 無効化をご検討ください）。",
+      "inUseCannotDelete": "機械 {machines} 台・プログラム {programs} 本が使っているため削除できません（無効化してください）",
+      "saveFailed": "機種を保存できませんでした",
+      "deleteFailed": "機種を削除できませんでした"
     }
   },
   "manual": {
@@ -6165,7 +7257,8 @@
       "zipEndNotFound": "ZIP の終端が見つかりません",
       "zipDirectoryCorrupt": "ZIP の目録が壊れています",
       "unsupportedCompression": "未対応の圧縮方式です ({method}): {name}",
-      "noWorksheet": "ワークシートが見つかりません"
+      "noWorksheet": "ワークシートが見つかりません",
+      "tooLarge": "ファイルが大きすぎます（展開後の上限を超えました）"
     },
     "documentPdf": {
       "notIssuedYet": "発行前の{docType}は PDF を閲覧できません"
@@ -6227,14 +7320,15 @@
       "linkNotFound": "リンクが見つかりません",
       "thisLinkWasDeletedOrThe": "このリンクは削除されたか、URL が正しくありません。",
       "thisLinkIsBlocked": "このリンクはブロックされています",
-      "anAdministrator": "管理者が",
       "ifThisWasNotYouContact": "心当たりがない場合はシステム管理者に連絡してください。",
       "youAreLeavingForAnExternal": "外部サイトへ移動します",
       "thisLinkLeavesTheInternalSystem": "このリンクは社内システムの外へ移動します。移動先を確認してください。",
       "destination": "移動先",
       "doNotEnterInternalPasswordsOr": "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
       "continueAndLeave": "続行して移動",
-      "goToAnExternalSite": "外部サイトへ移動"
+      "goToAnExternalSite": "外部サイトへ移動",
+      "blockedHostMessage": "管理者が <strong>{hostname}</strong> への移動を禁止しています。",
+      "reasonLabel": "理由: {reason}"
     }
   },
   "admin": {
@@ -6254,8 +7348,7 @@
       "suffixStorageLocation": "（保管場所）",
       "suffixFloorMap": "（マップ）",
       "suffixDisplay": "（ディスプレイ）",
-      "formResponsesLabel": "フォーム回答",
-      "actionWithRaw": "{label}（{raw}）"
+      "formResponsesLabel": "フォーム回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} を {env} で{v2}にしました",
@@ -6265,7 +7358,10 @@
       "operationCode": "操作コード",
       "apps": "アプリ管理",
       "searchByAppNameOrOperation": "アプリ名・操作コードで検索",
-      "thereAreNoApps": "アプリがありません"
+      "thereAreNoApps": "アプリがありません",
+      "devVerification": "dev（検証）",
+      "lockedByFeature": "開発中の機能のため、この環境ではコードで非表示に固定されています（dev-features.json）。公開するには PR とデプロイが必要です",
+      "locked": "固定"
     },
     "fileManager": {
       "uploaded": "アップロードしました",
@@ -6347,6 +7443,10 @@
       "alreadyProcessed": "この依頼は既に処理されています",
       "resultApprovedTitle": "{doc} {targetId} が承認されました",
       "resultRejectedTitle": "{doc} {targetId} が差し戻されました"
+    },
+    "policy": {
+      "skippedNote": "承認なし（承認設定で OFF）",
+      "approvedWithoutFlow": "承認なしで承認済にしました"
     }
   },
   "auth": {
@@ -6384,7 +7484,11 @@
       "bodyText": "本文",
       "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
       "required": "必要",
-      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）"
+      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）",
+      "archiveConfirm": "使い終わった文書として片付けます。公開版・履歴・コメントは残り、共有先からはそのまま読めます。",
+      "unarchive": "アーカイブを解除",
+      "unarchiveConfirm": "アーカイブを解除します。公開版があればその版の公開中に、無ければ下書きに戻ります。",
+      "unarchived": "アーカイブを解除しました"
     },
     "documentEditor": {
       "editTheDocument": "文書を編集",
@@ -6862,15 +7966,14 @@
       "myPermissions": "自分の権限",
       "administrator": "管理者",
       "theyHoldEveryPermissionTheyCan": "すべての権限を持っています。特権操作も申請なしで実行できますが、\n            その場合は「管理者権限で実行した」ことが操作履歴に残ります。",
-      "permissionsAndRolesInTheManual": "マニュアルの「権限とロール」",
-      "isWhereItLives": "にあります。",
       "evenIfYouHoldThePermission": "ここにある操作は、権限を持っていても",
       "itCannotBeRunAsIt": "そのままでは実行できません",
       "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。",
       "remainingHoursMinutes": "残り {hours} 時間 {minutes} 分",
       "remainingMinutes": "残り {minutes} 分",
       "requestRequired": "申請が必要",
-      "scopeLabel": "範囲: {scopes}"
+      "scopeLabel": "範囲: {scopes}",
+      "grantedSummary": "いま持っているのは {total} 件中 <b>{granted} 件</b>です。権限は役割（ロール）を通して付きます。足りないときは管理者に相談してください。読み方は<link>マニュアルの「権限とロール」</link>にあります。"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "通知設定を更新しました",
@@ -6954,7 +8057,8 @@
     "productPriceResolverInput": {
       "resolvedAutomaticallyFromThePriceList": "顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。",
       "appliedAutomaticallyFromThePriceList": "価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。",
-      "discountAutomatic": "値引き（自動）"
+      "discountAutomatic": "値引き（自動）",
+      "targetToolPrice": "対象工具の価格表"
     },
     "designRequests": {
       "start": "着手",
@@ -6996,7 +8100,7 @@
       "enterAReasonForTheChange": "改訂のときは変更理由を入力してください",
       "theDesignRequestWasUpdated": "設計依頼書を更新しました",
       "newDesignRequest": "設計依頼書 新規作成",
-      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
+      "theTriggerAtQuoteOrAt": "トリガー（見積時 / 受注時 / 単独）と参照元は作成後に変更できません。依頼番号（例: DSG-2026-00001。年は会計年度）は保存時に採番されます。",
       "n1TheSourceQuoteWhenDesign": "§1 見積と並行して設計を依頼する場合の見積元（任意）",
       "chooseFromRecentQuotes": "直近の見積書から選択",
       "n3TheOrderLineWhenDesign": "§3 受注と並行して設計を依頼する場合の注文明細（任意）",
@@ -7082,6 +8186,7 @@
       "endUser": "エンドユーザー",
       "assignedSite": "担当拠点",
       "shippingWorkLocation": "出荷作業場所",
+      "deliveryDestination": "届け先",
       "linesTotalQuantity": "明細数 / 合計数量",
       "expandedAt": "展開日時",
       "workOrdersAllocated": "指示書（割当）",
@@ -7123,7 +8228,17 @@
       "showTheDocumentPane": "書類を開く",
       "hideTheDocument": "隠す",
       "customerProvidesDeliveryNote": "顧客提供の納品書",
-      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし"
+      "priceNoTierLine": "行{row} 数量 {quantity} に該当する価格表の数量段階なし",
+      "recreate": "作り直す",
+      "recreateFromThis": "この注文請書から作り直す",
+      "recreatedFrom": "作り直し元",
+      "recreatedAsTitle": "作り直し先",
+      "recreatedAs": "{number} として作り直しました",
+      "theCancelledOrderAcceptance": "この注文請書の元になったキャンセル済みの請書",
+      "youCanRecreateOnceCancelled": "キャンセル済みの注文請書からのみ作り直せます",
+      "confirmRecreateMessage": "{number} の内容を引き継いだ下書きを作ります。紐付けは残ります。",
+      "alreadyRecreatedAs": "この注文請書はすでに {numbers} として作り直されています。二重に起こしていないか確認してください。",
+      "customValueLine": "行{row} {actual}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7150,6 +8265,8 @@
       "notAllocatedAllocateViaTheStock": "未引当（在庫照合で引当）",
       "shipped": "出荷済",
       "thereIsNoWorkOrderFor": "この注文明細の指示書はまだありません",
+      "markingSplits": "分けて作った指示書（分割ごとの番号）",
+      "markingSplitOf": "{docNumber}（{quantity} 本）",
       "allocatedQuantity": "割当数量",
       "thereIsNoDeliveryOrderFor": "この注文明細の出荷書はまだありません",
       "stockCheckResult": "在庫照合結果",
@@ -7164,107 +8281,120 @@
       "thereAreNoOrderLinesThey": "注文明細がありません（注文請書を確定すると作られます）"
     },
     "priceLists": {
+      "addATier": "段階を追加",
+      "amountPc": "金額（¥/本）",
+      "automaticallyCalculatedAsBaseUnitPrice": "基準単価（価格試算由来）× 倍率 の自動計算値。",
+      "automaticallyCalculatedUnitPrice": "自動計算単価",
+      "backToAutomaticCalculation": "自動計算に戻す",
+      "backToTheEstimatedValue": "価格試算値に戻す",
+      "baseUnitPrice": "基準単価",
+      "bulkDeletePriceLists": "価格表の一括削除",
+      "byDefaultTheEstimateSUnit": "既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。",
+      "confirmedPriceEstimatesLinkedToThe": "製品にリンクされた確定済み価格試算",
       "copyDescription": "「{product}」の全注文種別（{types}）をコピー先に複製します。コピー先の有効期間（全種別共通）を設定してください。",
-      "selectACustomerError": "顧客を選択してください",
-      "selectAProductError": "製品を選択してください",
-      "endDateRequiredForTestSample": "テスト・サンプルの種別を含むため終了日が必須",
-      "enterTheDestinationCustomerProductAnd": "コピー先の顧客・製品・有効期間（開始・終了）を入力してください",
-      "enterTheDestinationCustomerProductAnd2": "コピー先の顧客・製品・有効開始日を入力してください",
-      "thePriceListWasCopiedTo": "価格表を別の顧客・製品にコピーしました",
-      "createByCopying": "コピーして作成",
       "copyThePriceListToAnother": "価格表を別の顧客・製品へコピー",
       "copyToCustomer": "コピー先 顧客",
       "copyToProduct": "コピー先 製品",
-      "selectAProduct": "製品を選択",
       "createAQuoteDraft": "見積書を作成（下書き）",
-      "howManyAreQuotedUsedTo": "見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。",
-      "discountAppliedAutomatically": "値引き（自動適用）",
-      "noPriceTierCoversThisQuantity": "この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。",
+      "createByCopying": "コピーして作成",
+      "currentValidPeriod": "現在の有効期間",
+      "deleteTheDiscountRule": "値引きルールの削除",
+      "deleteTheDiscountRule2": "値引きルールを削除",
+      "deleteTheOrderType": "注文種別の削除",
       "deleteThePriceList": "価格表の削除",
-      "ifQuotesReferenceThisPriceList": "この価格表を参照中の見積書がある場合、単価の自動入力ができなくなります。",
+      "deleteThisOrderType": "この注文種別を削除",
+      "discountAmountPerPiece": "値引き額（1本あたり）",
+      "discountAppliedAutomatically": "値引き（自動適用）",
+      "discountRules": "値引き設定",
+      "discountType": "値引き種別",
+      "eGSummerCampaign": "例: 夏季キャンペーン",
+      "editOnItemMaster": "品目マスタで直す",
+      "editTheDiscountRule": "値引きルールを編集",
+      "enabledWholePriceList": "有効（価格表全体）",
+      "endDateRequiredForTestSample": "テスト・サンプルの種別を含むため終了日が必須",
       "enterANameAValueAnd": "名称・値・有効開始日を入力してください",
       "enterARateBelow100": "率は100%未満を入力してください",
-      "theMaximumQuantityMustBeAt": "数量上限は下限以上を入力してください",
-      "eGSummerCampaign": "例: 夏季キャンペーン",
-      "rateIsAShareOfThe": "率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。",
-      "discountType": "値引き種別",
-      "rate": "率（%）",
-      "amountPc": "金額（¥/本）",
-      "discountAmountPerPiece": "値引き額（1本あたり）",
-      "theMinimumQuantityThisRuleApplies": "このルールが適用される最小数量。上限は空欄で無制限。",
-      "minimumQuantity": "数量下限",
-      "maximumQuantity": "数量上限",
-      "leaveBlankForNoMaximum": "空欄で上限なし",
-      "thePeriodThisRuleAppliesTo": "このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。",
-      "rulesMeetingTheConditionsQuantityAnd": "条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。",
-      "selectAStartDate": "有効開始日を選択してください",
-      "theValidPeriodWasChanged": "有効期間を変更しました",
-      "switchedToANewValidPeriod": "同じ内容のまま新しい有効期間に切り替えました",
+      "enterTheDestinationCustomerProductAnd": "コピー先の顧客・製品・有効期間（開始・終了）を入力してください",
+      "enterTheDestinationCustomerProductAnd2": "コピー先の顧客・製品・有効開始日を入力してください",
+      "estimatedUnitPricePriceEstimate": "見積単価（価格試算）",
+      "howManyAreQuotedUsedTo": "見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。",
+      "ifQuotesReferenceThisPriceList": "この価格表を参照中の見積書がある場合、単価の自動入力ができなくなります。",
       "keepsTheChosenOrderTypeS": "選んだ注文種別の内容（基準単価・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。",
-      "currentValidPeriod": "現在の有効期間",
-      "newStartDate": "新しい有効開始日",
+      "leaveBlankForNoMaximum": "空欄で上限なし",
+      "manualOnlySinceThereIsNo": "価格試算ソースがないため手動設定のみ",
+      "maximumQuantity": "数量上限",
+      "maximumQuantity2": "最大数量",
+      "minimumQuantity": "数量下限",
+      "minimumQuantity2": "最小数量",
+      "multiplier": "倍率",
       "newEndDate": "新しい有効終了日",
-      "deleteTheDiscountRule": "値引きルールの削除",
+      "newPriceList": "価格表 新規作成",
+      "newStartDate": "新しい有効開始日",
+      "noConfirmedEstimateIsLinkedTo": "この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。",
+      "noMaximum": "上限なし",
+      "noPriceEstimateManual": "価格試算なし（手動）",
+      "noPriceEstimateSource": "—（価格試算ソースなし）",
+      "noPriceTierCoversThisQuantity": "この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。",
+      "perPieceAmount": "{amount}/本",
+      "priceEstimateSourcePerOrderType": "価格試算元（注文種別ごと）",
       "priceListDetails": "価格表 詳細",
+      "priceSourcePriceEstimate": "価格ソース（価格試算）",
+      "pricing": "価格設定",
+      "quantityCondition": "数量条件",
+      "quantityRangeBounded": "{min}〜{max}本",
+      "quantityRangeOpen": "{min}本〜",
+      "quotesCreatedFromThisPriceList": "この価格表から作成した見積書",
+      "rate": "率（%）",
+      "rateIsAShareOfThe": "率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。",
+      "registeredManually": "手動登録",
+      "removeTheTier": "段階を削除",
+      "rulesMeetingTheConditionsQuantityAnd": "条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。",
+      "rulesMeetingThePeriodAndQuantity": "期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。",
+      "searchByCustomerOrProduct": "顧客・製品で検索",
+      "selectACustomerError": "顧客を選択してください",
+      "selectAProduct": "製品を選択",
+      "selectAProductError": "製品を選択してください",
+      "selectAStartDate": "有効開始日を選択してください",
+      "setPerType": "種別ごとに設定",
+      "standardPriceLabel": "標準価格",
+      "switchedToANewValidPeriod": "同じ内容のまま新しい有効期間に切り替えました",
+      "testAndSampleEntriesNeedAn": "テスト・サンプルは終了日が必須",
+      "theBaseForThePriceList": "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
+      "theBasePriceComesFromThe": "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
+      "theCustomerAndProductCannotBe": "顧客・製品・対象工具は作成後に変更できません。",
+      "theMaximumQuantityMustBeAt": "数量上限は下限以上を入力してください",
+      "theMinimumQuantityThisRuleApplies": "このルールが適用される最小数量。上限は空欄で無制限。",
+      "theMultiplierPerTierEG": "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
+      "thePeriodThisRuleAppliesTo": "このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。",
+      "thePriceListWasCopiedTo": "価格表を別の顧客・製品にコピーしました",
+      "thePriceListWasCreated": "価格表を作成しました",
+      "thePriceListWasUpdated": "価格表を更新しました",
+      "theSameOrderTypeAppearsTwice": "同じ注文種別が重複しています",
+      "theValidPeriodWasChanged": "有効期間を変更しました",
+      "thereAreNoDiscountRules": "値引きルールがありません。",
+      "thereIsNoPriceListPick": "価格表がありません — 顧客×製品を選んで作成します",
+      "thereIsOnePriceListPer": "1つの顧客×製品につき価格表は1件です（再研磨の品目は対象工具ごとにも作れます）。注文種別ごとの価格は下で追加します。",
+      "targetTool": "対象工具",
+      "anyTool": "工具を問わない",
+      "tickingItDropsTheAutomaticCalculation": "「カスタム」を押すと自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
       "tiers": "段階数",
       "unitPriceRange": "単価範囲",
-      "pricing": "価格設定",
-      "discountRules": "値引き設定",
-      "baseUnitPrice": "基準単価",
-      "multiplier": "倍率",
-      "rulesMeetingThePeriodAndQuantity": "期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。",
-      "quantityCondition": "数量条件",
-      "editTheDiscountRule": "値引きルールを編集",
-      "deleteTheDiscountRule2": "値引きルールを削除",
-      "thereAreNoDiscountRules": "値引きルールがありません。",
-      "priceEstimateSourcePerOrderType": "価格試算元（注文種別ごと）",
-      "registeredManually": "手動登録",
-      "quotesCreatedFromThisPriceList": "この価格表から作成した見積書",
-      "useCreateAQuoteToBuild": "—（「見積書を作成」でこの価格表から見積書を作成できます）",
-      "bulkDeletePriceLists": "価格表の一括削除",
-      "setPerType": "種別ごとに設定",
-      "searchByCustomerOrProduct": "顧客・製品で検索",
-      "thereIsNoPriceListPick": "価格表がありません — 顧客×製品を選んで作成します",
-      "duplicateWithADifferentValidPeriod": "有効期間を変えて複製",
-      "theSameOrderTypeAppearsTwice": "同じ注文種別が重複しています",
-      "useACustomBaseUnitPrice": "カスタム基準単価の使用",
-      "backToTheEstimatedValue": "価格試算値に戻す",
-      "useACustomUnitPrice": "カスタム単価の使用",
-      "backToAutomaticCalculation": "自動計算に戻す",
-      "thePriceListWasUpdated": "価格表を更新しました",
-      "thePriceListWasCreated": "価格表を作成しました",
-      "newPriceList": "価格表 新規作成",
-      "theCustomerAndProductCannotBe": "顧客・製品は作成後に変更できません。",
-      "thereIsOnePriceListPer": "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
-      "enabledWholePriceList": "有効（価格表全体）",
-      "noConfirmedEstimateIsLinkedTo": "この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。",
-      "theBasePriceComesFromThe": "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
-      "priceSourcePriceEstimate": "価格ソース（価格試算）",
-      "confirmedPriceEstimatesLinkedToThe": "製品にリンクされた確定済み価格試算",
-      "noPriceEstimateManual": "価格試算なし（手動）",
-      "deleteThisOrderType": "この注文種別を削除",
-      "deleteTheOrderType": "注文種別の削除",
-      "estimatedUnitPricePriceEstimate": "見積単価（価格試算）",
-      "noPriceEstimateSource": "—（価格試算ソースなし）",
-      "manualOnlySinceThereIsNo": "価格試算ソースがないため手動設定のみ",
-      "byDefaultTheEstimateSUnit": "既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。",
-      "useACustomUnitPrice2": "カスタム単価を使用",
-      "useTheEstimatedValueAsIt": "価格試算値をそのまま使用",
-      "theBaseForThePriceList": "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
-      "testAndSampleEntriesNeedAn": "テスト・サンプルは終了日が必須",
-      "minimumQuantity2": "最小数量",
-      "maximumQuantity2": "最大数量",
-      "theMultiplierPerTierEG": "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
-      "automaticallyCalculatedAsBaseUnitPrice": "基準単価（価格試算由来）× 倍率 の自動計算値。",
-      "automaticallyCalculatedUnitPrice": "自動計算単価",
-      "tickingItDropsTheAutomaticCalculation": "チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
       "unitPriceUsed": "採用単価",
-      "noMaximum": "上限なし",
-      "removeTheTier": "段階を削除",
-      "addATier": "段階を追加",
-      "quantityRangeOpen": "{min}本〜",
-      "quantityRangeBounded": "{min}〜{max}本",
-      "perPieceAmount": "{amount}/本"
+      "useACustomBaseUnitPrice": "カスタム基準単価の使用",
+      "useACustomUnitPrice": "カスタム単価の使用",
+      "useACustomUnitPrice2": "カスタム単価を使用",
+      "useCreateAQuoteToBuild": "—（「見積書を作成」でこの価格表から見積書を作成できます）",
+      "useTheEstimatedValueAsIt": "価格試算値をそのまま使用",
+      "customButton": "カスタム",
+      "backToAutoButton": "自動に戻す",
+      "resetToPreset": "プリセットに戻す",
+      "resetToPresetTitle": "数量段階をプリセットに戻す",
+      "resetToPresetMessage": "このバリアントの数量段階を、数量スケールのプリセット（価格試算計算の設定）に置き換えます。手で足した範囲とカスタム単価は消えます。",
+      "addACustomRange": "範囲を追加",
+      "unapprovedNotUsedForPricing": "この価格表は独自値の追加承認が済んでいないため、見積書・注文請書の価格には使われません。",
+      "approvalTab": "承認",
+      "approvalRequestedOnSave": "独自値があるため承認依頼を出しました",
+      "approvalRequestFailedOnSave": "保存しましたが、承認依頼を出せませんでした: {error}"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "発行しました（PDF 生成に失敗）",
@@ -7346,9 +8476,6 @@
       "lDFluteLengthMm": "LD刃長 (mm)",
       "extraInputsDefinedUnderThePrice": "価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。",
       "customFields": "カスタム項目",
-      "usedOnlyToProrateFormShaping": "形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。",
-      "theQuantityUsedToProrateForm": "形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。",
-      "baseQuantityPcs": "基準数量（本）",
       "priceEstimateName": "価格試算名",
       "eGPrecisionShaft338": "例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ",
       "forCylinderEstimatesTheMaterialPrice": "円筒見積は素材価格を手入力します（仕入実績は参考表示）。",
@@ -7360,11 +8487,26 @@
       "coatingCost": "コート代",
       "lapping": "ラップ処理",
       "inspectionCertificate": "検査成績書",
+      "shapeOutPerPiece": "形状出し（1本按分）",
       "correctionFactor": "補正値",
-      "enterABaseQuantity": "基準数量を入力してください",
       "representativeEstimatedUnitPrice": "代表見積単価",
       "searchByPriceEstimateNumberName": "価格試算番号・名称・顧客で検索",
-      "thereAreNoPriceEstimates": "価格試算がありません"
+      "thereAreNoPriceEstimates": "価格試算がありません",
+      "hintFor": "{name}の説明",
+      "scaleEstimateNote": "見積単価（基準）× 数量スケールの倍率で出した参考値です。実際の数量ごとの価格は価格表で決まります（この価格試算から価格表を作るときの初期値と同じ）。",
+      "scaleEstimateTitle": "参考：数量ごとの単価",
+      "costTotal": "原価合計",
+      "grossMargin": "粗利",
+      "kind": "種別",
+      "kindPrice": "売価試算",
+      "kindCost": "原価試算",
+      "kindPriceHint": "見積単価まで出します。確定すると価格表の基準単価に選べます。",
+      "kindCostHint": "原価合計だけを出します。原価を見る権限のある人にしか見えず、価格表の基準単価にはできません。",
+      "createPriceEstimate": "売価試算を作成",
+      "costEstimateNotice": "これは原価試算です。原価合計だけを出し、価格表の基準単価にはできません。売価が必要なら「売価試算を作成」で入力を引き継いだ売価試算を作ってください。",
+      "costEstimateConfirmed": "原価試算を確定しました。価格表の基準単価にはできません",
+      "linkedToTheProductCostEstimate": "製品にリンクしました",
+      "costOnlyRow": "原価のみ"
     },
     "orderLineDetail": {
       "designWithCount": "設計（{count}）",
@@ -7436,7 +8578,23 @@
     "issueQuoteModal": {
       "confirmIssueMessage": "見積書「{number}」を発行します。発行と同時に PDF が生成・保存され、詳細画面の PDF タブで閲覧できます。",
       "issuedAndSaved": "見積書 {number} を発行し、PDF を保存しました",
-      "issuedAndSavedWithMail": "見積書 {number} を発行し、PDF を保存しました（メール送付予約済み）"
+      "sendTo": "送付先: {name}（{email}）",
+      "noRecipient": "顧客（支店・担当者を含む）にメールアドレスが登録されていないため、メールでは送れません。",
+      "mailerNotConfigured": "この環境ではメールの送信口が設定されていないため、メールでは送れません。",
+      "mailSent": "{email} へ見積書を送付しました",
+      "mailFailed": "見積書は発行しましたが、メールを送れませんでした",
+      "reason": {
+        "notFound": "見積書が見つかりません。",
+        "noRecipient": "送付先のメールアドレスがありません。",
+        "mailerNotConfigured": "メールの送信口が設定されていません。",
+        "notIssued": "発行済みの見積書だけ送れます。",
+        "sendFailed": "送信に失敗しました。時間をおいて「メールで送付」から送り直してください。",
+        "portalDisabled": "この環境では取引先ポータルが有効になっていないため、メールでは送れません（見積書はリンクで送ります）。",
+        "linkFailed": "見積書のリンクを発行できませんでした。"
+      },
+      "resend": "メールで送付",
+      "resendConfirm": "見積書 {number} のリンク（本人確認つき）を {email} へ送ります。",
+      "mailSentTitle": "送付しました"
     },
     "materialPriceChart": {
       "referencePriceAmount": "参照価格 {amount}",
@@ -7493,7 +8651,16 @@
       "priceListPriceWithTier": "価格表 {price}（{tier}）",
       "fromPriceList": "価格表から",
       "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
-      "overriddenFromList": "上書き（価格表 {expected}）"
+      "overriddenFromList": "上書き（価格表 {expected}）",
+      "delivery": "配送",
+      "applyLineOneDeliveryToAll": "先頭行の配送を全行へ適用",
+      "regrindItem": "再研磨品目",
+      "searchTheRegrindItems": "再研磨品目を検索",
+      "toolToRegrind": "研ぎ直す工具",
+      "searchTheToolBeingHeld": "預かる工具を検索（他社製品を含む）",
+      "standardPrice": "標準価格 {price}",
+      "toolPriceListPrice": "価格表（対象工具）{price}",
+      "toolPriceListPriceWithTier": "価格表（対象工具）{price}（{tier}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -7515,12 +8682,15 @@
       "confirmDeleteOrderTypeMessage": "{orderType} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。",
       "confirmUseCustomBaseMessage": "価格試算の見積単価（{price}）を使わず、基準単価を手動で設定します。よろしいですか？",
       "confirmUseCustomTierMessage": "この数量帯の自動計算単価（{price} = 基準単価 × 倍率）を使わず、手動で単価を設定します。",
-      "duplicateEntryPrefix": "この顧客×製品の価格表",
+      "duplicateEntryPrefix": "この顧客×製品（×対象工具）の価格表",
+      "targetToolDescription": "再研磨の値段をこの工具に限るときだけ選びます。未選択は工具を問わない価格です（工具の価格表 → 工具を問わない価格表 → 標準価格 の順に引きます）。",
+      "searchTools": "工具を検索",
       "duplicateEntrySuffix": "が既に存在します（{orderTypes}）。注文種別の追加は既存の価格表を編集してください。",
       "editTitle": "価格表 編集",
       "manualWithEstimateValue": "手動設定（価格試算値: {price}）",
       "multiplierMustBePositive": "0より大きい倍率",
-      "orderTypeSectionTitle": "注文種別: {orderType}"
+      "orderTypeSectionTitle": "注文種別: {orderType}",
+      "maxBelowMin": "最大数量は最小数量以上にしてください"
     },
     "quoteDetail": {
       "acceptanceNoteWithLines": "{status}・明細 {count} 件",
@@ -7538,7 +8708,9 @@
       "selectABranch": "支店を選択",
       "subtotalAmount": "小計 {amount}",
       "taxAmount": "消費税 {amount}",
-      "totalInclTaxAmount": "合計（税込） {amount}"
+      "totalInclTaxAmount": "合計（税込） {amount}",
+      "lineNotesDescription": "見積書 PDF の明細の下に印字されます",
+      "selectTheToolToRegrind": "研ぎ直す工具を選択してください"
     },
     "trialEstimateDetail": {
       "orderTypeTierCount": "{orderType}・{tierCount}段階",
@@ -7563,7 +8735,7 @@
       "confirmIssues": "確定できません: {summary}",
       "createFailed": "注文請書の作成に失敗しました",
       "createdManually": "手入力で作成",
-      "directToUserRequiresEndUser": "ユーザー直送ではエンドユーザーの指定が必要です",
+      "directToUserRequiresEndUser": "明細 {rows} 行目: ユーザー直送ではエンドユーザーの指定が必要です",
       "endUserInvalid": "エンドユーザーの取引先が存在しないか無効です",
       "invalidNumber": "注文請書番号が不正です",
       "notPendingApproval": "承認依頼中の注文請書ではありません",
@@ -7586,7 +8758,11 @@
       "takenOverManually": "自動抽出を待たず手入力へ切り替え",
       "targetCancelRequestNotFound": "対象のキャンセル依頼が見つかりません",
       "targetNotFound": "対象の注文請書が見つかりません",
-      "unitPriceMin0": "単価は0以上"
+      "unitPriceMin0": "単価は0以上",
+      "onlyCancelledCanBeRecreated": "作り直せるのはキャンセル済みの注文請書だけです",
+      "recreatedFromCancelled": "キャンセル済みの {number} から作り直しました",
+      "recreatedAs": "{number} として作り直しました",
+      "linePlantOtherCompany": "明細 {rows} 行目: 担当拠点がこの注文請書の自社法人（{company}）に属していません。注文請書 1 件の明細は同じ自社法人の拠点にしてください"
     },
     "quoteActions": {
       "createFailed": "見積書の作成に失敗しました",
@@ -7603,7 +8779,9 @@
       "priceListInactive": "明細{line}: 価格表が無効化されています",
       "priceListExpired": "明細{line}: 価格表の有効期間外です",
       "validUntilRequired": "有効期限を入力してください",
-      "validUntilInPast": "有効期限は本日以降の日付にしてください"
+      "validUntilInPast": "有効期限は本日以降の日付にしてください",
+      "priceListUnapproved": "明細{line}: 価格表が承認されていません（独自値の追加承認）",
+      "regrindToolRequired": "明細 {line} 行目: 研ぎ直す工具を選択してください"
     },
     "orderLinesActions": {
       "invalidOrderLine": "注文明細が不正です",
@@ -7621,7 +8799,7 @@
       "invalidVariant": "バリアントが不正です",
       "invalidTier": "段階が不正です",
       "createFailed": "価格表の作成に失敗しました",
-      "duplicateEntry": "同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。",
+      "duplicateEntry": "同一の顧客・製品・対象工具の価格表が既に存在します。既存の価格表を編集してください。",
       "invalidEntryNumber": "価格表番号が不正です",
       "updateFailed": "価格表の更新に失敗しました",
       "invalidSourceEntryNumber": "コピー元の価格表番号が不正です",
@@ -7630,7 +8808,13 @@
       "periodChangeFailed": "有効期間の変更に失敗しました",
       "deleteFailed": "価格表の削除に失敗しました",
       "saveDiscountRuleFailed": "値引きルールの保存に失敗しました",
-      "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました"
+      "deleteDiscountRuleFailed": "値引きルールの削除に失敗しました",
+      "noApprovalNeeded": "この価格表には独自値が無い（または追加承認の段が無い）ため、承認は要りません",
+      "notFound": "価格表が見つかりません",
+      "notPendingApproval": "承認依頼中ではありません",
+      "costEstimateNotUsable": "原価試算は価格表の基準単価にできません",
+      "notACounterpart": "同じ顧客・品目の、他社の価格表ではありません",
+      "estimateNotLinkedToProduct": "この製品にリンクされた価格試算だけを基準単価ソースにできます（価格試算（SA01）で製品を指定して確定してください）"
     },
     "designRequestActions": {
       "approvalRequestFailed": "承認依頼に失敗しました",
@@ -7681,7 +8865,8 @@
       "productNotFound": "製品が見つかりません",
       "purchaseHistoryFetchFailed": "仕入実績の取得に失敗しました",
       "saveFailed": "価格試算の保存に失敗しました",
-      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません"
+      "toolTypeNotDefined": "工具種「{toolType}」は定義されていません",
+      "costEstimateNotPermitted": "原価試算を作る権限がありません"
     },
     "intakeReview": {
       "customer": "顧客",
@@ -7712,13 +8897,15 @@
     },
     "orderAcceptanceReadiness": {
       "customerNotIdentified": "顧客が未特定です",
-      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "lineEndUserNotIdentified": "明細 {rows} 行目: エンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
       "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
       "lineQuantityInvalid": "明細 {rows} 行目: 数量が 1 以上ではありません",
       "lineUnitPriceNegative": "明細 {rows} 行目: 単価が負の値です",
-      "andNMore": "ほか {count} 件"
+      "andNMore": "ほか {count} 件",
+      "externalProductIsNotSold": "明細 {rows} 行目: 他社製品は売り物にできません。再研磨では工具の欄に選びます",
+      "regrindToolNotSelected": "明細 {rows} 行目: 研ぎ直す工具が未選択です"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "確定済みの注文明細は変更できません",
@@ -7726,6 +8913,57 @@
       "onlyDraftAcceptanceEditable": "下書きの注文請書のみ編集できます",
       "productNotIdentified": "製品未特定",
       "unitPriceNotEntered": "単価未入力"
+    },
+    "salesItemGuard": {
+      "externalProductIsNotSold": "明細 {row} 行目: 他社製品は売り物にできません。再研磨では工具の欄に選びます",
+      "regrindNeedsRegrindItem": "明細 {row} 行目: 再研磨の明細には再研磨の品目を選びます",
+      "nonRegrindNeedsProduct": "明細 {row} 行目: 再研磨以外の明細には製品を選びます",
+      "toolOnlyForRegrind": "明細 {row} 行目: 工具は再研磨の明細にだけ入ります",
+      "toolMustBeProduct": "明細 {row} 行目: 工具には製品を選びます",
+      "externalProductHasNoPriceList": "他社製品には価格表を作れません（預かるだけで売る物ではありません）",
+      "materialHasNoPriceList": "素材には価格表を作れません",
+      "regrindItemOnlyRegrindVariant": "再研磨の品目が持てるのは注文種別「再研磨」だけです",
+      "productHasNoRegrindVariant": "製品に注文種別「再研磨」の価格は作れません。再研磨の値段は再研磨の品目が持ちます",
+      "priceListToolOnlyForRegrind": "対象工具は再研磨の品目の価格表にだけ設定できます",
+      "priceListToolMustBeProduct": "対象工具には製品（他社製品を含む）を選びます"
+    },
+    "quoteMail": {
+      "subject": "見積書 {number} のご送付",
+      "salutationCompany": "{company} 御中",
+      "salutationPerson": "{company}\n{person} 様",
+      "body": "平素より大変お世話になっております。\n見積書 {number} をお送りいたします。下記のリンクからご確認ください（PDF をダウンロードできます）。",
+      "validUntil": "有効期限: {date}",
+      "closing": "ご不明な点がございましたら、お気軽にお問い合わせください。\n今後ともよろしくお願い申し上げます。",
+      "contact": "担当: {name}",
+      "contactWithEmail": "担当: {name}（{email}）",
+      "linkNote": "リンクを開くと、このメールアドレス宛てに確認コードをお送りします。リンクの有効期限: {date}"
+    },
+    "priceListCompanySync": {
+      "sectionTitle": "他社の価格表",
+      "sectionDescription": "同じ顧客 × 品目（× 工具）の価格表を、別の発行会社も持っています。価格表は会社ごとに別々で、見積書・注文請書は発行会社の価格表だけを使います。",
+      "sameAs": "{company} と同じ",
+      "differsFrom": "{company} と差分あり",
+      "showDiff": "差分を見る",
+      "hideDiff": "差分を閉じる",
+      "syncFrom": "{company} の内容で同期",
+      "syncConfirmMessage": "注文種別ごとの基準単価・有効期間・状態、数量段階、値引きルールを {company} の価格表 {number} と同じにします。この価格表にしか無い注文種別は削除されます。独自値があれば承認を通ります。",
+      "synced": "同期しました",
+      "syncedMessage": "{company} の内容で同期しました",
+      "thisPriceList": "この価格表",
+      "field": "項目",
+      "registered": "登録あり",
+      "notRegistered": "なし",
+      "tierRow": "数量段階 {n}",
+      "discountRow": "値引きルール {n}",
+      "column": "他社との差分",
+      "same": "同じ",
+      "differs": "差分あり",
+      "allCompanies": "すべての発行会社",
+      "copyRecommendTitle": "他社の価格表があります",
+      "copyRecommendMessage": "同じ顧客 × 品目の価格表を別の発行会社が持っています。内容をコピーして作ることをおすすめします（番号はこの会社で新しく採番されます）。",
+      "copyFrom": "{company} の価格表からコピー",
+      "copiedNotice": "{company} の価格表 {number} の内容をコピーしました。値引きルール {count} 件も一緒に保存されます。保存するまでは登録されません。",
+      "copyFailed": "コピー元の価格表を読めませんでした"
     }
   },
   "shipping": {
@@ -7802,6 +9040,19 @@
       "confirmShipBodyDispatch": "出荷書 {number} を出荷済にします。注文明細の出荷状態も再計算されます。",
       "confirmShipBodyStock": "出荷書 {number} を出荷済にします（在庫保管のため注文明細の出荷状態は変わりません）。",
       "shippedBody": "出荷書 {number} を出荷済にしました",
+      "notEnoughStockTitle": "在庫が足りません",
+      "notEnoughStockBody": "このまま出荷すると、足りない分だけ在庫がマイナスになります。出荷そのものは記録され、あとから棚卸（ST05）か手動入出庫（ST06）で戻せます。",
+      "shipAnyway": "このまま出荷する",
+      "viewStock": "在庫を見る",
+      "shortfall": "不足",
+      "recordAReturn": "返品を記録",
+      "recordTheReturn": "返品を記録する",
+      "returnQuantity": "返品数",
+      "returned": "返品",
+      "alreadyReturned": "返品済",
+      "returnHelp": "戻せるのは出した数までです。在庫は出荷元の拠点・同じロットへ未割当で戻ります。出荷書の状態と請求は動きません。",
+      "returnRecorded": "返品を記録しました",
+      "returnRecordedBody": "{number} の返品を在庫へ戻しました",
       "confirmDeleteBody": "出荷書 {number} を削除します。この操作は取り消せません。",
       "deletedBody": "出荷書 {number} を削除しました",
       "onlySameCustomerCanBeCombined": "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
@@ -7908,6 +9159,7 @@
       "exceedsOrderedQuantity": "{number} の受注数量 {quantity} を超える出荷になります（累計 {shipped}）",
       "invalidNumber": "出荷書番号が不正です",
       "lotHasNoStock": "ロット #{lot} の在庫がありません（完了済み指示書のロット番号を指定してください）",
+      "regrindLinesDispatchOnly": "再研磨の明細は発送（DISPATCH）でしか出荷できません — 顧客の預り品を在庫保管には入れられません",
       "lotStockInsufficient": "ロット #{lot} の在庫が不足しています（現物 {available} / 指定 {qty}）",
       "notFound": "対象の出荷書が見つかりません",
       "onlyConfirmedCanBeShipped": "確定済みの出荷書のみ出荷できます",
@@ -7917,6 +9169,14 @@
       "orderLineRequiredForDispatch": "明細 {line} 行目: 発送には注文明細の指定が必要です",
       "quantityMustBeAtLeast1": "数量は1以上",
       "shipFailed": "出荷処理に失敗しました",
+      "stockCheckFailed": "在庫の確認に失敗しました",
+      "shippedWithoutStockNoLot": "在庫が足りないまま出荷しました（品目 {item}: 不足 {shortfall}）。台帳はマイナスのままです — 棚卸か手動入出庫で合わせてください",
+      "shippedWithoutStock": "在庫が足りないまま出荷しました（品目 {item} ロット #{lot}: 不足 {shortfall}）。台帳はマイナスのままです — 棚卸か手動入出庫で合わせてください",
+      "returnNoQuantity": "返品する数量を入力してください",
+      "returnNotShipped": "出荷済みの発送分だけ返品を記録できます",
+      "returnExceedsShipped": "出荷した数を超えて返品はできません",
+      "returnFailed": "返品の記録に失敗しました",
+      "auditReturnRecorded": "返品を記録（{quantity} 本を在庫へ戻し）",
       "shippedNotificationTitle": "出荷書 {number} を出荷しました",
       "specifyAConfirmedOrderLine": "確定済みの注文明細を指定してください",
       "updateFailed": "出荷書の更新に失敗しました",
@@ -8169,6 +9429,12 @@
     "unknownStepsInComposition": "存在しない工程が含まれています",
     "duplicateStepsInComposition": "同じ工程が重複しています",
     "fromStockAllowedSteps": "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
+    "regrindStepsOnlyForRegrind": "再研磨の工程は再研磨の指示書にしか入れられません",
+    "regrindForbiddenSteps": "再研磨の指示書に入れられるのは 製品受入（再研磨）・研磨・コーティング・検査・承認・出荷前検査 だけです（材料準備・加工・製品出しは入れられません）",
+    "regrindRequiresReceipt": "再研磨の指示書は 製品受入（再研磨）で始める必要があります",
+    "regrindRouteOnlyRegrindSteps": "再研磨工程リストに入れられるのは再研磨の指示書で使える工程だけです（材料準備・加工は入れられません）",
+    "semiFinishedNotAllowedForRegrind": "再研磨では半製品の区分は使えません（顧客の工具は自社の半製品にはなりません）",
+    "autoCancelledAllReturned": "全量返却のため自動でキャンセルしました",
     "fromStockRequiresStockIssue": "在庫分の指示書には 製品出し（在庫） が必要です",
     "stockIssueOnlyForFromStock": "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
     "workOrderNotApprovedOrInProgress": "指示書が承認済み/進行中ではありません",
@@ -8453,12 +9719,13 @@
       "viewed": "閲覧済み",
       "windowEndsAt": "承認期限（終了）",
       "windowStartsAt": "承認期限（開始）",
-      "yayoiExportedAt": "弥生エクスポート日時",
+      "accountingExportedAt": "会計連携日時",
       "isDefault": "既定",
       "effectiveFrom": "適用開始日",
       "ratePercent": "税率（%）",
       "taxCategoryId": "税区分",
-      "shortLabel": "帳票の区分表示"
+      "shortLabel": "帳票の区分表示",
+      "customerProductCodes": "顧客品番"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -8523,6 +9790,7 @@
       "estimates": "価格試算",
       "price_list_entries": "価格表",
       "products": "製品",
+      "charge_items": "料金マスタ",
       "materials": "素材",
       "material_types": "材種",
       "business_partners": "取引先",
@@ -8546,6 +9814,7 @@
       "material_purchase_orders": "素材発注書",
       "material_receipts": "素材入荷",
       "invoices": "請求書",
+      "accounting_documents": "会計文書",
       "billing_closings": "締日処理",
       "design_requests": "設計依頼書",
       "approval_requests": "承認依頼",
@@ -8569,6 +9838,7 @@
       "system": "システム",
       "approval_flow_rules": "条件付き承認ルール",
       "design_files": "設計図",
+      "design_versions": "設計図の版",
       "inspection_template_groups": "検査表テンプレートグループ",
       "kiosk_unlock_pins": "退出PIN履歴",
       "link_blacklist": "リンク拒否リスト",
@@ -8585,7 +9855,17 @@
       "api_clients": "API クライアント",
       "api_client_tokens": "API トークン",
       "tax_categories": "税区分",
-      "tax_category_rates": "税率"
+      "tax_category_rates": "税率",
+      "inventory_movements": "入出庫伝票",
+      "stock_takes": "棚卸",
+      "stock_take_lines": "棚卸明細",
+      "item_inventory": "在庫",
+      "movement_types": "移動タイプ",
+      "wip_states": "加工状態",
+      "items": "品目",
+      "webhook_endpoints": "Webhook 送信先",
+      "own_companies": "自社法人",
+      "machine_models": "機種"
     },
     "change": {
       "pair": "{label}: {before} → {after}",
@@ -8801,8 +10081,6 @@
   },
   "inventoryNote": {
     "insufficientStock": "在庫が不足しています（{transactionType} {quantity}）",
-    "lotInventoryMissing": "ロット {lotNumber} の在庫台帳がありません（製品 {productId}）。指示書完了または棚卸調整で入庫してから出荷してください",
-    "outOfStockOnShip": "在庫が不足しています（OUT {quantity}）: ロット {lotNumber}",
     "onlyConfirmedLinesCanBeStockChecked": "確定済みの注文明細のみ在庫照合できます",
     "workOrderCompletedFinished": "指示書 #{workOrderNumber} 完了入庫",
     "workOrderCompletedSemiFinished": "指示書 #{workOrderNumber} 半製品入庫",
@@ -8810,7 +10088,23 @@
     "workOrderMaterialConsumed": "指示書 #{workOrderNumber} 素材消費",
     "fromStockConsumedReleased": "指示書 #{workOrderNumber} 在庫分消費（引当解除）",
     "fromStockConsumedReassigned": "指示書 #{workOrderNumber} 在庫分消費（ロット #{workOrderNumber} へ付け替え）",
+    "fromStockScrapped": "指示書 #{workOrderNumber} 在庫分の廃棄",
+    "semiFinishedConsumed": "指示書 #{workOrderNumber} 半製品出し（ロット #{workOrderNumber} へ付け替え）",
+    "semiFinishedScrapped": "指示書 #{workOrderNumber} 半製品出しの廃棄",
+    "wipDrawReserved": "指示書 #{workOrderNumber} 承認による仕掛品の予約",
+    "wipDrawReservationReleased": "指示書 #{workOrderNumber} 完了による仕掛品の予約解除",
+    "wipDrawConsumed": "指示書 #{workOrderNumber} 仕掛品の投入（ロット #{workOrderNumber} へ付け替え）",
+    "wipDrawScrapped": "指示書 #{workOrderNumber} 投入した仕掛品の廃棄",
+    "outsourceIssued": "指示書 #{workOrderNumber} 外注へ出し（預け在庫へ）",
+    "outsourceReturned": "指示書 #{workOrderNumber} 外注から戻り",
+    "outsourceReturnedOnCompletion": "指示書 #{workOrderNumber} 完了により外注から戻し",
+    "salesReturned": "出荷 {ref} の返品（在庫へ戻し）",
+    "regrindReceived": "指示書 #{workOrderNumber} 製品受入（再研磨）— 預り品として入庫（箱番号 {box}）",
+    "regrindReturnedAsIs": "指示書 #{workOrderNumber} 完了 — 再研磨できず返却する分",
+    "regrindLinesAreNotStockChecked": "再研磨の明細は在庫照合の対象ではありません（顧客の工具を預かって返す注文です）",
+    "regrindOwnerUnresolved": "再研磨指示書の所有者（割当明細の顧客）を 1 人に決められません",
     "shipped": "出荷 {ref}",
+    "shippedWithoutStock": "出荷 {ref}（在庫不足のまま出庫）",
     "stockStorage": "在庫保管 {ref}",
     "shippedReservationReleased": "出荷による予約解除 {ref}",
     "materialReceived": "素材入荷",
@@ -8839,10 +10133,20 @@
     "finalInspectionDeliveryNoteIssued": "出荷前確認: 納品書発行者を記録",
     "finalInspectionShipmentAuthorized": "出荷前確認: 出荷許可者を記録",
     "finalInspectionShipDefectReviewed": "出荷時不良内容確認者印を記録",
-    "inspectionApproved": "検査記録を承認"
+    "inspectionApproved": "検査記録を承認",
+    "stockTakeAdjusted": "棚卸調整（実数 {book} → 実測 {counted}）",
+    "workOrderAbortedWip": "指示書 #{workOrderNumber} 打ち切りによる仕掛品入庫",
+    "workOrderAbortedReservationReleased": "指示書 #{workOrderNumber} 打ち切りによる予約解除"
   },
   "workflowCore": {
     "quantityLabels": {
+      "regrindReceipt": {
+        "input": "受入本数",
+        "success": "再研磨する本数",
+        "semi": "半製品",
+        "scrap": "返却（再研磨不可）",
+        "rework": "工程分岐"
+      },
       "flow": {
         "input": "受入数",
         "success": "良品数",
@@ -8871,6 +10175,7 @@
     "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "startStepIncomplete": "開始工程（出し・受渡し）が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です",
     "quantityNegative": "{label}は 0 以上で入力してください",
     "quantityConservationInspection": "合格 + 不合格（半製品・廃棄・工程分岐）の合計（{sum}）が検査数（{input}）と一致しません",
@@ -8917,7 +10222,11 @@
       },
       "notes": {
         "label": "備考",
-        "summary": "社内向けの補足です。見積書の PDF には出ません。"
+        "summary": "見積書全体についての補足です。見積書の PDF の「備考」欄に印字されます。"
+      },
+      "tool": {
+        "label": "研ぎ直す工具",
+        "summary": "お客様から預かって研ぎ直す工具そのものです。注文種別が「再研磨」の行だけに出て、必須です。この工具を対象にした価格表があればその単価、無ければ工具を問わない価格表、それも無ければ再研磨品目の標準価格になります（注文請書と同じ順）。"
       }
     },
     "priceList": {
@@ -8928,6 +10237,10 @@
       "product": {
         "label": "製品",
         "summary": "価格を決める製品です。顧客と同じく、作った後は変えられません。"
+      },
+      "targetTool": {
+        "label": "対象工具",
+        "summary": "再研磨の値段をこの工具に限るときだけ選びます。空なら工具を問わない価格です。単価は 工具の価格表 → 工具を問わない価格表 → 標準価格 の順に引きます。"
       },
       "orderType": {
         "label": "注文種別",
@@ -9006,6 +10319,10 @@
       "orderType": {
         "label": "種別",
         "summary": "本番・テスト・サンプル・その他の区分です。価格はこの区分ごとに違います。"
+      },
+      "tool": {
+        "label": "研ぎ直す工具",
+        "summary": "預かって研ぎ直す、お客様の工具そのものです。種別が「再研磨」の行だけに出ます。売っているのは研ぎ直しという役務で、この欄が指すのは手を入れて返す現物です。"
       },
       "quantity": {
         "label": "数量",
@@ -9247,6 +10564,10 @@
         "label": "対象製品",
         "summary": "つくる製品です。注文明細を選んだ場合は、その受注の製品が入ります。"
       },
+      "type": {
+        "label": "種別",
+        "summary": "在庫分 / 製造分 / 再研磨の区分です。注文明細の注文種別で決まっているときは選べず、決まった種別と理由が出ます。"
+      },
       "plannedQuantity": {
         "label": "予定数量",
         "summary": "つくる本数です。割当の合計以上で入力します（不良予備分の上乗せは自由。在庫分は割当の合計と同じ本数になります）。工程の受入数の初期値にもなります。"
@@ -9263,6 +10584,10 @@
         "label": "工程リスト / バージョン",
         "summary": "どの工程の並びを使うかです。製品ごとに登録された工程リストから選びます（在庫分の指示書では使いません）。"
       },
+      "regrindRoute": {
+        "label": "再研磨工程リスト",
+        "summary": "お客様の工具を受け入れてから研ぎ直し、検査するまでの並びです。製品にも受注元にも紐づかない共通のリストで、バージョンは選べません — 常に最新版が使われます。"
+      },
       "newRouteName": {
         "label": "新しい工程リスト名",
         "summary": "その場で新しい工程リストを作る場合の名前です。次回以降、同じ製品でこの並びを選べるようになります。"
@@ -9276,25 +10601,7 @@
         "summary": "補足です。現場が指示書を見るときに読まれます。"
       }
     },
-    "productInventory": {
-      "plant": {
-        "label": "移動先の拠点",
-        "summary": "どの拠点へ移すかです。移動元の在庫が減り、移動先の在庫が増えます。"
-      },
-      "location": {
-        "label": "保管場所 / 棚",
-        "summary": "移動先の拠点の中で、どこに置くかです。決めておくと、あとで現物を探しやすくなります。"
-      },
-      "quantity": {
-        "label": "数量",
-        "summary": "移す数です。移動元にある数を超えては移せません。"
-      },
-      "notes": {
-        "label": "備考",
-        "summary": "移動の理由などを残しておく欄です。移動の記録は履歴に残ります。"
-      }
-    },
-    "materialInventory": {
+    "inventoryManagement": {
       "plant": {
         "label": "移動先の拠点",
         "summary": "どの拠点へ移すかです。移動元の在庫が減り、移動先の在庫が増えます。"
@@ -9481,18 +10788,6 @@
         "label": "単位",
         "summary": "数え方の単位です。既定は「本」です。"
       },
-      "productType": {
-        "label": "製品種別",
-        "summary": "製品の種別です。種別を選ぶと、その種別に決められた項目（仕様）が下に出てきます。"
-      },
-      "materialType": {
-        "label": "材種",
-        "summary": "その製品を作るのに使う材料の種類です。"
-      },
-      "dimensions": {
-        "label": "直径 (mm) / 全長 (mm)",
-        "summary": "必要な素材の寸法です。特定の素材ではなく「材種 + 直径 + 全長」で指定します — 同じ条件の素材ならどれを使っても作れるためです。"
-      },
       "keywords": {
         "label": "キーワード",
         "summary": "この製品の別の呼び方（略称・読み・英語・寸法の別表記）です。ここに入れた言葉でも検索でき、注文書の読み取りでもこの製品として突き合わせます。「AI で候補を出す」で候補を作れます。"
@@ -9648,6 +10943,52 @@
         "summary": "外すと、不良記録の選択肢に出なくなります。"
       }
     },
+    "regrindItem": {
+      "name": {
+        "label": "名称",
+        "summary": "画面に出る名前です。注文請書で値段を選ぶときに読むものなので、条件が読み取れる書き方にしておくと探しやすくなります。"
+      },
+      "toolClass": {
+        "label": "工具の種類",
+        "summary": "値段が分かれる工具の種類です（例: 超硬ヘリカルエンドミル）。突合の鍵ではありません — どの品目を使うかは人が選びます。"
+      },
+      "location": {
+        "label": "加工箇所",
+        "summary": "どこを研ぎ直すかです（例: 外周のみ / 外周 + 溝）。同じ工具でも研ぐ場所で値段が変わるので、分けて登録します。"
+      },
+      "flutes": {
+        "label": "刃数",
+        "summary": "刃数（枚）です。刃数で値段が変わらない品目なら空のままにします — 空にしておけば、刃数に関係なくこの品目を使えます。"
+      },
+      "sizeMin": {
+        "label": "サイズ下限",
+        "summary": "値段が当たる径の下限（mm）です。下限より大きいものが対象で、下限そのものは含みません。片側だけの指定でも構いません。"
+      },
+      "sizeMax": {
+        "label": "サイズ上限",
+        "summary": "値段が当たる径の上限（mm）です。上限以下が対象で、上限そのものを含みます。サイズ下限より大きい値にしてください。"
+      },
+      "standardPrice": {
+        "label": "標準価格",
+        "summary": "顧客を問わない定価です。その顧客の価格表があればそちらが勝ちます。空にすると、価格表が無い顧客では単価が付きません。"
+      },
+      "unit": {
+        "label": "単位",
+        "summary": "数える単位です。必須で、はじめは「本」が入っています。"
+      },
+      "keywords": {
+        "label": "キーワード",
+        "summary": "検索と注文書の自動突合に使う別名です。略称・読み・英字表記などを入れておくと、書類の表記が名称と違っても当たります。"
+      },
+      "notes": {
+        "label": "備考",
+        "summary": "社内向けの覚え書きです。お客様に出す書類には出ません。"
+      },
+      "active": {
+        "label": "有効",
+        "summary": "外すと、注文請書の「再研磨品目」の選択肢に出なくなります。使われている品目は消せないので、代わりにこれを外します。"
+      }
+    },
     "approvalGroup": {
       "name": {
         "label": "名称",
@@ -9730,7 +11071,7 @@
         "summary": "どの拠点の作業場所かです。工程の実施場所を選ぶときは、その拠点の作業場所だけが候補に出ます。"
       },
       "code": {
-        "label": "コード / 名称（日本語・English）",
+        "label": "コード / 名称",
         "summary": "作業場所の管理番号と名前です。工程の実施場所として選べます。"
       },
       "type": {
@@ -9744,6 +11085,18 @@
       "sortOrder": {
         "label": "表示順 / 有効 / 備考",
         "summary": "並び順・選択肢に出すか・補足です。"
+      },
+      "machineModel": {
+        "label": "機種",
+        "summary": "この機械の機種です。加工プログラムは機種に当てるので、ここで選んだ機種のプログラムが工程実行画面で「この機種用」として先頭に出ます。エリアや作業台は空のままにします。"
+      },
+      "machineModelCode": {
+        "label": "機種のコード / 名称",
+        "summary": "機種の管理番号と名前です。機械と加工プログラムの両方から選びます。"
+      },
+      "machineModelMaker": {
+        "label": "メーカー",
+        "summary": "機種のメーカーです（任意）。"
       }
     },
     "storageLocation": {
@@ -9752,7 +11105,7 @@
         "summary": "どの拠点のどのフロアの場所かです。在庫はこの場所の単位で置き場所が分かります。"
       },
       "code": {
-        "label": "コード / 名称（日本語・英語）",
+        "label": "コード / 名称",
         "summary": "場所の管理番号と名前です。登録すると、在庫の置き場所として選べるようになります。"
       },
       "sortOrder": {
@@ -9804,7 +11157,7 @@
     },
     "kioskDevice": {
       "name": {
-        "label": "端末名（日本語 / English）",
+        "label": "端末名",
         "summary": "一覧・フロアマップ・操作履歴のバッジに出る名前です。「第一工場 入口」のように、現物を探せる名前にしてください。"
       },
       "plant": {
@@ -9909,6 +11262,236 @@
     "tooManyActiveTokens": "有効なトークンは 2 本までです。先にどれかを失効してください。",
     "clientNotFound": "対象のクライアントが見つかりません",
     "featureDisabled": "この環境では外部 API は無効です",
-    "invalidNameChars": "名前に使えない文字が含まれています"
+    "invalidNameChars": "名前に使えない文字が含まれています",
+    "webhooksTitle": "外向き Webhook",
+    "webhooksIntro": "業務データが変わったとき、n8n などの外部システムへ「何が起きたか」の合図を送ります。値そのものは送らず、受け取った側が API で引き直します。",
+    "webhookCreateTitle": "Webhook の送信先を追加",
+    "webhookCreateHint": "送られるのは、選んだ API クライアントが読める資源のイベントだけです。権限を外せば、送信先を消さなくても配送は止まります。",
+    "webhookUrl": "送信先 URL",
+    "webhookUrlHelp": "https、または社内（Docker のサービス名・プライベート IP・.loc）の http。ここに認証用の文字列が入るので、一覧では経路を伏せて表示します。",
+    "webhookEvents": "イベント",
+    "webhookEvent": "イベント",
+    "webhookAllEvents": "すべてのイベント",
+    "webhookEventCount": "{count} 種類",
+    "webhookClient": "API クライアント",
+    "webhookClientHelp": "このクライアントの権限で読める資源のイベントだけが送られます。",
+    "webhookLastDelivered": "最後の配送",
+    "webhookPending": "送信待ち {count}",
+    "webhookFailed": "失敗 {count}",
+    "webhookEmpty": "送信先はまだありません。",
+    "webhookTest": "テスト送信",
+    "webhookTestOk": "届きました（HTTP {status}）",
+    "webhookTestFailed": "届きませんでした: {error}",
+    "webhookDeliveries": "配送履歴",
+    "webhookDeliveriesEmpty": "配送はまだありません。",
+    "webhookAttempts": "試行",
+    "webhookResult": "結果",
+    "webhookNextAttempt": "次の試行: {at}",
+    "webhookRedeliver": "再送",
+    "webhookRotate": "署名鍵を再発行",
+    "webhookRotateConfirm": "いまの署名鍵はその場で使えなくなります。受け取り側の鍵も入れ替えるまで、署名の検証が通りません。",
+    "webhookSecretTitle": "署名鍵",
+    "webhookDeleteConfirm": "この送信先を削除します。配送履歴も一緒に消えます。",
+    "webhookInvalidUrl": "送信先 URL が使えません: {detail}",
+    "webhookInvalidEvents": "イベントを 1 つ以上選んでください。",
+    "webhookNoKey": "署名鍵を保管するための暗号鍵（{env}）が設定されていません。",
+    "webhookDuplicateName": "同じ API クライアントに同じ名前の送信先があります。",
+    "webhookNotFound": "送信先が見つかりません。",
+    "webhookSecretUnavailable": "署名鍵を開けませんでした。署名鍵を再発行してください。",
+    "webhookNotRedeliverable": "失敗した配送だけ再送できます。",
+    "editTitle": "API クライアントを編集",
+    "editHint": "有効なクライアントでは、許可 IP 範囲と有効期限を広げられません（狭めるのは可）。広げるときは無効化してから変更し、承認を受けて再有効化してください。",
+    "expiresAt": "有効期限",
+    "noExpiry": "無期限",
+    "noCidrLimit": "IP 制限なし",
+    "widenRequiresInactive": "有効なクライアントの許可 IP 範囲・有効期限は広げられません。無効化してから変更し、承認を受けて再有効化してください。",
+    "alreadyRevoked": "このクライアントは失効済みです",
+    "revokeClientTitle": "API クライアントの失効",
+    "revokeClientConfirm": "「{name}」を失効します。有効なトークンもすべて失効し、元には戻せません。",
+    "revokeReason": "理由"
+  },
+  "charges": {
+    "title": "追加料金",
+    "item": "料金項目",
+    "note": "但し書き",
+    "notePlaceholder": "○○運輸 着払い など",
+    "selectAnItem": "料金項目を選択",
+    "addRow": "料金を追加",
+    "total": "追加料金 合計",
+    "empty": "追加料金はありません",
+    "everyRowNeedsAnItem": "各行の料金項目を選択してください",
+    "fixedByMaster": "料金マスタの固定金額",
+    "quantityTimesUnitPrice": "{quantity} × ¥{unitPrice}",
+    "copiedFromWorkOrder": "指示書 #{number} から複写",
+    "couldNotSave": "追加料金の保存に失敗しました",
+    "workOrderHelp": "送料など、製品の代金以外に請求するもの。ここは予定で、出荷書を作るときに複写されます。請求されるのは出荷書側の行です。",
+    "deliveryOrderHelp": "この出荷で請求する追加料金。確定すると締日処理が請求書の明細にします。直せるのは下書きのうちだけです。",
+    "workOrderClosedForCharges": "完了・キャンセルした指示書の追加料金は変更できません。出荷書側で直してください",
+    "deliveryOrderClosedForCharges": "追加料金を変更できるのは下書きの出荷書だけです"
+  },
+  "inventory": {
+    "stockOverview": {
+      "item": "品目",
+      "itemType": "品目種別",
+      "hideZeroStock": "在庫ゼロを隠す",
+      "custody": "預け先",
+      "custodyOwn": "自社",
+      "owner": "所有者",
+      "ownerOwn": "自社の物のみ",
+      "ownedBy": "預り品: {name}",
+      "heldBy": "{name} が保管",
+      "searchPlaceholder": "品目名・コードで検索",
+      "summaryLine": "{rows} 行 / {items} 品目 / {sites} 拠点",
+      "truncatedNotice": "件数が多いため、一部のみ表示しています。絞り込んでください。",
+      "noStock": "在庫がありません"
+    },
+    "requirements": {
+      "title": "在庫・所要量",
+      "item": "品目",
+      "itemPlaceholder": "コード・名称で検索",
+      "plantPlaceholder": "拠点を選択",
+      "emptyState": "品目と拠点を選ぶと、過去の実績と未来の入出庫予定を表示します",
+      "notFound": "品目が見つかりませんでした",
+      "onHand": "手持ち",
+      "reserved": "予約",
+      "availableNow": "利用可能",
+      "nextReceipt": "次回入荷",
+      "shortageAlertTitle": "在庫不足の見込み",
+      "shortageAlertBody": "この先、残高がマイナスになる見込みです。強調表示した行を確認してください。",
+      "truncated": "古い実績が多いため、一部のみ表示しています",
+      "rowKindHeader": "区分",
+      "reference": "参照",
+      "balance": "残高",
+      "dateUndetermined": "未定",
+      "rowKind": {
+        "now": "いま"
+      }
+    },
+    "goodsMovement": {
+      "selectAType": "移動タイプを選択してください",
+      "selectAnItem": "品目を選択してください",
+      "quantityPositive": "数量は正の数で入力してください",
+      "typeInactive": "この移動タイプは無効化されています",
+      "ownerOnlyForProducts": "預り品を持てるのは製品だけです",
+      "postFailed": "入出庫の登録に失敗しました",
+      "problem": {
+        "itemRequired": "品目を選択してください",
+        "quantityPositive": "数量は正の数で入力してください",
+        "fromRequired": "出庫元を指定してください",
+        "toRequired": "入庫先を指定してください",
+        "sameEndpoint": "出庫元と入庫先が同じです"
+      },
+      "movementType": "移動タイプ",
+      "fromLocation": "出庫元",
+      "toLocation": "入庫先",
+      "shelf": "棚",
+      "itemAndQuantity": "品目・数量",
+      "item": "品目",
+      "quantity": "数量",
+      "lotNumber": "ロット番号",
+      "lotNumberHint": "製品のみ有効（素材では無視されます）",
+      "owner": "所有者",
+      "ownerOwn": "自社",
+      "ownerHint": "預り品（再研磨でお客様から預かっている工具）を動かすときだけ選びます",
+      "problemsTitle": "登録できません",
+      "submit": "登録",
+      "lastPosted": "直前に登録した伝票",
+      "posted": "入出庫伝票 {number} を登録しました"
+    },
+    "movementTypes": {
+      "number": "番号",
+      "direction": "向き",
+      "requiresFrom": "出庫元要",
+      "requiresTo": "入庫先要",
+      "requiresFromFloor": "この向きでは「出庫元」を必須から外せません",
+      "requiresToFloor": "この向きでは「入庫先」を必須から外せません",
+      "createFailed": "移動タイプの作成に失敗しました",
+      "updateFailed": "移動タイプの更新に失敗しました",
+      "codeHint": "手動入出庫の選択肢に表示される番号（例: 101 / 201 / 311）",
+      "newMovementType": "移動タイプの新規作成",
+      "editTheMovementType": "移動タイプの編集",
+      "created": "移動タイプ「{name}」を作成しました",
+      "updated": "{name} を更新しました",
+      "disableConfirm": "{name} を無効化します。よろしいですか？",
+      "enableConfirm": "{name} を有効化します。よろしいですか？",
+      "disabled": "{name} を無効化しました",
+      "enabled": "{name} を有効化しました",
+      "disableTitle": "移動タイプの無効化",
+      "enableTitle": "移動タイプの有効化",
+      "bulkEnabled": "{count} 件を有効化しました",
+      "bulkDisabled": "{count} 件を無効化しました",
+      "noMovementTypes": "移動タイプがありません"
+    },
+    "wip": {
+      "inProcessTab": "工程内",
+      "searchPlaceholder": "材種・目標製品・ロットで検索",
+      "empty": "在庫に置いた仕掛品はありません",
+      "state": "加工状態",
+      "finishedSize": "仕上がり寸法",
+      "reserved": "予約",
+      "siteAndStorage": "拠点 / 保管場所",
+      "aimedProduct": "目標製品",
+      "sourceStep": "発生工程",
+      "sourceStepValue": "#{number} {stepName}",
+      "age": "経過日数",
+      "ageDays": "{days} 日",
+      "materialType": "材種",
+      "unprocessed": "未加工",
+      "unclassified": "未分類",
+      "unclassifiedHint": "行き先を決められなかった旧来の半製品です。「分類する」で材種・寸法・加工状態を決めてください。",
+      "groupTotal": "計 {quantity} 本",
+      "onHandAndAvailable": "在庫 {quantity} / 利用可能 {available}",
+      "usableColumn": "使える仕掛品",
+      "usableCount": "{count} 本",
+      "usableLinkLabel": "{product} に使える仕掛品 {count} 本を仕掛品タブで見る",
+      "usableFor": "{product} に使える仕掛品",
+      "usableForHelp": "材種が同じで、寸法が ちょうど / 長い / 太い のいずれかに当たり、加工状態がこの製品の工程の先頭部分になっている仕掛品です。",
+      "clearUsableFilter": "絞り込みを外す",
+      "nameState": "加工状態に名前を付ける",
+      "stateNameLabel": "呼び名",
+      "stateNameHelp": "空欄にすると、済んだ工程の並びで表示します。",
+      "stateSteps": "済んだ工程",
+      "renamed": "加工状態の名前を保存しました",
+      "renameFailed": "加工状態の名前を保存できませんでした",
+      "legacyStateNotRenamable": "「未分類」の名前は変えられません",
+      "reclassify": {
+        "action": "分類する",
+        "title": "仕掛品を分類する",
+        "description": "未分類の仕掛品を、仕掛ブランク（材種・径・長）と加工状態ごとの在庫へ移します。数量は変わりません。未分類からの出庫と分類先への入庫が、1 枚の入出庫伝票に残ります。",
+        "source": "{product} ／ 分類できる数 {available} 本",
+        "quantity": "分類する数量（本）",
+        "blankSection": "仕掛ブランク",
+        "materialType": "材種",
+        "diameter": "径 (mm)",
+        "length": "長 (mm)",
+        "stateSection": "加工状態",
+        "addStep": "済んだ工程を追加",
+        "removeStep": "{name} を外す",
+        "stepsHint": "形を変える工程を、済んだ順に選びます。何も選ばなければ「未加工」です。",
+        "finishedDiameter": "仕上がり径 (mm)",
+        "finishedLength": "仕上がり長 (mm)",
+        "finishedDefaultsToBlank": "未加工のときは、空欄なら仕掛ブランクの寸法になります。",
+        "aimedProduct": "目標製品",
+        "aimedProductHelp": "空欄なら、いまの目標製品のままにします。",
+        "done": "仕掛品を分類しました",
+        "doneMessage": "入出庫伝票 {number}",
+        "failed": "仕掛品を分類できませんでした",
+        "notLegacy": "分類できるのは「未分類」の仕掛品だけです",
+        "stepNotCounted": "加工状態に数えない工程が含まれています",
+        "aimedMustBeProduct": "目標製品には製品を選んでください",
+        "movementNote": "仕掛品の分類: {size} / {state}",
+        "issue": {
+          "quantityRequired": "数量は 1 以上の整数で入力してください",
+          "quantityExceedsAvailable": "分類できる数（{available} 本）を超えています",
+          "materialTypeRequired": "材種を選択してください",
+          "diameterInvalid": "径は 0 より大きい数値を入力してください",
+          "lengthInvalid": "長は 0 より大きい数値を入力してください",
+          "finishedDiameterRequired": "仕上がり径を入力してください",
+          "finishedLengthRequired": "仕上がり長を入力してください",
+          "finishedDiameterInvalid": "仕上がり径は 0 より大きい数値を入力してください",
+          "finishedLengthInvalid": "仕上がり長は 0 より大きい数値を入力してください"
+        }
+      }
+    }
   }
 }

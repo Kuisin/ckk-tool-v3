@@ -23,10 +23,11 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { requestPrivilegedAccess } from "@/app/(dashboard)/settings/privileged-access/actions";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { normalizeLocale } from "@/lib/i18n";
 import {
   MAX_DURATION_MINUTES,
   MAX_WINDOW_DAYS,
@@ -48,21 +49,30 @@ export function PrivilegedRequestForm({
   codes: ElevationCode[];
 }) {
   const tr = useTranslations();
+  const locale = normalizeLocale(useLocale());
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [code, setCode] = useState<ElevationCode | null>(codes[0] ?? null);
   const [operations, setOperations] = useState<string[]>([]);
   const [reason, setReason] = useState("");
-  const now = useMemo(() => new Date(), []);
-  const [startsAt, setStartsAt] = useState<string | null>(now.toISOString());
-  const [endsAt, setEndsAt] = useState<string | null>(
-    new Date(now.getTime() + 7 * DAY_MS).toISOString(),
-  );
+  // 現在時刻はマウント後にだけ読む。レンダー中に new Date() を読むと、
+  // サーバー（コンテナの TZ）とブラウザ（利用者の TZ）で DateTimePicker の
+  // 表示文字列が食い違い hydration が割れる（TZ の違う環境で実際に #418）。
+  const [now, setNow] = useState<Date | null>(null);
+  const [startsAt, setStartsAt] = useState<string | null>(null);
+  const [endsAt, setEndsAt] = useState<string | null>(null);
+  useEffect(() => {
+    const n = new Date();
+    setNow(n);
+    setStartsAt(n.toISOString());
+    setEndsAt(new Date(n.getTime() + 7 * DAY_MS).toISOString());
+  }, []);
   const [duration, setDuration] = useState<number>(60);
 
   // 上限は「申請時点から」14 日。開始を先送りしても総延長は伸びない。
   const maxEnd = useMemo(
-    () => new Date(now.getTime() + MAX_WINDOW_DAYS * DAY_MS),
+    () =>
+      now ? new Date(now.getTime() + MAX_WINDOW_DAYS * DAY_MS) : undefined,
     [now],
   );
 
@@ -144,7 +154,7 @@ export function PrivilegedRequestForm({
         <Select
           data={codes.map((c) => ({
             value: c,
-            label: ELEVATION_CODE_LABEL[c].ja,
+            label: ELEVATION_CODE_LABEL[c][locale],
           }))}
           label={tr("common.permission")}
           onChange={(v) => {
@@ -166,9 +176,9 @@ export function PrivilegedRequestForm({
           <Stack gap="sm">
             {ops.map((op) => (
               <Checkbox
-                description={op.description.ja}
+                description={op.description[locale]}
                 key={op.key}
-                label={op.label.ja}
+                label={op.label[locale]}
                 value={op.key}
               />
             ))}
@@ -197,7 +207,7 @@ export function PrivilegedRequestForm({
       >
         <DateTimePicker
           label={tr("settings.privileged.startsAt")}
-          minDate={now}
+          minDate={now ?? undefined}
           onChange={setStartsAt}
           value={startsAt}
           withAsterisk
@@ -205,7 +215,7 @@ export function PrivilegedRequestForm({
         <DateTimePicker
           label={tr("settings.privileged.endsAt")}
           maxDate={maxEnd}
-          minDate={now}
+          minDate={now ?? undefined}
           onChange={setEndsAt}
           value={endsAt}
           withAsterisk

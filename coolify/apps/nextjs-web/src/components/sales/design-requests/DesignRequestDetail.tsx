@@ -100,6 +100,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
   designHistoryActionLabel,
@@ -248,7 +249,7 @@ export function DesignRequestDetail({
   // 成果物（この依頼から出来た版）。完了できるかの判定はサーバー側
   // (completeDesign) が正で、ここは同じ条件を画面に出しているだけ。
   const producedVersions = [
-    ...new Set(request.files.map((f) => f.version)),
+    ...new Set(request.versions.map((v) => v.version)),
   ].sort((a, b) => b - a);
   const hasProducedVersion = producedVersions.length > 0;
   /** 未登録のときに送る先 — 製品・受注元・依頼を埋めた 設計図 の登録画面。 */
@@ -257,7 +258,7 @@ export function DesignRequestDetail({
   )}`;
 
   const canViewPdf = isIssuedDesign(request.status);
-  const pdfFilename = `${request.requestNumber}.pdf`;
+  const pdfFilename = `${docNo(request.requestNumber)}.pdf`;
   const pdfUrl = (extra = "") =>
     `/api/pdf/design-request?id=${encodeURIComponent(request.requestNumber)}${extra}`;
 
@@ -311,7 +312,7 @@ export function DesignRequestDetail({
         notifications.show({
           title: successMessage,
           message: tr("sales.designRequestDetail.designRequestWithNumber", {
-            number: request.requestNumber,
+            number: docNo(request.requestNumber),
           }),
           color: "green",
         });
@@ -372,7 +373,7 @@ export function DesignRequestDetail({
       ? [
           {
             key: request.quoteNumber,
-            label: request.quoteNumber,
+            label: docNo(request.quoteNumber),
             href: `/sales/quotes/${request.quoteNumber}`,
             note: tr("sales.designRequests.requestedAtQuoteTime"),
           },
@@ -382,7 +383,7 @@ export function DesignRequestDetail({
       ? [
           {
             key: request.orderLineNumber,
-            label: request.orderLineNumber,
+            label: docNo(request.orderLineNumber),
             href: `/sales/order-lines/${request.orderLineNumber}`,
             note: tr("sales.designRequests.requestedAtOrderTime"),
           },
@@ -434,7 +435,9 @@ export function DesignRequestDetail({
               {
                 key: "product",
                 label: request.productName,
-                href: `/production/design-files/${request.productId}`,
+                // 見出しどおり製品マスタ (MS24) へ — 最新図面はそこに出る。
+                // 設計図 (PD06) へは「設計図で管理」ボタンから行ける。
+                href: `/master/products/${request.itemId}`,
                 note: tr("sales.designRequests.whereTheLatestDrawingApplies"),
               },
             ],
@@ -461,7 +464,7 @@ export function DesignRequestDetail({
         onRequest={() => requestDesignApproval(request.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
         subject={tr("sales.designRequestDetail.designRequestWithNumber", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
         })}
       />
     );
@@ -590,9 +593,10 @@ export function DesignRequestDetail({
         { label: tr("common.designRequest2"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={request.requestNumber}
       createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
-      title={request.requestNumber}
+      title={docNo(request.requestNumber)}
       updatedAt={fmt.dateTime(request.updatedAt)}
     >
       {actionCard}
@@ -602,6 +606,12 @@ export function DesignRequestDetail({
           label={tr("common.requestNumber")}
           value={<DocNumber>{request.requestNumber}</DocNumber>}
         />
+        {request.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={request.legacyNumber}
+          />
+        )}
         <FieldValue
           label={tr("common.trigger")}
           value={
@@ -853,6 +863,7 @@ export function DesignRequestDetail({
               </Stack>
             )}
             <AttachmentsPanel
+              acceptAnyFile
               attachments={attachments}
               canDelete={canAttachFiles(request)}
               canUpload={canAttachFiles(request)}
@@ -867,9 +878,9 @@ export function DesignRequestDetail({
                 <Text fw={600} size="sm">
                   {tr("sales.designRequests.deliverableVersion")}
                 </Text>
-                {request.productId != null && (
+                {request.itemId != null && (
                   <SecondaryButton
-                    href={`/production/design-files/${request.productId}`}
+                    href={`/production/design-files/${request.itemId}`}
                     leftSection={<IconFile size={14} />}
                   >
                     {tr("common.managedByDrawing")}
@@ -920,7 +931,7 @@ export function DesignRequestDetail({
         confirmLabel={tr("sales.designRequests.complete")}
         loading={isPending}
         message={tr("sales.designRequestDetail.confirmCompleteMessage", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
           versions: producedVersions.join(", v"),
         })}
         onClose={() => setCompleteOpen(false)}
@@ -937,7 +948,7 @@ export function DesignRequestDetail({
         confirmLabel={tr("common.sendBack")}
         loading={isPending}
         message={tr("sales.designRequestDetail.confirmReopenMessage", {
-          number: request.requestNumber,
+          number: docNo(request.requestNumber),
         })}
         onClose={() => setReopenOpen(false)}
         onConfirm={() =>
@@ -964,7 +975,7 @@ export function DesignRequestDetail({
         <Stack gap="sm">
           <Text size="sm">
             {tr("sales.designRequestDetail.confirmCancelMessage", {
-              number: request.requestNumber,
+              number: docNo(request.requestNumber),
             })}
           </Text>
           <Textarea

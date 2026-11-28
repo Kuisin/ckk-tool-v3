@@ -14,6 +14,7 @@
 
 import "server-only";
 
+import { toDocRef } from "@/lib/doc-ref";
 import { prisma } from "./db";
 import type { PortalAccessResourceType } from "./portal-access-core";
 import type { PortalSession } from "./portal-auth";
@@ -30,12 +31,16 @@ export async function recordPortalAccess(input: {
   userAgent?: string | null;
 }): Promise<void> {
   try {
+    // 書類は法人コード付きの参照で残す（lib/doc-ref-core.ts）。書類が引けない
+    // ＝ 見せたものが無いので、残す行も無い。
+    const resourceId = await toDocRef(input.resourceType, input.resourceId);
+    if (resourceId == null) return;
     await prisma.portalAccessLog.create({
       data: {
         portalAccountId: input.session.accountId,
         linkId: input.session.linkId,
         resourceType: input.resourceType,
-        resourceId: input.resourceId,
+        resourceId,
         action: input.action,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent?.slice(0, 512) ?? null,

@@ -16,10 +16,25 @@ enum PurchaseStatus {
   @@schema("app")
 }
 
-// 素材発注書: PO-YYYYMM-NNNNN（承認フロー: 依頼→承認→発注→入荷）
+// 素材発注書: PO-FFFF-NNNNN（承認フロー: 依頼→承認→発注→入荷）
 model MaterialPurchaseOrder {
   id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  poNumber     String         @unique @map("po_number")
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  poNumber String @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
+  /// 旧番号の列。**@ignore — アプリからは見えない**（番号設計 PR-D1。後続で落とす）。
+  legacyPoNumber String? @unique @map("po_number") @ignore
   supplierBpId String         @map("supplier_bp_id") @db.Uuid
   status       PurchaseStatus @default(DRAFT)
   totalAmount  Decimal        @default(0) @map("total_amount") @db.Decimal(12, 2)
@@ -56,16 +71,24 @@ model MaterialPurchaseOrder {
   // この発注書を生成した購買依頼（PU04 変換元、1:1）
   sourceRequest PurchaseRequest? @relation("PrqPurchaseOrder")
 
+  ownCompany OwnCompany @relation("MaterialPurchaseOrderOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status])
   @@index([supplierBpId])
+  @@index([ownCompanyId])
   @@map("material_purchase_orders")
   @@schema("app")
+
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, poNumber])
+  @@index([legacyNumber])
 }
 
 model MaterialPurchaseOrderItem {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   purchaseOrderId String    @map("purchase_order_id") @db.Uuid
-  materialId        Int       @map("material_id")
+  /// 統合品目（app.items）。素材は品目の一種になった。
+  itemId            Int       @map("item_id")
   quantity        Decimal   @db.Decimal(12, 3)
   unit            String
   unitPrice       Decimal   @map("unit_price") @db.Decimal(12, 2)
@@ -79,12 +102,12 @@ model MaterialPurchaseOrderItem {
   sortOrder       Int       @default(0) @map("sort_order")
 
   purchaseOrder MaterialPurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  material      Material              @relation(fields: [materialId], references: [id])
+  item          Item                  @relation("MaterialPurchaseOrderItemItem", fields: [itemId], references: [id], onDelete: Restrict)
   plant       Plant?              @relation("PoItemPlant", fields: [plantId], references: [id])
   receipts      MaterialReceipt[]
 
   @@index([purchaseOrderId])
-  @@index([materialId])
+  @@index([itemId])
   @@map("material_purchase_order_items")
   @@schema("app")
 }
@@ -92,7 +115,8 @@ model MaterialPurchaseOrderItem {
 // 素材入荷（発注の入荷 or 外部調達の直接入荷）
 model MaterialReceipt {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  materialId        Int       @map("material_id")
+  /// 統合品目（app.items）。素材は品目の一種になった。
+  itemId            Int       @map("item_id")
   supplierBpId        String?  @map("supplier_bp_id") @db.Uuid
   purchaseOrderItemId String?  @map("purchase_order_item_id") @db.Uuid
   quantity            Decimal  @db.Decimal(12, 3)
@@ -103,13 +127,13 @@ model MaterialReceipt {
   createdBy           String?  @map("created_by") @db.Uuid
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  material          Material                   @relation(fields: [materialId], references: [id])
+  item              Item                       @relation("MaterialReceiptItem", fields: [itemId], references: [id], onDelete: Restrict)
   plant           Plant?                   @relation("ReceiptPlant", fields: [plantId], references: [id])
   supplierBp        BusinessPartner?           @relation("ReceiptSupplier", fields: [supplierBpId], references: [id])
   purchaseOrderItem MaterialPurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id])
   createdByUser     User?                      @relation("ReceiptCreatedBy", fields: [createdBy], references: [id])
 
-  @@index([materialId, receivedAt])
+  @@index([itemId, receivedAt])
   @@map("material_receipts")
   @@schema("app")
 }
@@ -128,12 +152,27 @@ enum PurchaseRequestStatus {
   @@schema("app")
 }
 
-// 購買依頼: PRQ-YYYYMM-NNNNN。誰でも起票 → §6 承認（targetType
+// 購買依頼: PRQ-FFFF-NNNNN。誰でも起票 → §6 承認（targetType
 // "purchase_requests"）→ 承認後「発注書へ変換」で material_purchase_orders の
 // DRAFT を生成し purchase_order_id で紐付ける（単価・仕入先は発注側で確定）。
 model PurchaseRequest {
   id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  requestNumber String                @unique @map("request_number") // PRQ-YYYYMM-NNNNN
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  requestNumber String @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
+  /// 旧番号の列。**@ignore — アプリからは見えない**（番号設計 PR-D1。後続で落とす）。
+  legacyRequestNumber String? @unique @map("request_number") @ignore
   status        PurchaseRequestStatus @default(DRAFT)
   purpose       String? // 依頼理由・用途
   requestedAt   DateTime?             @map("requested_at") @db.Timestamptz(6)
@@ -163,15 +202,23 @@ model PurchaseRequest {
 
   items PurchaseRequestItem[]
 
+  ownCompany OwnCompany @relation("PurchaseRequestOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
   @@index([status])
+  @@index([ownCompanyId])
   @@map("purchase_requests")
   @@schema("app")
+
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, requestNumber])
+  @@index([legacyNumber])
 }
 
 model PurchaseRequestItem {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   requestId  String    @map("request_id") @db.Uuid
-  materialId Int       @map("material_id")
+  /// 統合品目（app.items）。素材は品目の一種になった。
+  itemId     Int       @map("item_id")
   quantity   Decimal   @db.Decimal(12, 3)
   unit       String
   desiredAt  DateTime? @map("desired_at") @db.Date // 希望納期
@@ -180,10 +227,11 @@ model PurchaseRequestItem {
   sortOrder  Int       @default(0) @map("sort_order")
 
   request  PurchaseRequest @relation(fields: [requestId], references: [id])
-  material Material        @relation(fields: [materialId], references: [id])
+  item     Item            @relation("PurchaseRequestItemItem", fields: [itemId], references: [id], onDelete: Restrict)
   plant  Plant?        @relation("PrqItemPlant", fields: [plantId], references: [id])
 
   @@index([requestId])
+  @@index([itemId])
   @@map("purchase_request_items")
   @@schema("app")
 }

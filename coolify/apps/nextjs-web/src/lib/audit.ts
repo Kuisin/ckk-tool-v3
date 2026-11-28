@@ -17,6 +17,7 @@ import type { AuditQuery } from "@/lib/audit-filter-core";
 import { resolveAuditRecordKey } from "@/lib/audit-record-key";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
+import { docDisplayNumber } from "@/lib/doc-ref";
 import type { Formatters } from "@/lib/format";
 import { zonedDayRange } from "@/lib/format";
 import type { Locale, Tr } from "@/lib/i18n";
@@ -122,7 +123,13 @@ export async function recordAudit(input: RecordAuditInput): Promise<void> {
         userId,
         action: input.action,
         tableName: input.tableName,
-        recordId: input.recordId,
+        // record_id は人が読む番号（法人コードは付けない）。呼び出し側は id
+        // （`CKK~QOT-…`）でも参照（`CKK/QOT-…`）でも渡してよい — 法人まで含めた
+        // 一意な指し先は record_key（参照）が持つ。
+        recordId:
+          input.recordId == null
+            ? input.recordId
+            : docDisplayNumber(input.tableName, input.recordId),
         recordKey,
         beforeData: toJson(input.before),
         afterData: toJson(input.after),
@@ -358,19 +365,25 @@ export function actorAvatarUrl(user: {
  */
 export async function fetchAuditEntries(
   tableName: string,
-  recordId: string,
+  rawRecordId: string,
 ): Promise<AuditEntry[]> {
   try {
+    // 法人コード付きの id / 参照で渡されても、record_id の突き合わせは番号で行う。
+    const recordId = docDisplayNumber(tableName, rawRecordId);
     const [fmt, tr, resolved] = await Promise.all([
       getServerFormatters(),
       getTranslations(),
-      resolveAuditRecordKey(tableName, recordId, { needSince: true }),
+      resolveAuditRecordKey(tableName, rawRecordId, { needSince: true }),
     ]);
     const where: Prisma.AuditLogWhereInput = resolved.key
       ? {
           tableName,
           OR: [
-            { recordKey: resolved.key },
+            // 素材発注書・購買依頼・設計依頼書・注文明細は、番号設計 PR-C まで
+            // 行の uuid をキーにしていた。その頃の行も同じ書類の履歴として拾う。
+            {
+              recordKey: { in: [resolved.key, ...(resolved.legacyKeys ?? [])] },
+            },
             {
               recordKey: null,
               recordId,

@@ -16,10 +16,12 @@
 import "server-only";
 
 import { getTranslations } from "next-intl/server";
-import { getApprovalFlow, startApprovalFlow } from "./approvals";
+import { orderAcceptanceIdOf } from "@/lib/doc-ids";
+import { approvalNeed, startApprovalFlow } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import { formatDocNumber } from "./doc-number";
+import { type DocKey, docNumberOf } from "./doc-number";
+import { movementOpener } from "./inventory";
 import { cancelOrderLineTx } from "./order-line-cancel";
 
 const TARGET_TYPE = "order_acceptance_cancel_requests" as const;
@@ -31,10 +33,8 @@ export interface AcceptanceCancelResult {
   pending?: boolean;
 }
 
-interface AcceptanceKey {
-  yearMonth: string;
-  seq: number;
-}
+/** 注文請書の鍵 = 参照（doc_ref）。 */
+type AcceptanceKey = DocKey;
 
 /**
  * キャンセルできる状態か（依頼時 / 適用時に同じ検証を通す）。
@@ -45,7 +45,7 @@ async function validateCancellable(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       status: true,
       items: { select: { status: true, branch: true } },
@@ -100,20 +100,14 @@ export async function submitAcceptanceCancelRequest(input: {
   const valid = await validateCancellable(key);
   if (!valid.ok) return { ok: false, errors: [valid.error] };
 
-  const number = formatDocNumber("ORD", key);
-  const flow = await getApprovalFlow(TARGET_TYPE);
-  if (flow.length === 0) {
-    // 承認設定が空 = 素通し（承認を運用しない環境で止めない）。
-    return applyCancel(key, reason);
-  }
+  // 承認設定で OFF（または段なしの従来の素通し）なら、その場でキャンセルする。
+  const need = await approvalNeed(TARGET_TYPE);
+  if (need.kind === "blocked") return { ok: false, errors: [need.error] };
+  if (need.kind === "skip") return applyCancel(key, reason);
 
   // 進行中の依頼は 1 注文請書に 1 件だけ（DB 側にも部分 unique index）。
   const existing = await prisma.orderAcceptanceCancelRequest.findFirst({
-    where: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
-      status: "PENDING",
-    },
+    where: { acceptance: { docRef: key.docRef }, status: "PENDING" },
     select: { id: true },
   });
   if (existing) {
@@ -126,8 +120,7 @@ export async function submitAcceptanceCancelRequest(input: {
   const actor = await getCurrentActorId();
   const row = await prisma.orderAcceptanceCancelRequest.create({
     data: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
+      acceptanceId: await orderAcceptanceIdOf(key),
       reason,
       requestedBy: actor,
     },
@@ -150,7 +143,7 @@ export async function submitAcceptanceCancelRequest(input: {
   await recordAudit({
     action: "UPDATE",
     tableName: "order_acceptances",
-    recordId: number,
+    recordId: key.docRef,
     after: {
       note: tr("orderAcceptanceActions.cancelRequestedNote", { reason }),
     },
@@ -168,6 +161,7 @@ export async function applyApprovedAcceptanceCancel(
   const tr = await getTranslations();
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
+    include: { acceptance: { select: { docRef: true } } },
   });
   if (!row)
     return {
@@ -180,7 +174,7 @@ export async function applyApprovedAcceptanceCancel(
       errors: [tr("orderAcceptanceActions.cancelRequestNotPending")],
     };
   }
-  const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
+  const key: AcceptanceKey = { docRef: row.acceptance.docRef };
   const actor = await getCurrentActorId();
   const result = await applyCancel(key, row.reason);
   await prisma.orderAcceptanceCancelRequest.update({
@@ -221,11 +215,7 @@ export async function fetchPendingAcceptanceCancel(
   key: AcceptanceKey,
 ): Promise<PendingAcceptanceCancelView | null> {
   const row = await prisma.orderAcceptanceCancelRequest.findFirst({
-    where: {
-      acceptanceYearMonth: key.yearMonth,
-      acceptanceSeq: key.seq,
-      status: "PENDING",
-    },
+    where: { acceptance: { docRef: key.docRef }, status: "PENDING" },
     include: { requestedByUser: { select: { displayName: true } } },
     orderBy: { requestedAt: "desc" },
   });
@@ -250,9 +240,13 @@ async function applyCancel(
   const valid = await validateCancellable(key);
   if (!valid.ok) return { ok: false, errors: [valid.error] };
 
-  const number = formatDocNumber("ORD", key);
+  // 人が読む番号（監査の本文・連鎖キャンセルの備考に出す）。
+  const number = docNumberOf(key);
+  // 連鎖キャンセルした工程の cancelled_by に入れる（誰が倒したのかが
+  // 工程の行から読めるように）。
+  const actor = await getCurrentActorId();
   const acceptance = await prisma.orderAcceptance.findUnique({
-    where: { yearMonth_seq: key },
+    where: { docRef: key.docRef },
     select: {
       status: true,
       items: {
@@ -272,8 +266,15 @@ async function applyCancel(
     released: number;
     cancelledWos: number[];
   };
+  // **注文請書 1 件の取り消し = 伝票 1 枚** — 明細が何行あっても出来事は 1 回。
+  // 伝票番号は伝票を起こすときに DB が払い出す。
   try {
     summary = await prisma.$transaction(async (tx) => {
+      const openMovement = movementOpener(tx, {
+        cause: "RESERVATION_RELEASE",
+        sourceType: "order_acceptances",
+        sourceId: key.docRef,
+      });
       let released = 0;
       const cancelledWos: number[] = [];
       let cancelledLines = 0;
@@ -283,6 +284,8 @@ async function applyCancel(
           tx,
           line.id,
           tr("orderAcceptanceActions.chainCancelNote", { number }),
+          openMovement,
+          actor,
         );
         if (!r.cancelled) {
           // 依頼〜適用の間に出荷された等 — tx ごと巻き戻す。
@@ -297,7 +300,7 @@ async function applyCancel(
         cancelledWos.push(...r.cancelledWos);
       }
       await tx.orderAcceptance.update({
-        where: { yearMonth_seq: key },
+        where: { docRef: key.docRef },
         data: { status: "CANCELLED" },
       });
       return { cancelledLines, released, cancelledWos };
@@ -316,7 +319,7 @@ async function applyCancel(
   await recordAudit({
     action: "UPDATE",
     tableName: "order_acceptances",
-    recordId: number,
+    recordId: key.docRef,
     before: { status: "COMPLETED" },
     after: {
       status: "CANCELLED",

@@ -10,14 +10,14 @@ How order forms customers send to **order-intake@ckk-tool.co.jp** become order a
 
 ## The flow
 
-```
-Customer ──email──> order-intake@ckk-tool.co.jp  (Sakura mail server)
-                       │  intake-gateway polls over IMAP every 120s
-                       ↓
-                 the intake folder (INTAKE_DIR)
-                       │  nextjs-web's poller scans every 60s
-                       ↓
-     number ORD- → AI reading (po-extract) → match partner/product → draft
+```mermaid
+flowchart TD
+  c["Customer"] -->|"email"| mb["order-intake@ckk-tool.co.jp<br/>(Sakura mail server)"]
+  mb -->|"intake-gateway polls over IMAP<br/>every 120s"| dir["The intake folder (INTAKE_DIR)"]
+  dir -->|"nextjs-web's poller scans<br/>every 60s"| num["Number ORD-"]
+  num --> ai["AI reading (po-extract)"]
+  ai --> mt["Match partner / product"]
+  mt --> dr["Draft"]
 ```
 
 **Once a file lands in the intake folder the path is identical** to someone copying a file into the shared folder by hand. Everything email-specific ends at "pick the attachments and drop them in the folder".
@@ -51,6 +51,19 @@ If one email carries three order forms, you get **three order acceptances** (one
 | No usable attachment (body only, signature only) | Marked **read**, left in the inbox so a person can find it |
 | Anything failed | Marked **read**, moved to **Failed**. **Not retried automatically** |
 | Connection / login failure | Left untouched and unread; retried on the next poll |
+
+The same thing as a diagram:
+
+```mermaid
+flowchart TD
+  m["Unread message"] --> c{"Connected and logged in?"}
+  c -->|"No"| keep["Left unread<br/>retried on the next poll"]
+  c -->|"Yes"| a{"Any usable attachment?"}
+  a -->|"None"| inbox["Marked read<br/>left in the inbox"]
+  a -->|"Yes"| r{"Everything taken in?"}
+  r -->|"Yes"| done["Marked read<br/>moved to Processed"]
+  r -->|"Anything failed"| fail["Marked read, moved to Failed<br/>not retried automatically"]
+```
 
 > **Not retrying a partly-failed message is deliberate.** Reprocessing one guarantees the same order form is registered twice, because there is no way to tell which individual attachment already made it through. When something fails, ask the sender to resend, or save the attachment and use "priority intake" on the order acceptance screen.
 
@@ -93,7 +106,7 @@ Mail addresses are created by **admintools**, which drives Sakura's control pane
 
 > **Do not use the sync option that deletes anything missing from the list.** It removes Sakura mailboxes that are not in the management table. Always run "check the difference" first and read what would be created and removed.
 
-> **Do not add a second gateway per environment.** There is only one mail address, so two gateways compete for the same messages and each is only imported once. That is why there is exactly one, in `common`.
+> **Do not add a second gateway per environment.** There is only one mail address, so two gateways compete for the same mailbox and a message gets imported by only one of them. That is why there is exactly one, in `common`.
 
 ## What is still outstanding
 

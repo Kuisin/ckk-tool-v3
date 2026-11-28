@@ -5,11 +5,13 @@
 import { describe, expect, it } from "vitest";
 import {
   isOtherCustomerRoute,
+  pickDefaultCommonRoute,
   pickDefaultPrepRoute,
   pickDefaultRoute,
   type RouteStepSnapshot,
   type RouteView,
   routeStepsEqual,
+  routeStepsEquivalent,
   routesVisibleForCustomer,
 } from "./product-routes-core";
 
@@ -186,5 +188,74 @@ describe("pickDefaultPrepRoute", () => {
 
   it("無ければ null", () => {
     expect(pickDefaultPrepRoute([prep(1, false)])).toBeNull();
+  });
+});
+
+describe("pickDefaultCommonRoute（準備 / 再研磨 の共通リスト）", () => {
+  const regrind = (id: number, isActive = true) =>
+    routeOf(id, null, { kind: "REGRIND", isActive });
+
+  it("有効なものが 1 本だけなら自動で選ぶ", () => {
+    expect(pickDefaultCommonRoute([regrind(1), regrind(2, false)])?.id).toBe(1);
+  });
+
+  it("2 本以上あれば選ばない（人が決める）", () => {
+    expect(pickDefaultCommonRoute([regrind(1), regrind(2)])).toBeNull();
+  });
+});
+
+describe("routeStepsEquivalent（保存の規則に揃えて比べる）", () => {
+  // 13 = 段加工（社内のみ）/ 6 = センタレス（社内・外注）
+  const editable = new Set([6]);
+
+  it("社内のみの工程に版だけ拠点が入っていても同じ構成とみなす（シード・規則以前の版）", () => {
+    // ビルダーは社内のみの工程に拠点を持たせない（toStepSnapshots）。
+    const base = [step(13, 0, { plantId: 1, workHours: 4 })];
+    const current = [step(13, 0, { workHours: 4 })];
+    expect(routeStepsEqual(base, current)).toBe(false);
+    expect(routeStepsEquivalent(base, current, editable)).toBe(true);
+  });
+
+  it("社内・外注の工程は拠点・外注先の違いを変更として扱う", () => {
+    expect(
+      routeStepsEquivalent(
+        [step(6, 0, { plantId: 1 })],
+        [step(6, 0, { plantId: 2 })],
+        editable,
+      ),
+    ).toBe(false);
+    expect(
+      routeStepsEquivalent(
+        [step(6, 0, { executionLocation: "OUTSOURCE", supplierBpId: "a" })],
+        [step(6, 0)],
+        editable,
+      ),
+    ).toBe(false);
+  });
+
+  it("外注の工程に残った拠点は比べない（外注は外注先だけを持つ）", () => {
+    expect(
+      routeStepsEquivalent(
+        [
+          step(6, 0, {
+            executionLocation: "OUTSOURCE",
+            plantId: 1,
+            supplierBpId: "a",
+          }),
+        ],
+        [step(6, 0, { executionLocation: "OUTSOURCE", supplierBpId: "a" })],
+        editable,
+      ),
+    ).toBe(true);
+  });
+
+  it("作業時間の違いは変更のまま", () => {
+    expect(
+      routeStepsEquivalent(
+        [step(13, 0, { plantId: 1, workHours: 4 })],
+        [step(13, 0, { workHours: 3 })],
+        editable,
+      ),
+    ).toBe(false);
   });
 });

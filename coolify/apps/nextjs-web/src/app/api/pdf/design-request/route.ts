@@ -21,6 +21,7 @@ import {
   isIssuedDesign,
 } from "@/components/sales/design-requests/model";
 import { requirePermissionResponse } from "@/lib/authz";
+import { docNo } from "@/lib/doc-number";
 import { pdfStorageKey } from "@/lib/document-pdf";
 import {
   designHistoryActionLabel,
@@ -29,6 +30,7 @@ import {
   designTriggerLabel,
 } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
+import { issuerForDesignRequest, ownCompanyLogo } from "@/lib/own-companies";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -36,13 +38,6 @@ import { getObject, putObject } from "@/lib/storage";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
-
-// 発行元（CKK 本社）— 見積書テンプレートの issuer ブロックに対応。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-};
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "下書き", // i18n-ignore
@@ -58,7 +53,7 @@ function pdfHeaders(requestNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${requestNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(requestNumber)}.pdf"`,
   };
 }
 
@@ -85,6 +80,9 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.designRequest(req.requestNumber);
 
   // 完了して以降は内容が動かないので保管分を返してよい。それ以前は毎回組む。
@@ -102,17 +100,26 @@ export async function GET(request: Request): Promise<Response> {
   const reference = !hasSourceDocument(req.trigger)
     ? "なし（単独起票）" // i18n-ignore
     : req.trigger === "QUOTE"
-      ? (req.quoteNumber ?? "—")
-      : (req.orderLineNumber ?? "—");
+      ? (docNo(req.quoteNumber) ?? "—")
+      : (docNo(req.orderLineNumber) ?? "—");
+
+  // 発行元（自社法人 MS0I）= 設計依頼書が持つ法人。社内向けの紙なので ja。
+  const { issuer, company } = await issuerForDesignRequest(
+    req.requestNumber,
+    "ja",
+  );
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, "ja");
 
   const data = {
-    issuer: ISSUER,
+    issuer,
+    brand_logo: logo.html,
     assignee: { name: req.assigneeName ?? "（担当者未設定）" }, // i18n-ignore
     product: { name: req.productName ?? "（製品未指定）" }, // i18n-ignore
     // 書類 QR（CKK:DSG:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.DESIGN_REQUEST, req.requestNumber),
     doc: {
-      number: req.requestNumber,
+      number: docNo(req.requestNumber),
       status: STATUS_LABEL[req.status] ?? req.status,
       kind: designKindLabel(req.kind, "ja"),
       priority: designPriorityLabel(req.priority, "ja"),
@@ -147,7 +154,9 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("design-request.html", data);
+    pdf = await renderPdf("design-request.html", data, {
+      assets: logo.assets,
+    });
   } catch (err) {
     console.error("[pdf/design-request]", err);
     return new Response("PDF generation failed", { status: 502 });

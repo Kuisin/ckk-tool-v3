@@ -81,6 +81,17 @@ Return a document to its creator when something is wrong.
 
 The document reverts to **Draft**, and the reason is shown in red on the creator's screen. After fixing it, they request approval again.
 
+As a diagram, approving and sending back work like this:
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approve"| last{"Final step?"}
+  last -->|"No: on to the next step"| req
+  last -->|"Yes"| done["Ready to move on<br/>(a work order can start production)"]
+  req -.->|"Send back (reason required)"| draft
+```
+
 #### Reason for sending back [#field-reject-reason]
 
 The reason you're sending the document back. **The requester sees it exactly as written**, so phrase it so they know what to fix — e.g. "Quantity doesn't match the order" or "Material spec is missing." The reason is kept in the history so you can trace why a document was stopped later.

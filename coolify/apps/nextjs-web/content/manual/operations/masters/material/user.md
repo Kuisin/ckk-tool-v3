@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 仕入れて在庫する材料の棒を、1 種類ずつ登録しておく台帳です。操作コードは `MS06` です。
 
-[材種](/manual/ja/operations/masters/material-type/user)が「どんな材料か」だとすると、素材は **「その材料の、この太さ・この長さ・この表面仕上げのもの」** という、実際に買って棚に置く 1 本のことです。ここに登録していない素材は、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user)や[在庫管理（素材・仕掛品）](/manual/ja/operations/production/material-inventory/user)で **選べません**。
+[材種](/manual/ja/operations/masters/material-type/user)が「どんな材料か」だとすると、素材は **「その材料の、この太さ・この長さ・この表面仕上げのもの」** という、実際に買って棚に置く 1 本のことです。ここに登録していない素材は、[素材発注書](/manual/ja/operations/purchasing/purchase-order/user)や[在庫管理（素材・仕掛品）](/manual/ja/operations/inventory/inventory-management/user)で **選べません**。
 
 > ⚠️ このアプリは現在 **開発環境（テスト用の環境）だけ** で使えます。本番で使えるようになるまでに、画面や手順が変わることがあります。
 
@@ -32,6 +32,16 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 また、このアプリを使うには **マスタ権限** が必要です。画面が開かないときは、管理者にご相談ください。
 
 なお、[製品](/manual/ja/operations/masters/product/user)は「材種 + 直径 + 全長」で材料を指定します。**製品が特定の素材と結びつくわけではありません。** この台帳は、あくまで仕入れと在庫のためのものです。
+
+材種・素材・製品の関係を図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  mt["材種<br/>どんな材料か"]
+  mt -->|"太さ・長さ・表面仕上げを決める"| mat["素材<br/>実際に買って棚に置く 1 本"]
+  mat --> use["素材発注書・在庫管理で選べる"]
+  mt -.->|"材種 + 直径 + 全長で指定"| prod["製品<br/>特定の素材とは結びつかない"]
+```
 
 ## 素材コードのしくみ
 

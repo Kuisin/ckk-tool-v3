@@ -27,9 +27,21 @@
  *    同じ文字列のまま描画されるので、直書きのままでよい。
  *  - 直していないエントリは en/zh 撮影では失敗しうる（README・
  *    scripts/orchestrate.ts の既知の制約）。
+ *
+ * 書類番号の注意（番号は DB が振る）:
+ *  - シードは書類に旧番号（legacy_number）を付けて入れる。DB は INSERT 時に新しい番号
+ *    （`QOT-2026-00001` — 自社法人 × 会計年度の連番。**流した順で決まる**）を振り、
+ *    シードが書いた `QOT-202607-00001` は旧番号（legacy_number）として残る。
+ *  - `path` は**旧番号の URL のまま**でよい（`/sales/quotes/QOT-202607-00001`）。
+ *    詳細ページが旧番号から書類を引いて、正規の URL（`/sales/quotes/CKK~QOT-2026-00001`）
+ *    へ送る。旧番号はシードが書いた固定の値なので、流す順が変わっても
+ *    同じ書類を指す — 新しい番号を決め打ちしないこと。
+ *  - **画面に出るのは新しい番号**。`steps` で番号の文字を待つときは決め打ちせず、
+ *    形で待つ（`anyDocNumber("QOT")` / `ANY_ORDER_LINE_NUMBER` — doc-number.ts）。
  */
 
 import type { Page } from "@playwright/test";
+import { ANY_ORDER_LINE_NUMBER, anyDocNumber } from "./doc-number";
 import { currentLocale, text } from "./i18n-text";
 
 /**
@@ -135,7 +147,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates",
     steps: async (page) => {
-      await page.getByText("EST-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("EST")).first().waitFor();
     },
   },
   {
@@ -179,7 +191,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/price-list/user",
     path: "/sales/price-lists/PRC-202607-00001",
     steps: async (page) => {
-      await page.getByText("EST-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("EST")).first().waitFor();
     },
   },
   {
@@ -246,7 +258,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/order-acceptance/user",
     path: "/sales/order-acceptances",
     steps: async (page) => {
-      await page.getByText("ORD-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("ORD")).first().waitFor();
     },
   },
   {
@@ -272,7 +284,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/design-request/user",
     path: "/sales/design-requests",
     steps: async (page) => {
-      await page.getByText("DSG-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DSG")).first().waitFor();
     },
   },
   {
@@ -424,19 +436,62 @@ export const shots: Shot[] = [
     docPage: "operations/production/design-file/user",
     path: "/production/design-files/9001",
     steps: async (page) => {
-      await page.getByText("設計図面_デモ商事仕様_v1.pdf").first().waitFor();
+      // ファイル名はボタン（押すと拡大表示）。文字ではなくボタンの名前で待つ。
+      await page
+        .getByRole("button", { name: "設計図面_デモ商事仕様_v1.pdf" })
+        .first()
+        .waitFor();
     },
     // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
     // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
     mask: ['[title$="を拡大"]'],
   },
   {
-    // 登録フォーム — 役割ごとのファイル枠（図面データ / プレビュー / 参考資料）。
+    // 版の画面 — 加工プログラム（機械 = 作業場所・受け持つ工程）。デモ商事向けの
+    // 系列 v1（指示書 #9001 が使う版）にシードで 3 本置いてある。
+    id: "design-version-programs-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/versions/d9000000-0000-4000-8000-000000000003",
+    steps: async (page) => {
+      // 現行 v2 と、開いた「過去の版」の v1（使用済み）を一緒に写す。
+      await page.getByText("O1202").first().waitFor();
+      await page.getByRole("button", { name: /過去の版/ }).first().click();
+      await page.getByText("O1201").first().waitFor();
+    },
+    mask: ['[title$="を拡大"]'],
+  },
+  {
+    // 版の画面の系列メモ（製品の画面と同じ 1 件。版の画面からも書ける）。
+    id: "design-version-series-memo-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/versions/d9000000-0000-4000-8000-000000000003",
+    clip: "[data-series-memo]",
+    steps: async (page) => {
+      const panel = page.locator("[data-series-memo]");
+      await panel.waitFor();
+      // 固定フッターの下に隠れないよう、画面の真ん中へ寄せてから撮る。
+      await panel.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    },
+  },
+  {
+    // 工程実行画面の系列メモ（読むだけ — 指示書の顧客の系列のもの）。
+    id: "work-order-step-series-memo-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000004",
+    clip: "[data-series-memo]",
+    steps: async (page) => {
+      const panel = page.locator("[data-series-memo]");
+      await panel.waitFor();
+      await panel.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    },
+  },
+  {
+    // 登録フォーム — 役割ごとのファイル枠（2D 原図 / 3D 原図 / プレビュー / 参考資料）。
     id: "design-file-new-01",
     docPage: "operations/production/design-file/user",
     path: "/production/design-files/new",
     steps: async (page) => {
-      await page.getByText("図面データ").first().waitFor();
+      await page.getByText("2D 原図").first().waitFor();
     },
   },
   // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────
@@ -445,7 +500,7 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-request/user",
     path: "/purchase/purchase-requests",
     steps: async (page) => {
-      await page.getByText("PRQ-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("PRQ")).first().waitFor();
     },
   },
   {
@@ -462,7 +517,7 @@ export const shots: Shot[] = [
     docPage: "operations/purchasing/purchase-order/user",
     path: "/purchase/purchase-orders",
     steps: async (page) => {
-      await page.getByText("PO-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("PO")).first().waitFor();
     },
   },
   {
@@ -625,7 +680,8 @@ export const shots: Shot[] = [
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders",
     steps: async (page) => {
-      await page.getByText("9002").first().waitFor();
+      // 一覧に出るのは書類番号（WOR-…）。ロット番号（9002）は一覧には出ない。
+      await page.getByText(anyDocNumber("WOR")).first().waitFor();
     },
   },
   {
@@ -745,16 +801,16 @@ export const shots: Shot[] = [
     // 製品在庫の詳細（在庫 55 / 予約 50 / 利用可能 5）
     id: "inventory-product-detail-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001",
     steps: async (page) => {
-      await page.getByText("ORD-202607-00003-01").first().waitFor();
+      await page.getByText(ANY_ORDER_LINE_NUMBER).first().waitFor();
     },
   },
   {
     // 在庫移動モーダル（保管場所が未割当の行から開く）
     id: "inventory-transfer-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByRole("button", { name: "移動" }).first().click();
       await page.getByText("在庫移動").first().waitFor();
@@ -763,7 +819,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-transactions-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },
@@ -772,15 +828,15 @@ export const shots: Shot[] = [
     // 素材在庫の詳細（利用可能がマイナス + 入荷予定の ATP タイムライン）
     id: "inventory-material-detail-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002",
+    path: "/inventory/materials/dc051000-0000-4000-8000-000000000002",
     steps: async (page) => {
-      await page.getByText("PO-202607-90102").first().waitFor();
+      await page.getByText(anyDocNumber("PO")).first().waitFor();
     },
   },
   {
     id: "inventory-material-transactions-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002?tab=transactions",
+    path: "/inventory/materials/dc051000-0000-4000-8000-000000000002?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },
@@ -789,7 +845,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-products-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
     },
@@ -797,7 +853,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-locations-01",
     docPage: "operations/production/product-inventory/user",
-    path: "/production/inventory?tab=locations",
+    path: "/inventory?tab=locations",
     steps: async (page) => {
       await page.getByText("資材倉庫A").filter({ visible: true }).first().waitFor();
     },
@@ -805,7 +861,7 @@ export const shots: Shot[] = [
   {
     id: "inventory-materials-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory?tab=materials",
+    path: "/inventory?tab=materials",
     steps: async (page) => {
       await page.getByText("B01A0001").first().waitFor();
     },
@@ -813,7 +869,9 @@ export const shots: Shot[] = [
   {
     id: "inventory-wip-01",
     docPage: "operations/production/material-inventory/user",
-    path: "/production/inventory?tab=wip",
+    // 進行中の指示書の工程別仕掛数 = 「工程内」タブ（旧「仕掛品」タブ。?tab=wip は
+    // 在庫に置いた仕掛品のタブになった）。
+    path: "/inventory?tab=in-process",
     steps: async (page) => {
       await page.getByText("9001").filter({ visible: true }).first().waitFor();
     },
@@ -824,7 +882,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-order/user",
     path: "/shipping/delivery-orders",
     steps: async (page) => {
-      await page.getByText("DOR-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
   },
   {
@@ -848,7 +906,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-note/user",
     path: "/shipping/delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -865,7 +923,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices",
     steps: async (page) => {
-      await page.getByText("INV-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("INV")).first().waitFor();
     },
   },
   {
@@ -928,7 +986,7 @@ export const shots: Shot[] = [
     docPage: "operations/shipping/delivery-order/user",
     path: "/shipping/delivery-orders/DOR-202607-00001?tab=delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -947,7 +1005,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/invoice/user",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
-      await page.getByText("DOR-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
   },
   {
@@ -956,7 +1014,7 @@ export const shots: Shot[] = [
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+      await page.getByRole("menuitem", { name: "会計連携CSV" }).first().waitFor();
     },
   },
   {
@@ -994,7 +1052,7 @@ export const shots: Shot[] = [
     docPage: "operations/billing/billing-closing/user",
     path: "/billing/closings/dd000000-0000-4000-8000-000000000042",
     steps: async (page) => {
-      await page.getByText("INV-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("INV")).first().waitFor();
     },
   },
   // 製品項目・製品種別（SY03/SY04）は system 権限 — 管理者で撮影
@@ -1026,10 +1084,12 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 製品種別を選ぶと、その種別の項目が入力欄として出てくる様子
+    // 製品種別を選ぶと、その種別の項目が入力欄として出てくる様子。
+    // 仕様（素材・製品種別・追加項目）は製品マスタから設計図の版へ移ったので、
+    // 撮る画面は設計図の登録フォーム（id は本文の参照を変えないために据え置き）。
     id: "product-form-type-01",
     docPage: "operations/system/product-type/settings",
-    path: "/master/products/new",
+    path: "/production/design-files/new",
     steps: async (page) => {
       await page.getByRole("combobox", { name: "製品種別" }).click();
       await page.getByRole("option", { name: "標準品" }).first().click();
@@ -1135,6 +1195,18 @@ export const shots: Shot[] = [
     },
   },
   // ── マスタ: 不良種類（MS0A）────────────────────────────────────────────────
+  // ── マスタ: 再研磨品目（MS0H）────────────────────────────────────────────
+  // **値段の表そのもの**を見せる 1 枚。条件（工具の種類 × 加工箇所 × 刃数 ×
+  // サイズ帯）が並んで 1 行 1 金額になる、という読み方が画像で伝わるのが要点。
+  {
+    id: "master-regrind-item-list-01",
+    docPage: "operations/masters/regrind-item/user",
+    path: "/master/regrind-items",
+    steps: async (page) => {
+      // シード値（DB のデータ）なのでロケールを変えても同じ文字列。
+      await page.getByText("超硬ヘリカルエンドミル").first().waitFor();
+    },
+  },
   {
     id: "master-defect-type-list-01",
     docPage: "operations/masters/defect-type/user",
@@ -1274,7 +1346,8 @@ export const shots: Shot[] = [
     docPage: "operations/masters/product/user",
     path: "/master/products/new",
     steps: async (page) => {
-      await page.getByText("素材仕様").first().waitFor();
+      // 素材仕様は設計図の版へ移った。製品フォームに残るのは基本情報とキーワード。
+      await page.getByRole("heading", { name: "基本情報" }).first().waitFor();
     },
   },
   {
@@ -1656,7 +1729,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
       await page.getByRole("button", { name: "メンバーを追加" }).first().waitFor();
     },
@@ -1666,7 +1744,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "メンバー" }).first().click();
       await page.getByRole("button", { name: "メンバーを追加" }).first().click();
       await page.getByRole("dialog").first().waitFor();
@@ -1677,7 +1760,12 @@ export const shots: Shot[] = [
     docPage: "operations/masters/approval-setting/user",
     path: "/master/approval-settings?tab=groups",
     steps: async (page) => {
-      await page.getByText("第一承認グループ（デモ）").first().click();
+      // 一覧の行（セル）を押す。文字だけで探すと、隠れている「承認フロー」タブの
+      // 段の説明（同じグループ名を含む）に先に当たり、見えないので押せない。
+      await page
+        .getByRole("cell", { name: "第一承認グループ（デモ）", exact: true })
+        .first()
+        .click();
       await page.getByRole("tab", { name: "代理設定" }).first().click();
       await page.getByRole("button", { name: "代理設定を追加" }).first().click();
       await page.getByText("原承認者").first().waitFor();
@@ -1709,6 +1797,26 @@ export const shots: Shot[] = [
       await page.getByText("第二工場").first().click();
       await page.getByRole("tab", { name: "フロアマップ" }).first().click();
       await page.getByRole("button", { name: "フロアを追加" }).first().waitFor();
+    },
+  },
+  {
+    // 「機種」タブ — 機種ごとの機械・プログラムの数（加工プログラムは機種に当てる）
+    id: "master-work-location-models-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByRole("tab", { name: "機種" }).first().click();
+      await page.getByText("NC旋盤 A型").first().waitFor();
+    },
+  },
+  {
+    id: "master-work-location-model-new-01",
+    docPage: "operations/masters/work-location/user",
+    path: "/master/work-locations",
+    steps: async (page) => {
+      await page.getByRole("tab", { name: "機種" }).first().click();
+      await page.getByRole("button", { name: "機種を追加" }).first().click();
+      await page.getByRole("dialog").getByText("メーカー").first().waitFor();
     },
   },
   {
@@ -2305,7 +2413,7 @@ export const shots: Shot[] = [
     docPage: "process/default-flow",
     path: "/shipping/delivery-orders/DOR-202607-00002?tab=delivery-notes",
     steps: async (page) => {
-      await page.getByText("DRN-202607-00003").first().waitFor();
+      await page.getByText(anyDocNumber("DRN")).first().waitFor();
     },
   },
   {
@@ -2446,7 +2554,7 @@ export const shots: Shot[] = [
     // 在庫管理（製品タブ）— 利用可能列を強調
     id: "flow-inventory-products-01",
     docPage: "process/production",
-    path: "/production/inventory",
+    path: "/inventory",
     steps: async (page) => {
       await page.getByText("超硬エンドミル").first().waitFor();
     },
@@ -2456,7 +2564,7 @@ export const shots: Shot[] = [
     // 在庫管理（素材タブ）— 利用可能列を強調
     id: "flow-inventory-materials-01",
     docPage: "process/production",
-    path: "/production/inventory?tab=materials",
+    path: "/inventory?tab=materials",
     steps: async (page) => {
       await page.getByText("B01A0001").first().waitFor();
     },
@@ -2476,7 +2584,7 @@ export const shots: Shot[] = [
     // 製品在庫の取引履歴 — 入庫行を強調
     id: "flow-inventory-in-01",
     docPage: "process/production",
-    path: "/production/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
+    path: "/inventory/products/dc050000-0000-4000-8000-000000000001?tab=transactions",
     steps: async (page) => {
       await page.getByText("取引履歴").first().waitFor();
     },
@@ -2511,25 +2619,221 @@ export const shots: Shot[] = [
     docPage: "process/billing",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
-      await page.getByText("DOR-202606-00001").first().waitFor();
+      await page.getByText(anyDocNumber("DOR")).first().waitFor();
     },
     highlight: [{ text: /合計/ }],
   },
   {
-    // 請求書の操作メニュー — 「弥生会計CSV」を強調
+    // 請求書の操作メニュー — 「会計連携CSV」を強調
     id: "flow-invoice-csv-01",
     docPage: "process/billing",
     path: "/billing/invoices/INV-202606-00001",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
-      await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
+      await page.getByRole("menuitem", { name: "会計連携CSV" }).first().waitFor();
     },
-    highlight: [{ role: "menuitem", name: "弥生会計CSV" }],
+    highlight: [{ role: "menuitem", name: "会計連携CSV" }],
   },
 
   // ─── Metabase（分析ダッシュボード）── scripts/metabase-demo-shots.sh が
   // 完全に別のローカル使い捨て Metabase + DB に対して撮影する（external: true
   // で通常の docs:shots / docs:verify から除外）。path は本番の実 URL（記録用）。
+  // ── 2026-11 追加: 自社法人（MS0I）/ 作業場所一覧（PD09）/ 共有端末の指示書一覧 /
+  //    工程納期 / 仕掛品 ──────────────────────────────────────────────────────
+  {
+    id: "master-own-company-list-01",
+    docPage: "operations/masters/own-company/user",
+    path: "/master/own-companies",
+    steps: async (page) => {
+      // 既定の法人（migration が入れる 1 社）。DB のデータなのでロケールに依らない。
+      await page.getByText("シー・ケィ・ケー株式会社").first().waitFor();
+    },
+  },
+  {
+    id: "master-own-company-new-01",
+    docPage: "operations/masters/own-company/user",
+    path: "/master/own-companies/new",
+    steps: async (page) => {
+      await page
+        .getByText(text(currentLocale(), "master.ownCompanies.bank"))
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    id: "master-own-company-detail-01",
+    docPage: "operations/masters/own-company/user",
+    path: "/master/own-companies",
+    steps: async (page) => {
+      await page.getByText("シー・ケィ・ケー株式会社").first().click();
+      await page
+        .getByText(text(currentLocale(), "master.ownCompanies.issuerPreview"))
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    // 社印タブ（アップロードのボタンは master:UPDATE を持つ人にだけ出る）
+    id: "master-own-company-seal-01",
+    docPage: "operations/masters/own-company/user",
+    user: "admin",
+    path: "/master/own-companies",
+    steps: async (page) => {
+      await page.getByText("シー・ケィ・ケー株式会社").first().click();
+      await page
+        .getByRole("tab", {
+          name: text(currentLocale(), "master.ownCompanies.seal"),
+        })
+        .first()
+        .click();
+      await page
+        .getByRole("button", {
+          name: text(currentLocale(), "master.ownCompanies.uploadSeal"),
+        })
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    // ロゴタブ（PDF の見出しに刷るロゴ。アップロードのボタンは master:UPDATE の人だけ）
+    id: "master-own-company-logo-01",
+    docPage: "operations/masters/own-company/user",
+    user: "admin",
+    path: "/master/own-companies",
+    steps: async (page) => {
+      await page.getByText("シー・ケィ・ケー株式会社").first().click();
+      await page
+        .getByRole("tab", {
+          name: text(currentLocale(), "master.ownCompanies.logo"),
+        })
+        .first()
+        .click();
+      await page
+        .getByRole("button", {
+          name: text(currentLocale(), "master.ownCompanies.uploadLogo"),
+        })
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    // 今日の一覧（持ち越し・作業中の印が出る）。日付欄だけが実時刻由来なので塗る。
+    // 行はシードの計画（2026-07-21 / 07-22）が「持ち越し」として出る。
+    id: "work-location-board-01",
+    docPage: "operations/production/work-location-board/user",
+    path: "/production/work-location-board",
+    mask: ['[aria-label="日付"]'],
+    steps: async (page) => {
+      await page.getByText("NC旋盤 1号機").first().waitFor();
+    },
+  },
+  {
+    // 共有端末: 指示書一覧（承認済み・進行中。端末の拠点で絞る）
+    id: "kiosk-wo-list-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/wo-list/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/wo-list", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().waitFor();
+    },
+  },
+  {
+    // 共有端末: 一覧から開いた指示書の工程（左上が「指示書一覧へ」になる）
+    id: "kiosk-wo-list-steps-01",
+    mask: ["text=/\\d+\\/\\d+\\(.\\) \\d+:\\d+/", "text=/作業 \\d+:\\d+/"],
+    docPage: "operations/kiosk/wo-list/user",
+    app: "kiosk",
+    path: "/login",
+    steps: async (page) => {
+      await kioskLogin(page);
+      await page.goto("/wo-list", { waitUntil: "networkidle" });
+      await page.getByText(/指示書 #/).first().click();
+      await page.waitForURL(/\/wo-scan\/\d+/);
+      await page.getByText(/完了 \d+ \/ \d+ 工程/).first().waitFor();
+    },
+  },
+  {
+    // 工程実行画面の計画パネル — 工程納期の欄（未着手の工程 = 段加工検査。
+    // 計画を触れる人にだけ出るので管理者で撮る）
+    id: "work-order-step-due-date-01",
+    docPage: "operations/production/work-order/user",
+    user: "admin",
+    path: "/production/work-orders/9001/steps/dc011000-0000-4000-8000-000000000005",
+    steps: async (page) => {
+      await page
+        .getByText(text(currentLocale(), "production.stepDueDate.label"))
+        .first()
+        .waitFor();
+    },
+    highlight: [
+      { text: text(currentLocale(), "production.stepDueDate.label"), exact: true },
+    ],
+  },
+  {
+    // 指示書の新規作成 — 「使える仕掛品」（在庫向け・超硬エンドミル φ6×60。
+    // シードの仕掛品 #9001 未加工 2 本が「ちょうど」に出る）
+    id: "work-order-wip-candidates-01",
+    docPage: "operations/production/work-order/user",
+    user: "admin",
+    path: "/production/work-orders/new",
+    steps: async (page) => {
+      await page
+        .getByText(
+          text(currentLocale(), "common.forStockNoOrderLine"),
+          { exact: true },
+        )
+        .click();
+      const product = page.getByPlaceholder(
+        text(currentLocale(), "common.searchByProductCodeOrName"),
+      );
+      await product.click();
+      await product.fill("4枚刃 φ6×60");
+      await page
+        .getByRole("option", { name: /超硬エンドミル 4枚刃 φ6×60/ })
+        .first()
+        .click();
+      await page.locator("[data-wip-group]").first().waitFor();
+    },
+    highlight: ["[data-wip-group]"],
+  },
+  {
+    // 打ち切りのモーダル（実行はしない）— 進行中の製造分 #9001
+    id: "work-order-abort-01",
+    docPage: "operations/production/work-order/user",
+    user: "admin",
+    path: "/production/work-orders/9001",
+    clip: ".mantine-Modal-content",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "操作メニュー" }).first().click();
+      await page.getByRole("menuitem", { name: "打ち切り" }).click();
+      await page.getByRole("dialog").getByText("打ち切りの理由").first().waitFor();
+    },
+  },
+  {
+    // 在庫管理 — 仕掛品タブ（在庫に置いた仕掛品。経過日数は実時刻由来なので塗る）
+    id: "inventory-wip-stock-01",
+    docPage: "operations/inventory/inventory-management/user",
+    path: "/inventory?tab=wip",
+    mask: ["text=/^\\d+ 日$/"],
+    steps: async (page) => {
+      await page.locator("[data-wip-row]").first().waitFor();
+    },
+  },
+  {
+    // 未分類の仕掛品を分類するモーダル（実行はしない）
+    id: "inventory-wip-classify-01",
+    docPage: "operations/inventory/inventory-management/user",
+    user: "admin",
+    path: "/inventory?tab=wip",
+    clip: ".mantine-Modal-content",
+    steps: async (page) => {
+      await page.getByRole("button", { name: "分類する" }).first().click();
+      await page.getByRole("dialog").getByText("分類する数量").first().waitFor();
+    },
+  },
   {
     id: "analytics-sales-01",
     docPage: "analytics",

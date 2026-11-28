@@ -4,7 +4,7 @@ description: "Operation code SY08. Issues and manages the QR cards employees use
 ---
 Operation code **SY08**. Issues and manages the **QR cards** employees use to log in to shared plant-floor tablets (kiosk devices).
 
-> This app requires the **kiosk administration permission**. All operations are recorded in the audit log.
+> The entry permission for this app is the code **`kiosk_card`** (not `kiosk`). Listing, details and suspend / resume need only `kiosk_card`, but **issuing, assigning to a user, revoking, resetting / unlocking the PIN, changing the validity period, changing the concurrent-login limit and printing cards** are privileged operations (`kiosk_card.*`): request them in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) and you can perform them only during the period another person approves (system administrators pass straight through). All operations are recorded in the audit log.
 
 ## What you can do here
 
@@ -22,6 +22,17 @@ Operation code **SY08**. Issues and manages the **QR cards** employees use to lo
 - **割当済 (Assigned)** … assigned to a user and usable for login.
 - **一時停止 (Suspended)** … login temporarily blocked. Use "再開" (Resume) to restore.
 - **取り消し (Revoked)** … permanently disabled. **Cannot be undone** (use for lost cards, leavers, etc.).
+
+The status changes, as a diagram:
+
+```mermaid
+flowchart TD
+  un("未割当<br/>Unassigned"):::gray -->|"Assign to user"| asg("割当済<br/>Assigned"):::green
+  asg -->|"Suspend"| su("一時停止<br/>Suspended"):::orange
+  su -->|"Resume"| asg
+  asg -->|"Revoke"| rv("取り消し<br/>Revoked"):::red
+  su -->|"Revoke"| rv
+```
 
 ## From issuing to first use
 
@@ -43,6 +54,19 @@ For security, the list shows only the **last 8 characters** of each card ID. The
 - **5 consecutive** wrong PIN entries lock the card for **15 minutes**. The PIN column then shows "ロック中" (Locked).
 - **PINロック解除** (Clear PIN lock) … clears only the lock; the PIN itself is kept.
 - **PINリセット** (Reset PIN) … erases the PIN. Use this when the employee has forgotten it; they set a new PIN at the next login.
+
+Whether the PIN is asked for, as a diagram:
+
+```mermaid
+flowchart TD
+  s["Scan the QR"] --> q1{"Used on this same device<br/>within 48 hours?"}
+  q1 -->|"No"| pin["Enter the PIN"]
+  q1 -->|"Yes"| q2{"Last PIN verification<br/>within 2 weeks?"}
+  q2 -->|"No"| pin
+  q2 -->|"Yes"| ok["Logged in by QR alone"]
+  pin -->|"Correct"| ok2["Logged in"]
+  pin -.->|"5 wrong in a row"| lock["Locked for 15 minutes"]
+```
 
 After login, sessions end automatically after **5 minutes** of inactivity, with a hard limit of **8 hours**.
 

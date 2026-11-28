@@ -70,6 +70,17 @@ Each section can carry **branching rules**.
 
 Rules are read **top to bottom and the first match wins**. If nothing matches, the respondent simply continues to the next section in order — which is also what happens when there are no rules at all.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  s["Answer the section and<br/>press 次へ (next)"] --> q{"Rules are read top to bottom<br/>Does any match?"}
+  q -->|"Yes (the first match)"| t{"Where does it go?"}
+  q -->|"No"| n["Continue to the next<br/>section in order"]
+  t -->|"A section"| j["Jump to that section"]
+  t -->|"送信 (submit)"| e["The response ends there"]
+```
+
 - Only 「**ドロップダウン（1つ選択）**」(dropdown) and 「**数値**」(number) fields can be used in a condition. Other types do not appear.
 - Only fields asked **at or before that section** can be used. Fields further down the form are not offered.
 
@@ -82,6 +93,8 @@ A sectioned form shows **one section at a time**, with 「**次へ**」(next) to
 > 💡 Import and export carry the sections too. A file exported before sections existed loads as "no sections".
 
 ## Export answers to Excel [#export-excel]
+
+Use this when you want to work with the collected answers in a spreadsheet.
 
 1. Open the **Responses** tab.
 2. Press **Export**.
@@ -96,6 +109,8 @@ One row is one response and one column is one field. Numeric questions stay nume
 > ⚠️ Answers contain what people wrote personally. Be careful where you save the file and who you send it to. **Every export is recorded.**
 
 ## Print answers as PDF [#export-pdf]
+
+Use this when you want to circulate answers on paper or keep a copy.
 
 **A single answer**
 
@@ -205,7 +220,15 @@ A. You can edit your own answer within the window the form allows. Open it and p
 <!-- permissions:start -->
 ## Permissions required
 
-This screen needs no special permission — being signed in is enough.
+Opening this screen needs no special permission, but the operations below each need one.
+
+### Permissions per operation
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Create or import a form | Forms（`form`）— Create |
+| Change a form's settings, fields or sharing (also needs edit access to that form) | Forms（`form`）— Update |
+| Export responses to CSV / PDF | Forms（`form`）— Export |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

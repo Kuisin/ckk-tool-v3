@@ -5,7 +5,7 @@ screenshots: [settings-users-list-01, settings-users-detail-01, settings-users-r
 ---
 An app for seeing the list of people who use the system and checking **what each person is allowed to do**. The operation code is `SY01`.
 
-You cannot add a person or change a name or email here (those are brought in from the company's shared login system). The only two things this screen changes are **roles** and **assigned sites**.
+You cannot add a person or change a name or email here (those are brought in from the company's shared login system). The only things this screen changes are **roles**, **assigned sites** and **suspension (and restoring)**.
 
 ## What you can do with this app
 
@@ -13,6 +13,7 @@ You cannot add a person or change a name or email here (those are brought in fro
 - You can narrow the list down by name or email address to find the person you are looking for.
 - When you choose one person, you can check the **roles** they have been given and the list of **things they can do**.
 - You can change a person's **roles** and **assigned sites** (permission required).
+- You can **suspend** a person or **restore** them (permission required).
 - You can use it when you want to find out why a person cannot open a certain screen.
 
 ## Words used on this page
@@ -24,7 +25,8 @@ You cannot add a person or change a name or email here (those are brought in fro
 
 ## Before you start
 
-- You need **system administration permission** to open this app. If you cannot open it, the screen shows 「この操作の権限がありません（system:READ）」 (You do not have permission for this operation). Please ask your system administrator.
+- You need the **User administration** (`user_admin`) permission to open this app. If you cannot open it, the screen says you lack the permission (`user_admin:READ`). Please ask your system administrator.
+- Changes to roles and assigned sites, and suspending or restoring a person, take effect immediately for a system administrator. Anyone else writes a reason and submits a request, and the change **takes effect when another person approves it** ([Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G)).
 - You cannot add people, delete people, or change their names in this app. People are managed by the company's shared login system.
 
 ## How to open it
@@ -95,7 +97,7 @@ When there is nothing, 「**権限がありません**」 (No permissions) is sh
 
 Give a person a role, or take one away. **Changing roles changes what that person can do, directly.**
 
-The 「**編集**」 (Edit) button appears at the top right of 「**ロール割当**」 only for people who have the "change user management" permission.
+The 「**編集**」 (Edit) button appears at the top right of 「**ロール割当**」 only for people who have the "User administration" permission.
 
 1. Open the detail screen of the person you want to change.
 2. Press 「**編集**」 on 「**ロール割当**」.
@@ -104,6 +106,17 @@ The 「**編集**」 (Edit) button appears at the top right of 「**ロール割
 5. Press 「**保存**」 (Save), or 「**承認を依頼**」 (Request approval) when approval is needed.
 
 For a system administrator the change takes effect straight away. **For everyone else nothing changes yet** — write 「**変更の理由**」 (Reason for the change) and submit, and an approval request appears in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G). **The change takes effect when someone else approves it.** You cannot approve your own request.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  e["Choose roles and save"] --> q{"System administrator?"}
+  q -->|"Yes"| ok["The change takes effect straight away"]
+  q -->|"No"| r["Write 変更の理由 (Reason for the change)<br/>and press 承認を依頼 (Request approval)"]
+  r --> w["An approval request appears in<br/>Privileged access (SY0G)"]
+  w -->|"Someone else approves"| ok2["The change takes effect"]
+```
 
 > ⚠️ If you remove every role, the person can do nothing at all. Check which screens they use before removing.
 
@@ -115,7 +128,7 @@ Removed roles stay on record. A date appears in 「**解除日時**」 (Removed 
 
 ## Changing 所属拠点 (assigned sites)
 
-The 「**編集**」 (Edit) button appears at the top right of 「**所属拠点**」 only for people who have the "change user management" permission.
+The 「**編集**」 (Edit) button appears at the top right of 「**所属拠点**」 only for people who have the "User administration" permission.
 
 1. Open the detail screen of the person you want to change.
 2. Press 「**編集**」 on 「**所属拠点**」.
@@ -129,14 +142,27 @@ When 「**保存しました**」 (Saved) and 「**所属拠点を更新しま�
 
 > 💡 A site with 「（無効）」 (inactive) next to it may appear in the selection box. It is a site that is no longer in use, but it is still assigned to this person, so it is shown.
 
+## Suspending and restoring
+
+Use this to stop a person from logging in, for example when they leave or go on leave. Work in the 「**利用停止**」 (Suspend) section of the detail screen. Only people with the "User administration" permission can do this.
+
+1. Open the detail screen of the person you want to suspend.
+2. In 「**利用停止**」, choose 「**一時停止**」 (Temporary suspension) or 「**無期限停止**」 (Suspended indefinitely). For a temporary suspension, also enter 「**解除予定日時**」 (Scheduled to be released at).
+3. Write the reason (「**停止の理由**」 (Reason for suspension) is required when approval is needed).
+4. Press 「**停止する**」 (Suspend) — or 「**停止の承認を依頼**」 (Request suspension approval) when approval is needed.
+
+A suspended person's section shows 「**停止中**」 (Suspended). A temporary suspension ends by itself once the scheduled time has passed (it can take up to 1 minute). To restore the person without waiting, press 「**いま復帰させる**」 (Restore now) — or 「**復帰の承認を依頼**」 (Request restoration approval) when approval is needed.
+
+As with roles and sites, anyone who is not a system administrator submits a request, and the suspension or restoration **takes effect when another person approves it**. Until then, the person can still log in.
+
 ## Input fields
 
-A user's name and email are **imported from Active Directory** and cannot be changed here. The only inputs on this screen are the roles and the plant assignment.
+A user's name and email are **imported from Active Directory** and cannot be changed here. The only inputs on this screen are the roles and the assigned sites.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | [Roles](#field-roles) | Optional | The roles given to this user |
-| [Assigned plants](#field-plants) | Optional | The plants this user works with |
+| [Assigned sites](#field-plants) | Optional | The sites this user works with |
 
 ### Roles [#field-roles]
 
@@ -144,15 +170,15 @@ The roles given to the user. Several can be selected.
 
 **What the person can do is all the selected roles put together.** The result is shown in 「実効権限」 (Effective permissions) on the same screen. If every role is removed, the person can do nothing.
 
-Only people with the "change user management" permission can edit it, and anyone who is not a system administrator needs approval. You cannot change your own roles.
+Only people with the "User administration" permission can edit it, and anyone who is not a system administrator needs approval. You cannot change your own roles.
 
-### Assigned plants [#field-plants]
+### Assigned sites [#field-plants]
 
-The plants the user is responsible for. Several can be selected.
+The sites the user is responsible for. Several can be selected.
 
 The "plant" range of a permission is **decided by the overlap with what is selected here**. Someone whose permission is "view within their plant" sees only data for the plants listed here. If this is empty, plant-ranged permissions show nothing.
 
-Only people with the "change user management" permission can edit it, and anyone who is not a system administrator needs approval. Everyone else sees the current assignment as badges.
+Only people with the "User administration" permission can edit it, and anyone who is not a system administrator needs approval. Everyone else sees the current assignment as badges.
 
 ## Questions and problems
 
@@ -166,7 +192,7 @@ A. Press 「**編集**」 (Edit) on 「**ロール割当**」 on the detail scre
 A. A change made by anyone who is not a system administrator **does not take effect until it is approved**. Check in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) whether your request is still pending approval.
 
 **Q. The 「編集」 (Edit) button does not appear.**
-A. Changing roles and assigned sites needs the "change user management" permission. Everyone else can only look. Please ask your system administrator.
+A. Changing roles and assigned sites needs the "User administration" permission. Everyone else can only look. Please ask your system administrator.
 
 **Q. Someone was given a role, but they say they still cannot open the screen.**
 A. Open that person's detail screen and look for the matching row in 「**実効権限**」 (Effective permissions). If the row is there but the data is empty, please also check whether 「**所属拠点**」 is empty.

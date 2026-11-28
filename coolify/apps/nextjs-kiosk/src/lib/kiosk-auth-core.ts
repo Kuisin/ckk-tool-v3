@@ -16,6 +16,12 @@ export const PIN_REVERIFY_MAX_MS = 14 * 24 * 60 * 60 * 1000; // 活動に関係�
 export const PIN_MAX_ATTEMPTS = 5;
 export const PIN_LOCK_MS = 15 * 60 * 1000; // 15分ロック
 export const TICKET_TTL_MS = 2 * 60 * 1000; // PIN チケット 2分・単回使用
+// PIN_VERIFY チケットの発行レート上限（カード単位）。窓はロックと同じ 15 分で、
+// その窓で許される照合（PIN_MAX_ATTEMPTS = 5 回）より多くチケットを出す意味は
+// ない —— 余分なチケットは攻撃者が「同時撃ち」用に先に溜め込めるだけなので、
+// /api/qr/access の発行をここで頭打ちにする（tickets.ts が保持）。
+export const PIN_TICKET_WINDOW_MS = PIN_LOCK_MS;
+export const PIN_TICKET_MAX_PER_WINDOW = PIN_MAX_ATTEMPTS;
 export const ONLINE_WINDOW_MS = 5 * 60 * 1000; // WS 未接続でも直近 5分の活動でオンライン扱い
 export const WS_SWEEP_INTERVAL_MS = 30 * 1000; // オンライン判定の再計算間隔
 
@@ -56,19 +62,36 @@ export function needsPinVerify(
   lastUsedOnDeviceAt: Date | null,
   pinLastVerifiedAt: Date | null,
 ): boolean {
+  return pinVerifyReason(now, lastUsedOnDeviceAt, pinLastVerifiedAt) !== null;
+}
+
+/**
+ * PIN を求める理由（null = 求めない）。画面の説明文を出し分けるためのもので、
+ * 判定は needsPinVerify と同じ（あちらはこれを呼ぶだけ）。両方が成り立つときは
+ * 端末側（DEVICE_IDLE）を返す — 先に評価する条件と同じ順。
+ *   DEVICE_IDLE … この端末で 48 時間使っていない（初めて使う端末を含む）
+ *   PERIODIC    … 最後の PIN 確認から 2 週間たった（定期の確認）
+ */
+export type PinVerifyReason = "DEVICE_IDLE" | "PERIODIC";
+
+export function pinVerifyReason(
+  now: Date,
+  lastUsedOnDeviceAt: Date | null,
+  pinLastVerifiedAt: Date | null,
+): PinVerifyReason | null {
   if (
     !lastUsedOnDeviceAt ||
     now.getTime() - lastUsedOnDeviceAt.getTime() >= PIN_REVERIFY_DEVICE_IDLE_MS
   ) {
-    return true;
+    return "DEVICE_IDLE";
   }
   if (
     !pinLastVerifiedAt ||
     now.getTime() - pinLastVerifiedAt.getTime() >= PIN_REVERIFY_MAX_MS
   ) {
-    return true;
+    return "PERIODIC";
   }
-  return false;
+  return null;
 }
 
 /**
@@ -91,12 +114,28 @@ export function isPinLocked(now: Date, pinLockedUntil: Date | null): boolean {
   return pinLockedUntil !== null && now.getTime() < pinLockedUntil.getTime();
 }
 
-/** PIN 失敗の次状態: 試行回数と（上限到達なら）ロック解除時刻。 */
+/**
+ * PIN 失敗の次状態: 試行回数と（上限到達なら）ロック解除時刻。
+ * 「**加算前**」の失敗回数を取る（呼び出し側は +1 される前の値を渡す）。
+ */
 export function nextPinFailureState(
   now: Date,
   failedAttempts: number,
 ): { failedAttempts: number; lockedUntil: Date | null } {
-  const attempts = failedAttempts + 1;
+  return pinFailureStateAfter(now, failedAttempts + 1);
+}
+
+/**
+ * PIN 失敗の次状態を「**加算後**の失敗回数」から導く。pin/route.ts の照合は
+ * verify の前に conditional claim で先に increment する（同時撃ちで、ロックが
+ * 書かれる前のスナップショットを全員が素通りするのを防ぐため）ので、加算済みの
+ * 値をそのまま渡せるこちらを使う。上限到達でロック（カウントは 0 に戻し、満了後に
+ * 再び PIN_MAX_ATTEMPTS 回試せるようにする）。
+ */
+export function pinFailureStateAfter(
+  now: Date,
+  attempts: number,
+): { failedAttempts: number; lockedUntil: Date | null } {
   if (attempts >= PIN_MAX_ATTEMPTS) {
     return {
       failedAttempts: 0, // ロック満了後は再カウント
@@ -104,6 +143,24 @@ export function nextPinFailureState(
     };
   }
   return { failedAttempts: attempts, lockedUntil: null };
+}
+
+/**
+ * 直近の PIN_VERIFY チケット発行時刻（epoch ms の配列）から、まだ 1 枚
+ * 出してよいか。窓（PIN_TICKET_WINDOW_MS）内の発行数が上限
+ * （PIN_TICKET_MAX_PER_WINDOW）未満なら true。純関数 —— 発行時刻の保持と
+ * 刈り取りは tickets.ts（インメモリ）。
+ */
+export function withinPinTicketLimit(
+  now: Date,
+  recentIssuedAtMs: readonly number[],
+): boolean {
+  const cutoff = now.getTime() - PIN_TICKET_WINDOW_MS;
+  let inWindow = 0;
+  for (const t of recentIssuedAtMs) {
+    if (t > cutoff) inWindow += 1;
+  }
+  return inWindow < PIN_TICKET_MAX_PER_WINDOW;
 }
 
 /** デバイストークンの有効判定。 */

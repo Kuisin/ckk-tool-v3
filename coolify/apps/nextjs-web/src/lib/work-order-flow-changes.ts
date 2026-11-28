@@ -20,8 +20,8 @@ import "server-only";
 
 import { getTranslations } from "next-intl/server";
 import {
+  approvalNeed,
   getApprovalApplyMode,
-  getApprovalFlow,
   startApprovalFlow,
 } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
@@ -31,7 +31,6 @@ import {
   type FlowChangeKind,
   isFlowChangeGated,
   isPostApply,
-  requiresApproval,
 } from "./flow-change-core";
 import type { Tr } from "./i18n";
 import {
@@ -84,10 +83,11 @@ export async function submitFlowChange(input: {
 
   // 下書き・承認前の指示書は普通の編集なので承認を挟まない。
   const gated = isFlowChangeGated(workOrderStatus);
-  const flow = gated ? await getApprovalFlow(TARGET_TYPE) : [];
-  if (!gated || !requiresApproval(flow.length)) {
-    return applyPayload(workOrderId, payload, tr);
-  }
+  // 承認設定で OFF（または段なしの従来の素通し）なら保留せず即適用する。
+  if (!gated) return applyPayload(workOrderId, payload, tr);
+  const need = await approvalNeed(TARGET_TYPE);
+  if (need.kind === "blocked") return { ok: false, errors: [need.error] };
+  if (need.kind === "skip") return applyPayload(workOrderId, payload, tr);
 
   // 進行中の変更は 1 指示書に 1 件だけ（DB 側にも部分 unique index がある）。
   const existing = await prisma.workOrderFlowChange.findFirst({

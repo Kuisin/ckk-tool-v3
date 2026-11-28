@@ -31,8 +31,19 @@ import {
   processCategoryLabel,
   processExecutionLabel,
   quantityTrackingLabel,
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
 } from "@/lib/enum-labels";
-import { isPrepStep } from "@/lib/workflow-core";
+import {
+  ROUTE_KIND_COLOR,
+  ROUTE_KIND_LABEL_KEY,
+  routeKindsForStep,
+} from "@/lib/process-route-kinds";
+import {
+  pinnedWorkOrderType,
+  stepAllowedForType,
+  type WorkOrderType,
+} from "@/lib/workflow-core";
 import {
   DeleteProcessStepModal,
   ToggleProcessStepActiveModal,
@@ -63,9 +74,12 @@ export interface ProcessStepDetailData {
   isApprovalStep: boolean;
   isFinalInspection: boolean;
   workLocationRequired: boolean;
+  /** この工程を載せてよい指示書種別（在庫分 / 製造分 / 再研磨）。 */
+  allowedWorkOrderTypes: WorkOrderType[];
   planTimeRequired: boolean;
   planAssigneeRequired: boolean;
-  planQuantityRequired: boolean;
+  /** 加工状態に数える工程か（仕掛品）。 */
+  affectsWipState: boolean;
   approvalMinRank: string | null;
   quantityTracking: string;
   lotInputMode: string;
@@ -207,10 +221,16 @@ export function ProcessStepDetail({
           {tr("common.finalInspection")}
         </Badge>
       )}
+      {record.affectsWipState && (
+        <Badge color="grape" size="xs" variant="light">
+          {tr("master.processSteps.affectsWipState")}
+        </Badge>
+      )}
       {!record.isSyncCapable &&
         !record.isInspection &&
         !record.isApprovalStep &&
         !record.isFinalInspection &&
+        !record.affectsWipState &&
         "—"}
     </Group>
   );
@@ -269,17 +289,53 @@ export function ProcessStepDetail({
             </Badge>
           }
         />
+        {/*
+          この工程をどの種別の指示書に載せられるか（工程マスタが唯一の定義元）。
+          開始工程だけは種別が固定で、設定では動かせない。
+        */}
+        <FieldValue
+          label={tr("master.processSteps.workOrderTypes")}
+          value={
+            <Group gap={4} wrap="wrap">
+              {/*
+                行の配列ではなく stepAllowedForType を通す — 開始工程は
+                マスタの値より固定の規則が勝つので、生の配列を描くと
+                「システムが認めない種別」がバッジとして出てしまう。
+                一覧とフォームも同じ関数を読む。
+              */}
+              {(["FROM_STOCK", "MANUFACTURE", "REGRIND"] as const)
+                .filter((t) => stepAllowedForType(record, t))
+                .map((t) => (
+                  <Badge
+                    color={WORK_ORDER_TYPE_COLOR[t] ?? "gray"}
+                    key={t}
+                    variant="light"
+                  >
+                    {workOrderTypeLabel(t, locale) ?? t}
+                  </Badge>
+                ))}
+              {pinnedWorkOrderType(record) && (
+                <Text c="dimmed" size="xs">
+                  {tr("master.processSteps.workOrderTypesPinnedBadge")}
+                </Text>
+              )}
+            </Group>
+          }
+        />
         <FieldValue
           label={tr("master.processSteps.routeKind")}
           value={
-            <Badge
-              color={isPrepStep(record) ? "teal" : "indigo"}
-              variant="light"
-            >
-              {isPrepStep(record)
-                ? tr("master.processSteps.routeKindPrep")
-                : tr("master.processSteps.routeKindManufacturing")}
-            </Badge>
+            <Group gap={4}>
+              {routeKindsForStep(record).map((kind) => (
+                <Badge
+                  color={ROUTE_KIND_COLOR[kind]}
+                  key={kind}
+                  variant="light"
+                >
+                  {tr(`master.processSteps.${ROUTE_KIND_LABEL_KEY[kind]}`)}
+                </Badge>
+              ))}
+            </Group>
           }
         />
         <FieldValue
@@ -314,7 +370,6 @@ export function ProcessStepDetail({
             ...(record.planTimeRequired
               ? [tr("master.processSteps.planTime")]
               : []),
-            ...(record.planQuantityRequired ? [tr("common.quantity")] : []),
           ].join(tr("common.s1"))}
         />
         <FieldValue

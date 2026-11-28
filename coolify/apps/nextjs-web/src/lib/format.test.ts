@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createFormatters,
   documentFormatters,
+  localizedDraft,
   localizedTranslations,
   zonedDayRange,
 } from "./format";
@@ -162,5 +163,22 @@ describe("zonedDayRange（日付範囲フィルタの UTC 変換）", () => {
   it("不正な形式は null", () => {
     expect(zonedDayRange("2026/08/13", "Asia/Tokyo")).toBeNull();
     expect(zonedDayRange("not-a-date", "Asia/Tokyo")).toBeNull();
+  });
+});
+
+describe("localizedDraft", () => {
+  it("表示言語の訳があればそれ、無ければ ja", () => {
+    expect(localizedDraft("第1承認", { en: "First approval" }, "en")).toBe(
+      "First approval",
+    );
+    expect(localizedDraft("第1承認", {}, "en")).toBe("第1承認");
+    expect(localizedDraft("第1承認", { en: "First approval" }, "ja")).toBe(
+      "第1承認",
+    );
+  });
+
+  it("何も入っていなければ空文字（既定の表示に差し替えられる）", () => {
+    expect(localizedDraft("", {}, "en")).toBe("");
+    expect(localizedDraft("", undefined, "ja")).toBe("");
   });
 });

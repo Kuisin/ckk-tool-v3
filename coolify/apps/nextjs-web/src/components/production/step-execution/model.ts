@@ -8,6 +8,7 @@
  */
 
 import type { InspectionItemSpec } from "@/lib/inspection-core";
+import type { WipRecordingView } from "@/lib/wip-state-core";
 import type { PlanField } from "@/lib/work-plan-core";
 import type { WorkOrderFinalInspectionView } from "../work-orders/model";
 
@@ -131,6 +132,8 @@ export interface StepExecutionStepView {
   supplierName: string | null;
   /** 予定作業時間 (h) — 任意。 */
   plannedWorkHours: number | null;
+  /** 工程納期（YYYY-MM-DD・JST の暦日）— 任意。 */
+  dueDate: string | null;
   status: string; // STEP_STATUS
   inputQuantity: number | null;
   outputSuccessQuantity: number | null;
@@ -151,21 +154,45 @@ export interface StepExecutionStepView {
   outsourceExpectedAt: string | null;
   outsourceReceivedAt: string | null;
   outsourceCost: number | null;
+  /** 仕掛品として在庫に置いた分の仕上がり寸法（記録したときだけ）。 */
+  finishedDiameterMm: number | null;
+  finishedLengthMm: number | null;
+  /**
+   * 外注へ出した／戻ったときの入出庫伝票番号（MOV-…）。
+   * **預け在庫を計上したかどうかの印でもある** — 出しの番号が入っていれば、
+   * その数はいまその外注先が持っている（戻りの番号が入るまで）。
+   */
+  /** 外注依頼の番号（`OUT-2026-00001`）。依頼日が入ると DB が払い出す。未依頼は null。 */
+  outsourceOrderNumber: string | null;
+  outsourceIssueMovementNo: string | null;
+  outsourceReturnMovementNo: string | null;
 }
+
+/** lib/wip-recording.ts WipRecordingView の、工程名を表示言語に解決した形。 */
+export type StepWipRecordingView = Omit<WipRecordingView, "stepNames"> & {
+  stepNames: Record<string, string>;
+};
 
 export interface StepExecutionData {
   actorId: string | null;
   workOrderNumber: number;
-  /** 書類番号 WO-YYYYMM-NNNNN。 */
+  /** 書類番号 WOR-FFFF-NNNNN（表示専用 — 番号だけ）。 */
   workOrderDocNumber: string;
   workOrderCreatedAt: string;
   workOrderStatus: string; // WORK_ORDER_STATUS
+  /** WORK_ORDER_TYPE。再研磨では半製品の区分を出さない。 */
+  workOrderType: string;
   plannedQuantity: number;
   step: StepExecutionStepView;
   /** 開始可否（canStartStep の結果）。 */
   canStart: { ok: boolean; reasons: string[] };
   /** 想定受入数（前工程の良品 / Σ流入エッジ / 予定数量）。 */
   expectedInputQuantity: number | null;
+  /**
+   * 仕掛品として在庫に置く分を記録するための材料（経路の候補・ブランクの寸法・
+   * 工程名）。再研磨の指示書では null — 顧客の工具は自社の仕掛品にならない。
+   */
+  wipRecording: StepWipRecordingView | null;
   /** 指示書に紐付く検査表テンプレート（検査工程で使用）。 */
   templates: InspectionTemplateView[];
   /** この工程の検査表割当を編集するときの選択肢（関連工程が一致 or 汎用）。 */

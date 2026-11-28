@@ -1,9 +1,9 @@
 // 注文請書 intake (_specs §2): 監視フォルダ / 優先アップロードから自動取込。
 //
-// キー: (year_month, seq) — ORDER シーケンス。表示番号 ORD-YYYYMM-NNNNN。
+// キー: uuid。表示番号 ORD-FFFF-NNNNN は DB が作成時に払い出す（doc_number）。
 // 明細は order_lines（注文明細）1 本で、取込〜承認までの下書き行であり、
 // 確定後はそのまま実行アンカー（指示書 / 出荷書 / 引当 / 設計依頼の紐付け先）
-// になる。確定（COMPLETED）で枝番 1..N を採番し ORD-YYYYMM-NNNNN-NN になる。
+// になる。確定（COMPLETED）で枝番 1..N を採番し ORD-FFFF-NNNNN-NN になる。
 // 旧 sales_orders（注文請書）は order_lines に統合済み — 別テーブルは無い。
 // ライフサイクル: IMPORT（取込・抽出中/失敗）→ DRAFT（抽出済・編集可）→
 // REQUESTED（承認依頼）→ APPROVED → COMPLETED（確定済）→ ARCHIVED。
@@ -47,8 +47,27 @@ enum OrderLineStatus {
 }
 
 model OrderAcceptance {
-  yearMonth String @map("year_month") @db.Char(6)
-  seq       Int
+  /// 内部キー（uuid）。書類番号は法人ごとの連番になるので（番号設計 PR-C）、
+  /// 番号は行の識別にならない。子の表はこの id を FK で指す（PR-B）。
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 発行元の自社法人（番号設計 PR-B）。作成時に lib/doc-company.ts が決め、
+  /// 以後は変えない（DB トリガー own_company_id_immutable）。既定値は既定の法人。
+  ownCompanyId Int @default(dbgenerated("app.default_own_company_id()")) @map("own_company_id")
+  /// 旧番号の年月と連番。**@ignore — アプリからは見えない**（番号設計 PR-D1）。
+  /// 列は、これを SELECT する旧コンテナが居なくなってから後続の migration で落とす。
+  legacyYearMonth String? @map("year_month") @db.Char(6) @ignore
+  legacySeq       Int?    @map("seq") @ignore
+  /// 書類番号（番号設計 PR-C）。**DB が採番する** — BEFORE INSERT トリガー
+  /// app.assign_document_number が自社法人 × 会計年度の連番から払い出して
+  /// 4 列を必ず上書きする（既定値は Prisma の create 入力を省けるようにする
+  /// ためだけのもの）。保存後は変えられない（app.document_number_frozen）。
+  fiscalYear   Int     @default(0) @map("fiscal_year")
+  docSeq       Int     @default(0) @map("doc_seq")
+  docNumber    String  @default("") @map("doc_number")
+  /// `<法人コード>/<書類番号>` — 多態参照がこの書類を指す形そのまま。
+  docRef       String  @unique @default("") @map("doc_ref")
+  /// 振り直し前の番号（旧 PREFIX-YYYYMM-NNNNN）。検索と旧 URL の転送に使う。
+  legacyNumber String? @map("legacy_number")
 
   status OrderAcceptanceStatus @default(IMPORT)
   source IntakeSource          @default(MANUAL)
@@ -62,24 +81,28 @@ model OrderAcceptance {
   customerBpId       String? @map("customer_bp_id") @db.Uuid
   customerBranchBpId String? @map("customer_branch_bp_id") @db.Uuid
   customerOrderRef   String? @map("customer_order_ref") // 顧客注文書番号
-  // 見積 → 受注のトレーサビリティ（監査 P2-2。QOT の複合キー参照）
-  quoteYearMonth     String? @map("quote_year_month") @db.Char(6)
-  quoteSeq           Int?    @map("quote_seq")
+  // 見積 → 受注のトレーサビリティ（監査 P2-2）
+  quoteId String? @map("quote_id") @db.Uuid
+  quoteYearMonth     String? @map("quote_year_month") @db.Char(6) @ignore
+  quoteSeq           Int?    @map("quote_seq") @ignore
   orderDate          DateTime? @map("order_date") @db.Date
   /// 受注金額の通貨（currencies.code。既定 JPY — 明細はヘッダから読む。sales_rep と同じ規約）
   currency           String    @default("JPY")
 
-  // 出荷先（納入先の取引先。顧客本体と別の法人・支店でもよい。null = 顧客へ）
+  /// @deprecated 配送は明細（order_lines）ごとに持つように変更した
+  /// （1 通の注文書の中で行ごとに届け先が違う注文があるため）。
+  /// アプリはこの列を**もう読まない・書かない** — dev への 1 回のデプロイが
+  /// 回ったあと、別の migration で DROP する（ローリングデプロイ中は旧
+  /// コンテナがこの列しか知らないため、値を消さずに置いておくだけの期間）。
+  /// エンドユーザーは明細に end_user_bp_id が最初からあったので対象外。
   shipToBpId String? @map("ship_to_bp_id") @db.Uuid
-  // 配送方法（通常配送 / ユーザー直送）。出荷書は同じ出荷先×配送方法の
-  // 注文明細だけを束ねられる（アプリで検証）。納品書の既定値の源でもある。
+  /// @deprecated 上と同じ理由。order_lines.delivery_method へ移した。
   deliveryMethod DeliveryMethod @default(NORMAL) @map("delivery_method")
-  // エンドユーザー（最終需要家）。ユーザー直送では必須（アプリで強制）。
-  // 明細行の end_user_bp_id（行ごとの例外）より先に読む既定値。
+  /// @deprecated 上と同じ理由。order_lines.end_user_bp_id（既存列）へ一本化した。
   endUserBpId String? @map("end_user_bp_id") @db.Uuid
-  // 担当拠点（この注文を処理する拠点。null = 未割当）
+  /// @deprecated 上と同じ理由。order_lines.assigned_plant_id へ移した。
   assignedPlantId Int? @map("assigned_plant_id")
-  // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
+  /// @deprecated 上と同じ理由。order_lines.shipping_work_location_id へ移した。
   shippingWorkLocationId Int? @map("shipping_work_location_id")
   // 顧客が自前の納品書（バーコード等）を用意する取引か。true のときは
   // 自社発行の納品書に添える形で顧客提供の納品書も同梱する運用上の目印
@@ -89,6 +112,20 @@ model OrderAcceptance {
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  // 作り直し元（キャンセル済みの注文請書）。
+  //
+  // 確定済み（COMPLETED）の請書は明細を編集できない（lib/order-line-check.ts）。
+  // 直したいときの手順は 1 つだけ: **ごとキャンセル → その請書から作り直す**。
+  // キャンセルは配下の未着手指示書も連鎖で止める（lib/order-line-cancel.ts）ので、
+  // 作り直した側で改めて手配することになる。
+  //
+  // 紐付けを残すのは「あの注文はどうなったのか」を後から追えるようにするため —
+  // キャンセルした請書だけが残ると、指示書も出荷も無い行き止まりに見える。
+  // 1 件を 2 件に割って作り直すこともあるので **1 対 N**（unique にしない）。
+  replacesId String? @map("replaces_id") @db.Uuid
+  replacesYearMonth String? @map("replaces_year_month") @db.Char(6) @ignore
+  replacesSeq       Int?    @map("replaces_seq") @ignore
   // 営業担当 — 作成時に顧客の主担当（bp_sales_reps.is_primary）を複写した
   // スナップショット。顧客側の担当が替わっても過去書類は動かない。
   // 注文明細（order_lines）は行に複写せずここから読む。
@@ -107,15 +144,31 @@ model OrderAcceptance {
   createdByUser    User?            @relation("AcceptanceCreatedBy", fields: [createdBy], references: [id])
   salesRep         User?            @relation("AcceptanceSalesRep", fields: [salesRepId], references: [id])
 
+  // 元は消えても作り直した側は残す（SetNull）— 紐付けが切れるだけで、
+  // 作り直した請書そのものは業務データとして生きている。
+  replaces   OrderAcceptance?  @relation("AcceptanceReplaces", fields: [replacesId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replacedBy OrderAcceptance[] @relation("AcceptanceReplaces")
+
   items          OrderLine[]
   cancelRequests OrderAcceptanceCancelRequest[]
 
-  @@id([yearMonth, seq])
+  quote Quote? @relation("AcceptanceQuote", fields: [quoteId], references: [id], onDelete: SetNull)
+
+  ownCompany OwnCompany @relation("OrderAcceptanceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@unique([legacyYearMonth, legacySeq])
+  @@unique([ownCompanyId, fiscalYear, docSeq])
+  @@unique([ownCompanyId, docNumber])
+  @@index([legacyNumber])
   @@index([status])
   // 注文明細の顧客絞り込みはヘッダ経由になるため必須
   @@index([customerBpId])
+  @@index([replacesYearMonth, replacesSeq])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
-  @@index([updatedAt, yearMonth, seq])
+  @@index([updatedAt, id])
+  @@index([quoteId])
+  @@index([replacesId])
+  @@index([ownCompanyId])
   @@map("order_acceptances")
   @@schema("app")
 }
@@ -125,13 +178,15 @@ model OrderAcceptance {
 // 確定済み（COMPLETED）の注文請書は明細単位ではキャンセルできない —
 // キャンセルは注文請書ごと依頼し、承認設定（MS0B）の
 // 「注文請書キャンセル」フローを通す（1 段も無ければ即適用）。
-// 最終承認で全明細のキャンセル（予約解放・未着手指示書の連鎖キャンセル）と
+// 最終承認で全明細のキャンセル（予約解放・**未完了**指示書の連鎖キャンセル —
+// 進行中のものも倒し、作業セッションとロックも畳む。完了済みだけが対象外）と
 // ヘッダの CANCELLED 遷移が走る。approval_requests は業務キー（= id）で
 // 指すため FK は無い → AFTER DELETE トリガーで掃除（migration 参照）。
 model OrderAcceptanceCancelRequest {
   id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  acceptanceYearMonth String    @map("acceptance_year_month") @db.Char(6)
-  acceptanceSeq       Int       @map("acceptance_seq")
+  acceptanceId String @map("acceptance_id") @db.Uuid
+  acceptanceYearMonth String?    @map("acceptance_year_month") @db.Char(6) @ignore
+  acceptanceSeq       Int?       @map("acceptance_seq") @ignore
   /// 依頼理由（必須 — 確定済みの受注を取り消す例外操作のため）。
   reason              String
   /// PENDING | APPLIED | REJECTED | CANCELLED | FAILED（DB 側 CHECK）
@@ -143,11 +198,12 @@ model OrderAcceptanceCancelRequest {
   resolvedBy          String?   @map("resolved_by") @db.Uuid
   resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz(6)
 
-  acceptance      OrderAcceptance @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Cascade)
+  acceptance      OrderAcceptance @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
   requestedByUser User?           @relation("AcceptanceCancelRequestedBy", fields: [requestedBy], references: [id])
   resolvedByUser  User?           @relation("AcceptanceCancelResolvedBy", fields: [resolvedBy], references: [id])
 
   @@index([acceptanceYearMonth, acceptanceSeq, status])
+  @@index([acceptanceId])
   @@map("order_acceptance_cancel_requests")
   @@schema("app")
 }
@@ -163,15 +219,30 @@ model OrderAcceptanceCancelRequest {
 //         確定して status = CONFIRMED。以降 branch は不変。
 model OrderLine {
   id                  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  acceptanceYearMonth String @map("acceptance_year_month") @db.Char(6)
-  acceptanceSeq       Int    @map("acceptance_seq")
-  // 枝番（ORD-YYYYMM-NNNNN-NN の NN）。確定時に採番、以後不変。
+  acceptanceId String @map("acceptance_id") @db.Uuid
+  acceptanceYearMonth String? @map("acceptance_year_month") @db.Char(6) @ignore
+  acceptanceSeq       Int?    @map("acceptance_seq") @ignore
+  // 枝番（ORD-FFFF-NNNNN-NN の NN）。確定時に採番、以後不変。
   branch              Int?
+  /// 注文明細番号 `ORD-FFFF-NNNNN-NN` = 注文請書の doc_number + 枝番。
+  /// **DB が導く**（トリガー app.order_lines_line_number。枝番が付くまで NULL）。
+  lineNumber          String? @map("line_number")
+  /// `<法人コード>/<注文明細番号>` — 多態参照がこの明細を指す形そのまま。
+  lineRef             String? @unique @map("line_ref")
   sortOrder           Int    @default(0) @map("sort_order")
 
   // ── 明細内容（注文請書の行そのもの） ──
-  // 抽出直後は productText のみ。製品マスタ突合後に productId を持つ。
-  productId    Int?      @map("product_id")
+  // 抽出直後は productText のみ。品目マスタ突合後に itemId を持つ。
+  /// 統合品目（app.items）。**その行で売っているもの**（突合前は null）。
+  /// 再研磨の明細では「再研磨の品目（役務）」— 値段はここに付く。研ぎ直す工具の
+  /// ほうは toolItemId が持つ。
+  itemId       Int?      @map("item_id")
+  /// 研ぎ直す工具（app.items の PRODUCT。他社製品のこともある）。
+  ///
+  /// **再研磨の明細だけが持つ。** 売っているのは役務（itemId）で、預かって手を
+  /// 入れて返すのはこちら — 預り品の在庫も指示書もこの品目で動く。確定した
+  /// 再研磨の明細では必須（DB の CHECK order_lines_regrind_tool）。
+  toolItemId   Int?      @map("tool_item_id")
   productText  String?   @map("product_text") // 抽出された品名（生）
   orderType    OrderType @default(PRODUCTION) @map("order_type")
   quantity     Int
@@ -187,11 +258,39 @@ model OrderLine {
   deliveryDate DateTime? @map("delivery_date") @db.Date
   notes        String?
 
+  // ── 配送（§2 / §8）— どこへ・どう届けるかは**明細ごと**に決まる ──
+  // 1 通の注文書の中で行ごとに届け先が違う注文があるため、ヘッダではなく
+  // 行が持つ（元は order_acceptances にあった。移行は
+  // 20261024090000_order_line_delivery。以前のヘッダの値はここへ複写済み）。
+  // 出荷書はこの 4 つ（+ 顧客・エンドユーザー）が揃った明細だけを束ねられる
+  // （combinabilityError, components/shipping/delivery-orders/model.ts）。
+  shipToBpId             String?        @map("ship_to_bp_id") @db.Uuid
+  deliveryMethod         DeliveryMethod @default(NORMAL) @map("delivery_method")
+  // 担当拠点（この明細を処理する拠点。null = 未割当。出荷書の出荷元拠点の
+  // 既定値でもある）
+  assignedPlantId Int? @map("assigned_plant_id")
+  // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
+  shippingWorkLocationId Int? @map("shipping_work_location_id")
+
   // ── 実行（旧 sales_orders） ──
   status      OrderLineStatus @default(DRAFT)
   // 通し連番（指示書番号と共用）。統合ロット（1 指示書に複数明細）では
   // 同じロット番号を複数明細が共有するため unique ではない。
   lotNumber   Int?            @map("lot_number")
+  /// 印字番号の基数（A{base}-NNN の base）。製品にレーザーで刻む通し番号で、
+  /// 注文請書・ロット番号とは**別の**通し連番（200000 始まり・月次リセットなし）。
+  /// **DB が振る** — 明細が確定した（branch が入った）更新で BEFORE トリガー
+  /// order_lines_marking_base が SEQUENCE app.marking_number_seq から nextval し、
+  /// 一度入った値の変更はトリガーが拒否する。アプリはこの列を書かない。
+  /// 1 本ずつ刻むなら A{base}-001..A{base}-{数量}、明細ごとなら A{base} —
+  /// どちらも導けるので「どちらで刻むか」の列は持たない（lib/marking-number.ts）。
+  markingBase Int?            @unique @map("marking_base")
+  /// 印字番号の分割番号をいくつ払い出したか（work_order_order_lines.marking_split
+  /// の採番カウンタ）。**DB が書く** — 割当の INSERT で BEFORE トリガー
+  /// work_order_order_lines_marking_split がこの行を +1 して値を受け取る
+  /// （行ロックで並行の払い出しが直列になる）。割当を消しても戻さないので、
+  /// 一度使った分割番号は二度と出ない。アプリはこの列を書かない。
+  markingSplitIssued Int    @default(0) @map("marking_split_issued")
   isLocked    Boolean         @default(false) @map("is_locked") // 承認依頼中ロック
   endUserBpId String?         @map("end_user_bp_id") @db.Uuid // 最終需要家は行ごとに異なり得る
   confirmedAt DateTime?       @map("confirmed_at") @db.Timestamptz(6)
@@ -200,10 +299,14 @@ model OrderLine {
   updatedAt   DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   // 顧客・注文書番号・見積キー・作成者はヘッダ（acceptance）から読む —
-  // 行に複写すると乖離するため持たない。
-  acceptance OrderAcceptance  @relation(fields: [acceptanceYearMonth, acceptanceSeq], references: [yearMonth, seq], onDelete: Restrict)
-  product    Product?         @relation(fields: [productId], references: [id])
+  // 行に複写すると乖離するため持たない。配送だけは例外（上のコメント参照）。
+  acceptance OrderAcceptance  @relation(fields: [acceptanceId], references: [id], onDelete: Restrict)
+  item       Item?            @relation("OrderLineItem", fields: [itemId], references: [id], onDelete: Restrict)
+  toolItem   Item?            @relation("OrderLineToolItem", fields: [toolItemId], references: [id], onDelete: Restrict)
   endUserBp  BusinessPartner? @relation("OrderLineEndUser", fields: [endUserBpId], references: [id])
+  shipToBp             BusinessPartner? @relation("OrderLineShipTo", fields: [shipToBpId], references: [id])
+  assignedPlant        Plant?           @relation("OrderLinePlant", fields: [assignedPlantId], references: [id])
+  shippingWorkLocation WorkLocation?    @relation("OrderLineShippingWorkLocation", fields: [shippingWorkLocationId], references: [id])
 
   workOrderLinks WorkOrderOrderLine[]
   deliveryItems  DeliveryOrderItem[]
@@ -211,12 +314,15 @@ model OrderLine {
   designRequests DesignRequest[]
   invoiceItems   InvoiceItem[]
 
-  @@unique([acceptanceYearMonth, acceptanceSeq, branch])
+  @@unique([acceptanceId, branch])
   @@index([status])
-  @@index([productId])
   @@index([lotNumber])
+  @@index([shipToBpId])
   // /api/v1 の差分同期（keyset）用。先頭列が順序キーであること。
   @@index([updatedAt, id])
+  @@index([itemId])
+  // 工具から再研磨の明細を引く（預り品の照会・品目を消せるかの判定）。
+  @@index([toolItemId])
   @@map("order_lines")
   @@schema("app")
 }
@@ -239,11 +345,19 @@ model OrderLine {
 // target_type はテーブル名（audit_logs / approval_requests と同じ多態規約）。
 // FK は張れないので、マスタを消しても行は残る — 突合時に存在しない
 // target_id は黙って無視する（lib/match-aliases）。
+//
+// **値は business_partners | items の 2 つだけ**（DB 側の CHECK
+// match_aliases_target_type_check が正。Prisma では表せないので
+// migration に直接書いてある）。品目統合 第 3 段で products / materials の
+// 2 つを items へ畳んだ — 製品と素材のマスタが 1 つになったので、学習の
+// 行き先も 1 つで足りる。**製品と素材で同じ表記を覚えることはできない**
+// （1 表記 = 1 マスタ）が、突合側が引いた品目の item_type を必ず確かめるので、
+// 相手の型が当たっても素通りして推測へ落ちるだけ。
 model MatchAlias {
   id         Int      @id @default(autoincrement())
-  /// "business_partners" | "products"（テーブル名）
+  /// "business_partners" | "items"（テーブル名）
   targetType String   @map("target_type")
-  /// マスタ行の内部 id を文字列化したもの（BP は uuid、製品は連番）
+  /// マスタ行の内部 id を文字列化したもの（BP は uuid、品目は連番）
   targetId   String   @map("target_id")
   /// 書類に印字されていた表記（そのまま）
   alias      String

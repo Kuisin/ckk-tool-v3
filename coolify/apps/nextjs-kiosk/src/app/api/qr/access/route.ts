@@ -31,7 +31,7 @@ import {
   extractCardId,
   isCardWithinValidPeriod,
   isPinLocked,
-  needsPinVerify,
+  pinVerifyReason,
 } from "@/lib/kiosk-auth-core";
 import {
   attemptContext,
@@ -40,7 +40,7 @@ import {
   recordKioskSuccess,
 } from "@/lib/kiosk-login-log";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
-import { issueTicket } from "@/lib/tickets";
+import { issuePinVerifyTicket, issueTicket } from "@/lib/tickets";
 import { wsBridge } from "@/lib/ws-bridge";
 
 const bodySchema = z.object({ cardId: z.string().min(1).max(200) });
@@ -125,13 +125,12 @@ export async function POST(req: Request) {
     orderBy: { lastActivityAt: "desc" },
     select: { lastActivityAt: true },
   });
-  if (
-    !needsPinVerify(
-      now,
-      lastDeviceSession?.lastActivityAt ?? null,
-      card.pinLastVerifiedAt,
-    )
-  ) {
+  const pinReason = pinVerifyReason(
+    now,
+    lastDeviceSession?.lastActivityAt ?? null,
+    card.pinLastVerifiedAt,
+  );
+  if (pinReason === null) {
     await prisma.kioskCard.update({
       where: { id: card.id },
       data: { lastUsedAt: now, useCount: { increment: 1 } },
@@ -141,7 +140,20 @@ export async function POST(req: Request) {
     // userId はクライアントの「最後に開いたページ」復元（localStorage キー）用
     return NextResponse.json({ state: "OK", userId: card.user.id });
   }
-  // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）
-  const ticket = issueTicket(card.id, device.device.id, "PIN_VERIFY");
-  return NextResponse.json({ state: "PIN_REQUIRED", ticket });
+  // 4. PIN 再入力（この端末で 48h 超過 / 初めて使う端末 / 2 週間経過）。
+  //    チケット発行はカード単位でレート制限する — 1 枚ごとに新規チケットを
+  //    無制限に出していたため、攻撃者が N 枚先に仕込んで /api/kiosk/pin へ
+  //    N 本同時に撃ち、1 窓 5 回のロックを超えて試せた。
+  const ticket = issuePinVerifyTicket(card.id, device.device.id, now);
+  if (!ticket) {
+    // 発行レート上限（カード単位）に到達 = 事実上のブルートフォース。
+    // ロックと同じ扱いで弾く（画面は「ロック中」を出す）。
+    return deny(ctx, "LOCKED", 429, detail, { until: card.pinLockedUntil });
+  }
+  // pinReason は画面の説明文の出し分けだけに使う（認証の判断には使わない）。
+  return NextResponse.json({
+    state: "PIN_REQUIRED",
+    ticket,
+    pinReason,
+  });
 }

@@ -16,9 +16,17 @@ screenshots:
 
 A page covering the flow from setting the unit price to receiving the order and handing it off to manufacturing. It is where you check "what stage things are at now, and who does what next", the **branches** such as price mismatches and being sent back, and each **document's states**. The basic steps to operate belong to [Standard flow](/manual/en/process/default-flow).
 
+```video
+process-sales
+```
+
 ## Overall flow
 
-![Diagram of the whole sales flow (swimlanes including the price-mismatch loop and approval send-back)](../assets/diagrams/process-sales.en.svg)
+![Pricing and quotes — from price estimate to issuing the quote](../assets/diagrams/flow-pricing.en.svg)
+
+![Order intake — from receiving the order to confirming order lines](../assets/diagrams/flow-order.en.svg)
+
+The full list of each step's branches and the app to use is in [Business Flow](/manual/en/business-flow#pricing).
 
 For a product with no drawing, a **design request** is raised **in parallel** with this flow. It can be raised at the quote stage or once the order is taken, or **standalone** with no link to any document.
 
@@ -52,6 +60,8 @@ One price list is built for a customer × product combination. It can hold a sep
 
 Choosing the customer and the product fills in the unit price automatically from the price list. **A product not in the price list gets no unit price and shows a warning** — in that case you must first make a price estimate and a price list. Issuing saves the PDF and puts it in a state ready to give to the customer (steps … [Standard flow §3](/manual/en/process/default-flow#stage-3)).
 
+When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), the **issuing company** is decided when the quote is created (the field is shown only to people whose assigned sites span more than one company). Unit prices come from that company's price lists and the number from that company's sequence. A line with a discount gets a discount note, and line notes are printed as written, right under the line on the PDF.
+
 ![Quote issue modal. The issue button is highlighted with a red box](../assets/screenshots/flow-quote-issue-01.png)
 
 ### 4. Receiving the order (order acceptance)
@@ -61,6 +71,20 @@ Importing the order document (fax, PDF) received from the customer runs the read
 **The price-mismatch branch** — a line's unit price is **filled in automatically from the price list** and cannot be edited as it is. When you accept a different price — say, the customer's order document states a different unit price — enter「**単価を上書き**」(override the unit price) on that line and decide it yourself. Since this is a deliberate price, it is not treated as a price mismatch and does not hold up the approval request (the approver's screen shows it as "N overridden unit prices").
 
 What remains a **price mismatch** is only a line that "differs from the price list without being overridden" — this comes up when, say, the price list changes after saving. Before going on you must choose one of: go back to the quote and adjust the price, fix the price list, or accept it as an override (a confirmation is required to request approval while a mismatch remains).
+
+How the unit price is handled, as a diagram:
+
+```mermaid
+flowchart TD
+  auto["The line's unit price is filled in<br/>automatically from the price list"] --> same{"Same unit price as the price list?"}
+  same -->|"Same"| go["Carry on as is"]
+  same -->|"Different"| ovr{"Is「単価を上書き」(override<br/>the unit price) set on the line?"}
+  ovr -->|"Yes"| ok["A deliberate price<br/>Not a price mismatch"]
+  ovr -->|"No"| diff["Price mismatch"]
+  diff --> q["Go back to the quote<br/>and adjust the price"]
+  diff --> p["Fix the price list"]
+  diff --> o["Accept it as<br/>an override"]
+```
 
 ![Order acceptance detail screen showing a price mismatch. The mismatch display is highlighted with a red box](../assets/screenshots/flow-order-acceptance-diff-01.png)
 
@@ -72,13 +96,15 @@ What remains a **price mismatch** is only a line that "differs from the price li
 
 Confirming the order acceptance creates an **order line** for each line item. Next, a **work order** is made against that order line. See [Production flow](/manual/en/process/production) for how the stock portion and the manufactured portion are split, and the fixed composition of the stock portion. From a confirmed order acceptance you can also go straight on to **making a delivery order** (steps … [Standard flow §5](/manual/en/process/default-flow#stage-5) / [§6](/manual/en/process/default-flow#stage-6)).
 
+On confirmation, a **marking number** (the serial number laser-marked on the products, such as `A200000`) is also assigned automatically to each order line. One order acceptance belongs to one own company, and sites of another company cannot be mixed into the assigned sites of its lines.
+
 ![Confirmation modal. The expand button is highlighted with a red box](../assets/screenshots/flow-order-deploy-01.png)
 
 ![New work order screen made from an order line. The save button is highlighted with a red box](../assets/screenshots/flow-work-order-new-01.png)
 
 ### (In parallel) Design request
 
-For a product with no drawing, a design request is raised at the quote stage, once the order is taken, or **standalone** with no link to either. **Work can only start once it has passed approval** (the steps are decided in [Approval settings](/manual/en/operations/masters/approval-setting/user), and can vary by trigger, request kind and priority). Production makes the drawing, and completing it replaces the product's latest drawing (steps … [Standard flow (in parallel) design request](/manual/en/process/default-flow#design-request)).
+For a product with no drawing, a design request is raised at the quote stage, once the order is taken, or **standalone** with no link to either. **Work can only start once it has passed approval** (the steps are decided in [Approval settings](/manual/en/operations/masters/approval-setting/user), and can vary by trigger, request kind and priority). Production makes the drawing, registers a version in [Drawings](/manual/en/operations/production/design-file/user) and completes the request. The product's latest drawing is replaced when that version is confirmed in Drawings (steps … [Standard flow (in parallel) design request](/manual/en/process/default-flow#design-request)).
 
 Whether it is automatically a **revision** or a **new** one is decided by whether the product already has a drawing; a revision requires a reason for the change.
 
@@ -120,6 +146,6 @@ The drawing for that request is not yet registered to [Drawing](/manual/en/opera
 ## Related pages
 
 - Following a single order from start to finish … [Standard flow](/manual/en/process/default-flow)
-- How to operate each app and what each field means … **How-to › Sales** on the left
+- How to operate each app and what each field means … **Operations › Sales** on the left
 - Next flow … [Production flow](/manual/en/process/production)
 - New to the system … [Getting started](/manual/en/start)

@@ -25,6 +25,11 @@ import {
   itemSpecFromRow,
   resolveItemPass,
 } from "@/lib/inspection-core";
+import {
+  onOutsourceIssueTx,
+  onOutsourceReturnTx,
+  regrindOwnerBpIdTx,
+} from "@/lib/inventory";
 import { fetchAllowedWorkLocationIds } from "@/lib/work-locations";
 import { submitFlowChange } from "@/lib/work-order-flow-changes";
 import { requiredPlanFields } from "@/lib/work-plan-core";
@@ -233,6 +238,17 @@ const defectReasonsInput = z
   )
   .max(100);
 
+/** 仕掛品として在庫に置く分の記録（形だけ — 規則は completeStepExecution）。 */
+const wipRecordingInput = z.object({
+  finishedDiameterMm: z.number().finite().nullable().optional(),
+  finishedLengthMm: z.number().finite().nullable().optional(),
+  pathStepIds: z
+    .array(z.number().int().positive())
+    .max(200)
+    .nullable()
+    .optional(),
+});
+
 /**
  * 工程完了（数量整合はサーバー側でも検証される）。
  * 数量管理なし（NONE）の工程は quantities = null で呼ぶ — サーバーが
@@ -244,10 +260,18 @@ export async function completeStep(
   stepId: string,
   quantities: z.infer<typeof quantitiesInput> | null,
   defectReasons?: z.infer<typeof defectReasonsInput>,
+  wipRecording?: z.infer<typeof wipRecordingInput> | null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
+  const parsedWip = wipRecordingInput.nullish().safeParse(wipRecording);
+  if (!parsedWip.success) {
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidQuantityInput")],
+    };
+  }
   const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) {
     return {
@@ -274,6 +298,7 @@ export async function completeStep(
       stepId,
       parsed.data,
       parsedReasons.data ?? null,
+      parsedWip.data ?? null,
     );
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
@@ -1074,23 +1099,112 @@ export async function saveOutsourceDates(
     }
     const toDate = (s: string | null) => (s ? new Date(s) : null);
     const wasReceived = step.outsourceReceivedAt != null;
-    await prisma.workOrderStep.update({
-      where: { id: v.stepId },
-      data: {
-        outsourceRequestedAt: toDate(v.requestedAt),
-        outsourceExpectedAt: toDate(v.expectedAt),
-        outsourceReceivedAt: toDate(v.receivedAt),
-        ...(v.outsourceCost !== undefined
-          ? { outsourceCost: v.outsourceCost }
-          : {}),
+
+    // ── 預け在庫（外注が持っている分）────────────────────────────────────
+    //
+    // 出したこと・戻ったことを台帳に残す。**印は伝票 id で、日付ではない** —
+    // 日付は後から直せるので、日付の有無で判断すると直すたびに預け在庫が
+    // 増える。仕入先が付いていない工程（外注先未定）は載せようがないので
+    // 日付だけを保存する。
+    const woItem = await prisma.workOrder.findUnique({
+      where: { id: step.workOrderId },
+      select: {
+        id: true,
+        workOrderNumber: true,
+        productItemId: true,
+        plannedQuantity: true,
+        type: true,
+        // 預けバケットの拠点に使う「出した拠点」。外注工程そのものは拠点を
+        // 持たない（workflow.ts — OUTSOURCE は plantId null）ので、工程の
+        // 拠点をそのまま渡すと預け在庫が全部 拠点なし に積まれ、拠点スコープの
+        // 利用者（plantWhere）から見えなくなる。指示書完了時の入庫と同じ規則で
+        // 社内工程の最初の拠点を使う（inventory.ts onWorkOrderCompletedTx）。
+        steps: {
+          where: { plantId: { not: null } },
+          orderBy: { sortOrder: "asc" },
+          take: 1,
+          select: { plantId: true },
+        },
       },
+    });
+    const custodyPlantId = step.plantId ?? woItem?.steps[0]?.plantId ?? null;
+    const supplierBpId = step.supplierBpId;
+    // **工程が始まる前に依頼日を入れることがある**（先に外注へ出して、戻って
+    // きてから工程を開始する現場もある）。そのとき受入数はまだ無いので、
+    // 指示書の予定数量で載せる。戻りは台帳の残で頭打ちにするので、多めに
+    // 載っていても戻しすぎにはならない。
+    const custodyQuantity = step.inputQuantity ?? woItem?.plannedQuantity ?? 0;
+    const postIssue =
+      supplierBpId != null &&
+      woItem != null &&
+      custodyQuantity > 0 &&
+      v.requestedAt != null &&
+      step.outsourceIssueMovementId == null;
+    const postReturn =
+      supplierBpId != null &&
+      woItem != null &&
+      v.receivedAt != null &&
+      step.outsourceReturnMovementId == null &&
+      (postIssue || step.outsourceIssueMovementId != null);
+
+    // 入出庫伝票の番号は DB が INSERT 時に払い出す（アプリは採番しない）。
+    await prisma.$transaction(async (tx) => {
+      let issueMovementId: string | null = null;
+      let returnMovementId: string | null = null;
+      // 再研磨の指示書では預り品（顧客の物）を外注へ出す — 所有者を付けて
+      // 「所有者バケット ⇄ 所有者 + 預け先バケット」の移動として書く。
+      const ownerBpId =
+        woItem?.type === "REGRIND" && (postIssue || postReturn)
+          ? await regrindOwnerBpIdTx(tx, woItem.id)
+          : null;
+      if (postIssue && supplierBpId && woItem) {
+        issueMovementId = await onOutsourceIssueTx(tx, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          quantity: custodyQuantity,
+          plantId: custodyPlantId,
+          ownerBpId,
+        });
+      }
+      if (postReturn && supplierBpId && woItem) {
+        returnMovementId = await onOutsourceReturnTx(tx, {
+          workOrderId: woItem.id,
+          workOrderNumber: woItem.workOrderNumber,
+          itemId: woItem.productItemId,
+          supplierBpId,
+          ownerBpId,
+          // 戻る数は預けた数まで（onOutsourceReturnTx が台帳残で頭打ちにする）。
+          quantity:
+            custodyQuantity > 0 ? custodyQuantity : Number.MAX_SAFE_INTEGER,
+          plantId: custodyPlantId,
+        });
+      }
+      await tx.workOrderStep.update({
+        where: { id: v.stepId },
+        data: {
+          outsourceRequestedAt: toDate(v.requestedAt),
+          outsourceExpectedAt: toDate(v.expectedAt),
+          outsourceReceivedAt: toDate(v.receivedAt),
+          ...(v.outsourceCost !== undefined
+            ? { outsourceCost: v.outsourceCost }
+            : {}),
+          ...(issueMovementId
+            ? { outsourceIssueMovementId: issueMovementId }
+            : {}),
+          ...(returnMovementId
+            ? { outsourceReturnMovementId: returnMovementId }
+            : {}),
+        },
+      });
     });
     // 外注入荷のハンドオフ通知（null → 入荷日設定の遷移時のみ・best-effort）
     if (!wasReceived && v.receivedAt) {
       try {
         const wo = await prisma.workOrder.findUnique({
           where: { workOrderNumber: v.workOrderNumber },
-          select: { id: true, createdBy: true, yearMonth: true, seq: true },
+          select: { createdBy: true, docRef: true },
         });
         if (wo?.createdBy) {
           const { notify } = await import("@/lib/notifications");
@@ -1100,12 +1214,13 @@ export async function saveOutsourceDates(
             title: tr(
               "production.stepExecutionActions.notifyOutsourceReceived",
               {
-                // 通知は書類番号（WOR-YYYYMM-NNNNN）で読ませる — ロット番号
+                // 通知は書類番号（WOR-FFFF-NNNNN）で読ませる — ロット番号
                 // （v.workOrderNumber）は業務キーであって表示番号ではない。
                 workOrderNumber: formatDocNumber("WOR", wo),
               },
             ),
-            linkPath: `/production/work-orders/${wo.id}`,
+            // リンクはロット番号（指示書の URL の id。uuid では開けない）。
+            linkPath: `/production/work-orders/${v.workOrderNumber}`,
           });
         }
       } catch (e) {
@@ -1305,7 +1420,6 @@ export async function addStepPlan(
         workLocationRequired: true,
         planTimeRequired: true,
         planAssigneeRequired: true,
-        planQuantityRequired: true,
       },
     });
     const required = requiredPlanFields(
@@ -1335,21 +1449,18 @@ export async function addStepPlan(
         errors: [tr("production.stepExecutionActions.timeRequiredForPlan")],
       };
     }
-    if (required.includes("QUANTITY") && v.quantity == null) {
-      return {
-        ok: false,
-        errors: [tr("production.stepExecutionActions.quantityRequiredForPlan")],
-      };
-    }
     const actor = await getCurrentActorId();
     await prisma.workOrderStepPlan.create({
       data: {
         stepId: v.stepId,
         userId: v.userId,
-        plannedDate: new Date(`${v.date}T00:00:00+09:00`),
+        // 日付だけの列（@db.Date）は UTC の 0 時で渡す。JST の 0 時（+09:00）で
+        // 渡すと UTC では前日になり、選んだ日の 1 日前が保存される。
+        plannedDate: new Date(`${v.date}T00:00:00.000Z`),
         plannedStartAt: toJstTimestamp(v.date, v.startTime),
         plannedEndAt: toJstTimestamp(v.date, v.endTime),
-        quantity: v.quantity,
+        // 数量は**計画には書かない**（実績だけが持つ）。画面も送ってこないが、
+        // 直接叩かれても書かないようここで落とす。
         workLocationId: v.workLocationId,
         notes: v.notes.trim() || null,
         createdBy: actor,
@@ -1361,12 +1472,6 @@ export async function addStepPlan(
           end: v.endTime ?? "",
         })
       : "";
-    const quantityText =
-      v.quantity != null
-        ? tr("production.stepExecutionActions.auditQuantitySuffix", {
-            quantity: v.quantity,
-          })
-        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
@@ -1375,7 +1480,7 @@ export async function addStepPlan(
         note: tr("production.stepExecutionActions.auditPlanAdded", {
           date: v.date,
           time: timeText,
-          quantity: quantityText,
+          quantity: "",
         }),
       },
     });
@@ -1383,6 +1488,74 @@ export async function addStepPlan(
     return { ok: true };
   } catch (e) {
     return failed(e, tr("production.stepExecutionActions.couldNotAddPlan"));
+  }
+}
+
+/**
+ * 工程納期の設定・解除（null で解除）。作業計画と同じ窓で触れる —
+ * 下書き / 承認済 / 進行中の指示書の、まだ終わっていない工程だけ。
+ */
+export async function updateStepDueDate(
+  workOrderNumber: number,
+  stepId: string,
+  dueDate: string | null,
+): Promise<StepActionResult> {
+  const tr = await getTranslations();
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
+  if (denied) return denied;
+  const parsed = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .safeParse(dueDate);
+  if (!parsed.success) {
+    return { ok: false, errors: [tr("common.invalidInput")] };
+  }
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
+    if (
+      step.status === "COMPLETED" ||
+      step.status === "CANCELLED" ||
+      !PLAN_EDITABLE_WO_STATUSES.has(step.workOrder.status)
+    ) {
+      return {
+        ok: false,
+        errors: [tr("production.stepDueDate.locked")],
+      };
+    }
+    const before = step.dueDate
+      ? step.dueDate.toISOString().slice(0, 10)
+      : null;
+    const after = parsed.data;
+    if (before === after) return { ok: true };
+    await prisma.workOrderStep.update({
+      where: { id: stepId },
+      // @db.Date は UTC 深夜に載せる（JST の暦日をそのまま）
+      data: { dueDate: after ? new Date(`${after}T00:00:00.000Z`) : null },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      before: { stepId, dueDate: before },
+      after: {
+        stepId,
+        dueDate: after,
+        note: tr("production.stepDueDate.auditChanged", {
+          date: after ?? "—",
+        }),
+      },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, tr("production.stepDueDate.couldNotSave"));
   }
 }
 
@@ -1479,7 +1652,9 @@ export async function addStepActual(
       data: {
         stepId: v.stepId,
         userId: v.userId,
-        workedDate: new Date(`${v.date}T00:00:00+09:00`),
+        // 日付だけの列（@db.Date）は UTC の 0 時で渡す。JST の 0 時（+09:00）で
+        // 渡すと UTC では前日になり、選んだ日の 1 日前が保存される。
+        workedDate: new Date(`${v.date}T00:00:00.000Z`),
         startedAt: toJstTimestamp(v.date, v.startTime),
         endedAt: toJstTimestamp(v.date, v.endTime),
         quantity: v.quantity,

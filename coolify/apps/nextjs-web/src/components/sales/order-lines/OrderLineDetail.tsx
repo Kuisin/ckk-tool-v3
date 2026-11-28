@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * OrderLineDetail — 注文明細 詳細 (PD21, design.md §8.2).
+ * OrderLineDetail — 注文明細 詳細 (SA25, design.md §8.2).
  *
  * SummaryGrid（番号 / 顧客(+支店) / 顧客注文書番号 / 製品 / 注文種別 / 数量 /
  * 単価 / 金額 / 納期 / ロット番号 / 見積元）+ ロック中 Alert +
- * Tabs: 概要 / 指示書（work_orders 一覧・行クリックで指示書詳細へ）/ 履歴。
+ * Tabs: 概要 / 指示書（割当経由の指示書・行クリックで指示書詳細へ）/ 出荷 /
+ * 設計依頼 / メモ / 履歴。
  *
- * Actions: 編集（DRAFT のみ・ロック中は無効 + tooltip）/ 確定（DRAFT →
- * CONFIRMED, 確認モーダル）/ キャンセル（出荷済以降は不可, 確認モーダル・赤）。
+ * 編集・確定・キャンセルはここに無い — 作成・編集は注文請書 (SA04) の明細
+ * エディタ、キャンセルは注文請書の「キャンセル依頼」（承認を通す）。
+ * Actions: 在庫照合 + 三点メニュー（指示書を作成 / 出荷書を作成 / 設計依頼を
+ * 起票。押せないものはグレーアウトで理由を出す）。
  */
 
 import {
@@ -38,6 +41,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { WorkOrderAbortedBadge } from "@/components/production/work-orders/WorkOrderAbortedBadge";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -46,6 +50,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MarkingNumber } from "@/components/ui/MarkingNumber";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NextStepCard } from "@/components/ui/NextStepCard";
@@ -62,14 +67,17 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  acceptanceDeliveryMethodLabel,
   deliveryOrderTypeLabel,
   orderTypeLabel,
   workOrderTypeLabel,
 } from "@/lib/enum-labels";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
+import { allocationMarkingRange, isMarkingSplit } from "@/lib/marking-number";
 import { isLineStockCheckable } from "@/lib/order-line-core";
 import { statusLabel } from "@/lib/status-map";
 import type { OrderLine } from "./model";
@@ -149,7 +157,7 @@ function OrderLineProcedurePanel({
       items: [
         {
           key: order.acceptanceNumber,
-          label: order.acceptanceNumber,
+          label: docNo(order.acceptanceNumber),
           href: `/sales/order-acceptances/${order.acceptanceNumber}`,
           note: tr("sales.orderLines.parentDocumentOfThisLine"),
         },
@@ -164,7 +172,7 @@ function OrderLineProcedurePanel({
             items: [
               {
                 key: order.quoteNumber,
-                label: order.quoteNumber,
+                label: docNo(order.quoteNumber),
                 href: `/sales/quotes/${order.quoteNumber}`,
                 note: tr("sales.orderLines.quoteTheOrderAcceptanceCameFrom"),
               },
@@ -215,7 +223,7 @@ function OrderLineProcedurePanel({
       }),
       items: order.deliveryOrders.map((s, i) => ({
         key: `${s.number}-${i}`,
-        label: s.number,
+        label: docNo(s.number),
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
         note:
@@ -271,6 +279,25 @@ export function OrderLineDetail({
     .filter((w) => w.status !== "CANCELLED")
     .reduce((sum, w) => sum + w.allocatedQuantity, 0);
   const remainingToAllocate = Math.max(0, order.quantity - activeAllocated);
+  // 分けて作った指示書（分割番号付きの割当）の印字番号 — 分割番号順。
+  const markingBase = order.markingBase;
+  const markingSplits =
+    markingBase == null
+      ? []
+      : order.workOrders
+          .filter((w) => isMarkingSplit(w.markingSplit))
+          .map((w) => ({
+            workOrderNumber: w.workOrderNumber,
+            docNumber: w.docNumber,
+            quantity: w.allocatedQuantity,
+            ...allocationMarkingRange({
+              base: markingBase,
+              split: w.markingSplit,
+              lineQuantity: order.quantity,
+              allocatedQuantity: w.allocatedQuantity,
+            }),
+          }))
+          .sort((a, b) => (a.split ?? 0) - (b.split ?? 0));
   const woCreatable =
     !order.isLocked &&
     (order.status === "CONFIRMED" || order.status === "IN_PRODUCTION") &&
@@ -286,6 +313,8 @@ export function OrderLineDetail({
           : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
             ? tr("sales.orderLines.youCannotCreateThisOnA2")
             : undefined;
+  // 種別は書かない — 明細から決まる（lib/work-order-alloc-core
+  // workOrderTypeForLine）。ここで書き足すと、付け忘れた入口だけ挙動が違う。
   const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
   const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
 
@@ -311,7 +340,9 @@ export function OrderLineDetail({
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
 
   // 在庫照合（§4）は確定済み・製造前のみ（製造中以降は指示書側で管理）。
-  const canStockCheck = isLineStockCheckable(order);
+  // 再研磨の明細は顧客の工具を預かって返す注文 — 自社在庫の照合は意味を持たない。
+  const canStockCheck =
+    isLineStockCheckable(order) && order.orderType !== "REGRIND";
 
   const runStock = () => {
     startStockCheck(async () => {
@@ -382,9 +413,10 @@ export function OrderLineDetail({
         { label: tr("common.orderLine"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={order.orderNumber}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
-      title={order.orderNumber}
+      title={docNo(order.orderNumber)}
       updatedAt={fmt.dateTime(order.updatedAt)}
     >
       {/* 次のステップ — 未手配が残るうちは指示書の作成、手配し終えて
@@ -428,6 +460,12 @@ export function OrderLineDetail({
           label={tr("common.orderLineNumber")}
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
+        {order.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={order.legacyNumber}
+          />
+        )}
         <FieldValue
           label={tr("common.customer")}
           value={
@@ -440,7 +478,24 @@ export function OrderLineDetail({
           label={tr("common.customerOrderRef")}
           value={order.customerOrderRef ?? "—"}
         />
-        <FieldValue label={tr("common.product")} value={order.productName} />
+        <FieldValue
+          label={
+            order.orderType === "REGRIND"
+              ? tr("sales.orderAcceptanceItemsEditor.regrindItem")
+              : tr("common.product")
+          }
+          value={order.productName}
+        />
+        {/*
+          研ぎ直す工具。売り物（上の欄 = 再研磨という役務）とは別の物で、
+          預り品も指示書も出荷もこちらで数える。
+        */}
+        {order.toolName && (
+          <FieldValue
+            label={tr("sales.orderAcceptanceItemsEditor.toolToRegrind")}
+            value={order.toolName}
+          />
+        )}
         <FieldValue
           label={tr("common.orderType")}
           value={
@@ -482,6 +537,45 @@ export function OrderLineDetail({
           }
         />
         <FieldValue
+          label={tr("common.markingNumber")}
+          value={
+            <Stack gap={6}>
+              <MarkingNumber
+                base={order.markingBase}
+                quantity={order.quantity}
+              />
+              {/* 分けて作った指示書は、それぞれ分割の接頭辞で刻む
+                  （A{base}{分割番号}-001..）。どの指示書が何番かをここで読む。 */}
+              {order.markingBase != null && markingSplits.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" size="xs">
+                    {tr("sales.orderLines.markingSplits")}
+                  </Text>
+                  {markingSplits.map((s) => (
+                    <Group gap={6} key={s.workOrderNumber} wrap="wrap">
+                      <Badge color="grape" size="xs" variant="light">
+                        {tr("common.markingSplit", { split: s.split ?? 0 })}
+                      </Badge>
+                      <DocNumber>
+                        {tr("common.markingRange", {
+                          first: s.first,
+                          last: s.last,
+                        })}
+                      </DocNumber>
+                      <Text c="dimmed" size="xs">
+                        {tr("sales.orderLines.markingSplitOf", {
+                          docNumber: s.docNumber,
+                          quantity: s.quantity,
+                        })}
+                      </Text>
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          }
+        />
+        <FieldValue
           label={tr("sales.orderLines.quoteSource")}
           value={
             order.quoteNumber ? (
@@ -498,9 +592,27 @@ export function OrderLineDetail({
             )
           }
         />
+        {/* 配送（§8）— 明細ごとに持つ（このアプリでは読み取り専用。編集は
+            注文請書 SA04 の明細エディタ）。 */}
+        <FieldValue
+          label={tr("sales.orderAcceptances.shipTo")}
+          value={order.shipToName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.deliveryMethod")}
+          value={acceptanceDeliveryMethodLabel(order.deliveryMethod, locale)}
+        />
         <FieldValue
           label={tr("common.endUser")}
           value={order.endUserName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.assignedSite")}
+          value={order.assignedPlantName ?? "—"}
+        />
+        <FieldValue
+          label={tr("sales.orderAcceptances.shippingWorkLocation")}
+          value={order.shippingWorkLocationName ?? "—"}
         />
         {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
         <FieldValue label={tr("common.salesRep")} value={order.salesRepName} />
@@ -585,7 +697,7 @@ export function OrderLineDetail({
             <EmptyState
               action={
                 <SecondaryButton
-                  href={`/production/work-orders/new?orderLine=${order.uuid}`}
+                  href={woCreateHref}
                   leftSection={<IconClipboardList size={14} />}
                 >
                   {tr("sales.orderLines.createAWorkOrder")}
@@ -595,7 +707,7 @@ export function OrderLineDetail({
               message={tr("sales.orderLines.thereIsNoWorkOrderFor")}
             />
           ) : (
-            <Table.ScrollContainer minWidth={640}>
+            <Table.ScrollContainer minWidth={820}>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
@@ -607,6 +719,7 @@ export function OrderLineDetail({
                     <Table.Th ta="right">
                       {tr("common.plannedQuantity")}
                     </Table.Th>
+                    <Table.Th>{tr("common.markingNumber")}</Table.Th>
                     <Table.Th>{tr("common.approvalStatus")}</Table.Th>
                     <Table.Th>{tr("common.status")}</Table.Th>
                   </Table.Tr>
@@ -616,7 +729,9 @@ export function OrderLineDetail({
                     <Table.Tr
                       key={wo.workOrderNumber}
                       onClick={() =>
-                        router.push(`/production/work-orders/${wo.docNumber}`)
+                        router.push(
+                          `/production/work-orders/${wo.workOrderNumber}`,
+                        )
                       }
                       style={{ cursor: "pointer" }}
                     >
@@ -635,13 +750,36 @@ export function OrderLineDetail({
                         {wo.plannedQuantity}
                       </Table.Td>
                       <Table.Td>
+                        {order.markingBase == null ? (
+                          "—"
+                        ) : (
+                          <DocNumber>
+                            {(() => {
+                              const r = allocationMarkingRange({
+                                base: order.markingBase,
+                                split: wo.markingSplit,
+                                lineQuantity: order.quantity,
+                                allocatedQuantity: wo.allocatedQuantity,
+                              });
+                              return tr("common.markingRange", {
+                                first: r.first,
+                                last: r.last,
+                              });
+                            })()}
+                          </DocNumber>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
                         <StatusBadge
                           entity="WorkOrderApproval"
                           status={wo.approvalStatus}
                         />
                       </Table.Td>
                       <Table.Td>
-                        <StatusBadge entity="WorkOrder" status={wo.status} />
+                        <Group gap={4} wrap="nowrap">
+                          <StatusBadge entity="WorkOrder" status={wo.status} />
+                          {wo.aborted && <WorkOrderAbortedBadge />}
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   ))}

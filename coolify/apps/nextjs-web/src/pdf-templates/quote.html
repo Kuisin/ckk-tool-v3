@@ -9,7 +9,7 @@
 
   <div class="header">
     <div class="brand">
-      <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
+      {{{brand_logo}}}
       <div class="doc-title">{{labels.title}}</div>
     </div>
     <div class="issuer">
@@ -57,14 +57,15 @@
     </thead>
     <tbody>
       {{#each items}}
-      <tr>
-        <td>{{name}}<br><span class="sub">{{code}}</span></td>
+      <tr class="{{row_class}}">
+        <td>{{name}}<br><span class="sub">{{code}}</span>{{{tool_html}}}</td>
         <td>{{order_type}}</td>
         <td class="right">{{quantity}}</td>
         <td class="right">{{unit_price}}</td>
         <td class="right">{{amount}}</td>
         <td>{{delivery_date}}</td>
       </tr>
+      {{{line_note_row}}}
       {{/each}}
     </tbody>
   </table>

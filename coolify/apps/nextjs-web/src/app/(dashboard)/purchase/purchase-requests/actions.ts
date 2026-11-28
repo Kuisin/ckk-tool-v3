@@ -3,8 +3,10 @@
 /**
  * Server Actions — 購買依頼 (app.purchase_requests, PU01)。
  *
- * - 採番: nextDocumentNumber("PURCHASE_REQUEST") → PRQ-YYYYMM-NNNNN
- *   （文字列保存、月次リセット）。
+ * - 採番: DB が INSERT 時に払い出す（PRQ-FFFF-NNNNN。自社法人 × 会計年度）。
+ *   アプリは番号を渡さず、作った行の doc_ref を読み戻す。
+ * - 引数の requestNumber は **id の姿**（`CKK~PRQ-2026-00001` — 法人コード付き）。
+ *   行は doc_ref で引く（番号だけでは法人が決まらない）。
  * - 単価・金額は持たない（発注書へ変換した後、発注側で確定する）。
  * - 承認フロー DRAFT→REQUESTED→APPROVED→ORDERED（+REJECTED / CANCELLED）は
  *   素材発注書と同型の row-workflow: 遷移列（at/by）+ history Json + audit。
@@ -22,7 +24,7 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  approvalNeed,
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
@@ -32,8 +34,10 @@ import {
   checkPermission,
   targetPlantsInScope,
 } from "@/lib/authz";
-import { prisma } from "@/lib/db";
-import { nextDocumentNumber } from "@/lib/numbering";
+import { type Prisma, prisma } from "@/lib/db";
+import { companyForPurchase } from "@/lib/doc-company";
+import { docIdOf, docNo, docNumberOf, parseDocKey } from "@/lib/doc-number";
+import { requireDocRef } from "@/lib/doc-ref";
 import {
   type ActionResult,
   actionError,
@@ -57,13 +61,20 @@ function revalidate(requestNumber?: string) {
   }
 }
 
+/**
+ * 画面から渡る id（`CKK~PRQ-2026-00001`）→ 行を引く where。
+ * 形が違う id（番号だけ・旧番号）はどの行にも当たらない参照にする = 対象なし。
+ */
+function whereRequest(id: string): { docRef: string } {
+  return { docRef: parseDocKey(id, "PRQ")?.docRef ?? "(none)" };
+}
+
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
 
 function itemInputSchema(tr: Tr) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     plantId: z.string().nullable(),
     quantity: z
       .number()
@@ -111,17 +122,34 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
   }));
 }
 
-/** 明細入力 → create データ。 */
-function buildItemCreates(items: PurchaseRequestInput["items"]) {
-  return items.map((it, i) => ({
-    materialId: Number(it.materialId),
-    plantId: it.plantId ? Number(it.plantId) : null,
-    quantity: it.quantity,
-    unit: it.unit,
-    desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
-    notes: it.notes?.trim() || null,
-    sortOrder: i,
-  }));
+/**
+ * 素材の単位を素材マスタから引く（id → unit）。依頼の単位は**マスタの単位で
+ * 固定**する — 発注書（PU02）はマスタと違う単位を拒むので、依頼で違う単位を
+ * 通すと「発注書へ変換」した発注書が保存できなくなる。
+ */
+async function materialUnits(itemIds: number[]): Promise<Map<number, string>> {
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] }, itemType: "MATERIAL" },
+    select: { id: true, unit: true },
+  });
+  return new Map(rows.map((r) => [r.id, r.unit]));
+}
+
+/** 明細入力 → create データ。単位は素材マスタの単位を採る。 */
+async function buildItemCreates(items: PurchaseRequestInput["items"]) {
+  const units = await materialUnits(items.map((it) => Number(it.itemId)));
+  return items.map((it, i) => {
+    const itemId = Number(it.itemId);
+    return {
+      itemId,
+      plantId: it.plantId ? Number(it.plantId) : null,
+      quantity: it.quantity,
+      unit: units.get(itemId) ?? it.unit,
+      desiredAt: it.desiredAt ? new Date(it.desiredAt) : null,
+      notes: it.notes?.trim() || null,
+      sortOrder: i,
+    };
+  });
 }
 
 /** スコープ判定に要る明細（入荷先拠点だけ）。prior の findUnique に足す。 */
@@ -172,12 +200,14 @@ export async function createPurchaseRequest(
   }
   try {
     const actor = await getCurrentActorId();
-    const requestNumber = await nextDocumentNumber("PURCHASE_REQUEST");
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
-    await prisma.purchaseRequest.create({
+    // 番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
+    const created = await prisma.purchaseRequest.create({
       data: {
-        requestNumber,
+        ...(await companyForPurchase({
+          linePlantIds: creates.map((it) => it.plantId),
+        })),
         status: "DRAFT",
         purpose: v.purpose.trim() || null,
         notes: v.notes.trim() || null,
@@ -185,7 +215,9 @@ export async function createPurchaseRequest(
         history: toHistoryJson([entry("CREATE", actor)]),
         items: { create: creates },
       },
+      select: { docRef: true },
     });
+    const requestNumber = docIdOf(created);
 
     await recordAudit({
       action: "CREATE",
@@ -232,7 +264,7 @@ export async function updatePurchaseRequest(
   }
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -248,7 +280,7 @@ export async function updatePurchaseRequest(
       );
     }
     const actor = await getCurrentActorId();
-    const creates = buildItemCreates(v.items);
+    const creates = await buildItemCreates(v.items);
 
     await prisma.$transaction(async (tx) => {
       await tx.purchaseRequestItem.deleteMany({
@@ -293,16 +325,57 @@ export async function updatePurchaseRequest(
 
 // ── 状態遷移（承認フロー） ────────────────────────────────────────────────────
 
+/**
+ * 最終承認の副作用 — 購買依頼を APPROVED にする。
+ *
+ * 承認フローの最終承認（approvePurchaseRequest）と、承認設定で OFF のときの
+ * 承認なしの確定（requestPurchaseRequestApproval の skip）の両方がここを通る。
+ * fromStatus のときだけ動かす（同時操作で二重に進めない）。false = 状態が
+ * 変わっていて動かせなかった。
+ */
+async function applyFinalPurchaseRequestApproval(args: {
+  prior: { id: string; history: Prisma.JsonValue };
+  requestNumber: string;
+  actor: string | null;
+  fromStatus: "DRAFT" | "REJECTED" | "REQUESTED";
+  historyEntry: HistoryEntry;
+  auditNote?: string;
+  /** 承認とあわせて書く列（承認なしの確定で依頼者を埋める）。 */
+  extraData?: Prisma.PurchaseRequestUncheckedUpdateManyInput;
+}): Promise<boolean> {
+  const { prior, requestNumber, actor, fromStatus, historyEntry, auditNote } =
+    args;
+  const flipped = await prisma.purchaseRequest.updateMany({
+    where: { id: prior.id, status: fromStatus },
+    data: {
+      ...args.extraData,
+      status: "APPROVED",
+      approvedAt: new Date(),
+      approvedBy: actor,
+      history: toHistoryJson(appendHistory(prior.history, historyEntry)),
+    },
+  });
+  if (flipped.count === 0) return false;
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "purchase_requests",
+    recordId: requestNumber,
+    before: { status: fromStatus },
+    after: { status: "APPROVED", ...(auditNote ? { note: auditNote } : {}) },
+  });
+  return true;
+}
+
 /** 承認依頼 — DRAFT / REJECTED → REQUESTED。 */
 export async function requestPurchaseRequestApproval(
   requestNumber: string,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -321,8 +394,26 @@ export async function requestPurchaseRequestApproval(
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
-    const flowError = await assertFlowConfigured("purchase_requests");
-    if (flowError) return actionError(flowError);
+    const need = await approvalNeed("purchase_requests");
+    if (need.kind === "blocked") return actionError(need.error);
+    if (need.kind === "skip") {
+      // 承認設定で OFF — 承認依頼を作らず、最終承認と同じ状態で確定する。
+      const note = tr("approvals.policy.skippedNote");
+      const flipped = await applyFinalPurchaseRequestApproval({
+        prior,
+        requestNumber,
+        actor,
+        fromStatus: prior.status,
+        historyEntry: entry("APPROVE", actor, note),
+        auditNote: note,
+        extraData: { requestedAt: new Date(), requestedBy: actor },
+      });
+      if (!flipped) {
+        return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
+      }
+      revalidate(requestNumber);
+      return actionOk({ approvedWithoutFlow: true });
+    }
     // 1 段目の承認依頼を**先に**作る（PD03 横断表示・承認記録の紐付け先 +
     // その段の承認グループへの自動通知）。依頼が作れなければ状態は動かさない。
     const started = await startApprovalFlow({
@@ -373,7 +464,7 @@ export async function approvePurchaseRequest(
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -414,27 +505,16 @@ export async function approvePurchaseRequest(
       revalidate(requestNumber);
       return actionOk();
     }
-    const flipped = await prisma.purchaseRequest.updateMany({
-      where: { id: prior.id, status: "REQUESTED" },
-      data: {
-        status: "APPROVED",
-        approvedAt: new Date(),
-        approvedBy: actor,
-        history: toHistoryJson(
-          appendHistory(prior.history, entry("APPROVE", actor)),
-        ),
-      },
+    const flipped = await applyFinalPurchaseRequestApproval({
+      prior,
+      requestNumber,
+      actor,
+      fromStatus: "REQUESTED",
+      historyEntry: entry("APPROVE", actor),
     });
-    if (flipped.count === 0) {
+    if (!flipped) {
       return actionError(tr("purchase.purchaseRequestActions.stateChanged"));
     }
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "purchase_requests",
-      recordId: requestNumber,
-      before: { status: "REQUESTED" },
-      after: { status: "APPROVED" },
-    });
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
@@ -456,7 +536,7 @@ export async function rejectPurchaseRequest(
   if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -522,7 +602,7 @@ export async function cancelPurchaseRequest(
   if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: SCOPE_ITEMS,
     });
     if (!prior)
@@ -568,7 +648,7 @@ export async function cancelPurchaseRequest(
       await tx.approvalRequest.deleteMany({
         where: {
           targetType: "purchase_requests",
-          targetId: requestNumber,
+          targetId: await requireDocRef("purchase_requests", requestNumber, tx),
           status: "PENDING",
         },
       });
@@ -615,7 +695,7 @@ export async function convertToPurchaseOrder(
     return actionError(tr("purchase.purchaseRequests.selectASupplier"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
-      where: { requestNumber },
+      where: whereRequest(requestNumber),
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
     if (!prior)
@@ -636,18 +716,25 @@ export async function convertToPurchaseOrder(
       );
     }
     const actor = await getCurrentActorId();
-    const poNumber = await nextDocumentNumber("PURCHASE");
     const now = new Date();
+    // 人が読む文面（備考・履歴）には番号だけを書く。
+    const requestNo = docNo(requestNumber);
 
-    await prisma.$transaction(async (tx) => {
+    // 単位は変換時点の素材マスタの単位で複写する（発注書の保存はマスタと
+    // 違う単位を拒む）。単位の固定より前に作られた依頼もこれで通る。
+    const units = await materialUnits(prior.items.map((it) => it.itemId));
+
+    const poNumber = await prisma.$transaction(async (tx) => {
+      // 発注番号は DB が払い出す（渡さない）。作った行の参照を読み戻す。
       const po = await tx.materialPurchaseOrder.create({
         data: {
-          poNumber,
+          // 依頼から起こした発注書は依頼の発行元を継ぐ（上流 → 拠点 → 既定）。
+          ownCompanyId: prior.ownCompanyId,
           supplierBpId,
           status: "DRAFT",
           totalAmount: 0,
           notes: tr("purchase.purchaseRequestActions.createdFromRequest", {
-            requestNumber,
+            requestNumber: requestNo,
           }),
           createdBy: actor,
           history: toHistoryJson([
@@ -655,16 +742,16 @@ export async function convertToPurchaseOrder(
               "CREATE",
               actor,
               tr("purchase.purchaseRequestActions.convertedFromRequest", {
-                requestNumber,
+                requestNumber: requestNo,
               }),
             ),
           ]),
           items: {
             create: prior.items.map((it, i) => ({
-              materialId: it.materialId,
+              itemId: it.itemId,
               plantId: it.plantId,
               quantity: it.quantity,
-              unit: it.unit,
+              unit: units.get(it.itemId) ?? it.unit,
               unitPrice: 0,
               amount: 0,
               expectedAt: it.desiredAt,
@@ -673,7 +760,7 @@ export async function convertToPurchaseOrder(
             })),
           },
         },
-        select: { id: true },
+        select: { id: true, docRef: true },
       });
       // 依頼が**まだ APPROVED のとき**だけ ORDERED へ。同時に 2 人が変換すると
       // 2 通目はここで 0 件になり、上で作った発注書ごと巻き戻る（発注書の
@@ -686,7 +773,10 @@ export async function convertToPurchaseOrder(
           orderedBy: actor,
           purchaseOrderId: po.id,
           history: toHistoryJson(
-            appendHistory(prior.history, entry("CONVERT", actor, poNumber)),
+            appendHistory(
+              prior.history,
+              entry("CONVERT", actor, docNumberOf(po)),
+            ),
           ),
         },
       });
@@ -695,6 +785,7 @@ export async function convertToPurchaseOrder(
           `GUARD:${tr("purchase.purchaseRequestActions.stateChanged")}`,
         );
       }
+      return docIdOf(po);
     });
 
     await recordAudit({
@@ -704,7 +795,7 @@ export async function convertToPurchaseOrder(
       after: {
         supplierBpId,
         status: "DRAFT",
-        sourceRequest: requestNumber,
+        sourceRequest: requestNo,
         itemCount: prior.items.length,
       },
     });
@@ -713,7 +804,7 @@ export async function convertToPurchaseOrder(
       tableName: "purchase_requests",
       recordId: requestNumber,
       before: { status: "APPROVED" },
-      after: { status: "ORDERED", poNumber },
+      after: { status: "ORDERED", poNumber: docNo(poNumber) },
     });
     revalidate(requestNumber);
     revalidatePath(PO_PATH);

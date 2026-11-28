@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 This app is for registering **the site (plant or business location) itself**. The operation code is `MS0C`.
 
-[Product stock (製品在庫)](/manual/en/operations/production/product-inventory/user) and [material stock (素材在庫)](/manual/en/operations/production/material-inventory/user) are kept separately for each site, and the delivery place for incoming materials is also chosen from the sites registered here.
+Product and material stock are kept separately for each site in [Inventory Management](/manual/en/operations/inventory/inventory-management/user), and the delivery place for incoming materials is also chosen from the sites registered here.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -20,6 +20,17 @@ There are three apps about places, and they are easy to mix up. Please take care
 | [保管場所 (Storage location)](/manual/en/operations/masters/storage-location/user) | A warehouse or shelf inside the site where things are kept | Shelf A-1 in material warehouse A |
 
 For both work locations and storage locations, you choose which site they are in when you register them. So please **register the site first**.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  region["Region<br/>(e.g. Kanto)"] -.->|"groups sites"| plant["Site<br/>(e.g. head office plant)"]
+  plant --> work["Work location<br/>(e.g. NC lathe no. 1)"]
+  plant --> storage["Storage location and shelf<br/>(e.g. shelf A-1 in material warehouse A)"]
+  plant --> map["Floor map<br/>(drawing of a floor)"]
+  storage -.->|"place a mark on the drawing"| map
+```
 
 ## What you can do with this app
 
@@ -55,10 +66,11 @@ When you open the app, a list of the registered sites is shown.
 2. Enter a short text that stands for this site in 「**拠点コード**」 (site code), for example `F01`.
 3. Enter the name of the site in the Japanese box of 「**名称**」 (name), for example 本社工場 (head office plant).
 4. Enter how it is read in 「**よみがな**」 (reading), for example ほんしゃこうじょう.
-5. Choose 「**国**」 (country) under 「**連絡先・住所**」 (contact and address). 日本 (Japan) is filled in at the start.
-6. Choose 「**地域**」 (region). If you have not registered any, you can leave it empty.
-7. Enter 「**郵便番号**」 (postal code), 「**住所**」 (address), 「**電話番号**」 (phone number), 「**メールアドレス**」 (email address) and 「**担当者**」 (contact person).
-8. Press 「**保存**」 (Save).
+5. When two or more companies issue documents, choose the company this site belongs to in 「**自社法人**」 (own company). With only one company, you can leave it at 「既定の法人」 (default company).
+6. Choose 「**国**」 (country) under 「**連絡先・住所**」 (contact and address). 日本 (Japan) is filled in at the start.
+7. Choose 「**地域**」 (region). If you have not registered any, you can leave it empty.
+8. Enter 「**郵便番号**」 (postal code), 「**住所**」 (address), 「**電話番号**」 (phone number), 「**メールアドレス**」 (email address) and 「**担当者**」 (contact person).
+9. Press 「**保存**」 (Save).
 
 ![New entry form for a site](../../../assets/screenshots/master-plant-new-01.png)
 
@@ -115,29 +127,34 @@ Registering and swapping drawings is done only in this app. On the [storage loca
 
 ## Input fields
 
-Every field on the plant screen.
+Every field on the site screen.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Plant code](#field-code) | Required | The plant's reference code |
-| [Name / kana](#field-name) | Required | The plant name |
+| [Site code](#field-code) | Required | The site's reference code |
+| [Name / kana](#field-name) | Required | The site name |
+| [Own company](#field-own-company) | Optional | The company that issues this site's documents |
 | [Country / region](#field-region) | Optional | Used to scope permissions |
 | [Postcode / address](#field-address) | Optional | Location |
 | [Phone / email / contact](#field-contact) | Optional | Contact details |
 | [Active](#field-active) | — | Whether it appears in pick lists |
 | [Notes](#field-notes) | Optional | Notes |
 
-### Plant code [#field-code]
+### Site code [#field-code]
 
-The plant's reference code, used on stock and shipping screens.
+The site's reference code, used on stock and shipping screens.
 
 ### Name / kana [#field-name]
 
-The plant name — the "where" on stock, receipts and shipments.
+The site name — the "where" on stock, receipts and shipments.
+
+### Own company [#field-own-company]
+
+The company this site belongs to ([own company](/manual/en/operations/masters/own-company/user)). **The issuer of documents handled at this site (order acceptances, delivery orders, delivery notes, invoices and so on), and the sequence their document numbers come from, are those of the company chosen here.** If none is chosen it is the default company. Changing it does not change the company of documents already created (it applies to documents created afterwards).
 
 ### Country / region [#field-region]
 
-Country and region. **Region is the unit used to scope a user's permission to "plants in this region only".**
+Country and region. **Region is the unit used to scope a user's permission to "sites in this region only".**
 
 ### Postcode / address [#field-address]
 
@@ -149,7 +166,7 @@ Contact details. It is used as the contact point on documents.
 
 ### Active [#field-active]
 
-Turning it off removes the plant from receiving and shipping pick lists.
+Turning it off removes the site from receiving and shipping pick lists.
 
 ### Notes [#field-notes]
 

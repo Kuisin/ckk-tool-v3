@@ -5,7 +5,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ---
 **拠点（工場・事業所）そのもの** を登録しておくアプリです。操作コードは `MS0C` です。
 
-[製品在庫](/manual/ja/operations/production/product-inventory/user)や[素材在庫](/manual/ja/operations/production/material-inventory/user)は拠点ごとに分けて管理され、素材の入荷先などもここで登録した拠点から選びます。
+製品在庫・素材在庫は[在庫管理](/manual/ja/operations/inventory/inventory-management/user)で拠点ごとに分けて管理され、素材の入荷先などもここで登録した拠点から選びます。
 
 > ⚠️ このアプリは試験公開中です。ご利用の環境によっては、まだ表示されないことがあります。
 
@@ -20,6 +20,17 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 | [保管場所](/manual/ja/operations/masters/storage-location/user) | 拠点の中で物を置く倉庫・棚 | 資材倉庫A の A-1 棚 |
 
 作業場所と保管場所は、どちらも「どの拠点にあるか」を選んで登録します。ですから **先に拠点を登録** してください。
+
+つながりを図にすると次のとおりです。
+
+```mermaid
+flowchart TD
+  region["地域<br/>（例 関東）"] -.->|"拠点をまとめる"| plant["拠点<br/>（例 本社工場）"]
+  plant --> work["作業場所<br/>（例 NC旋盤 1号機）"]
+  plant --> storage["保管場所・棚<br/>（例 資材倉庫A の A-1 棚）"]
+  plant --> map["フロアマップ<br/>（フロアの図面）"]
+  storage -.->|"図面の上に印を置く"| map
+```
 
 ## このアプリでできること
 
@@ -55,10 +66,11 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 2. 「**拠点コード**」に、この拠点を表す短い文字を入れます（例 `F01`）。
 3. 「**名称**」の日本語の欄に、拠点の名前を入れます（例 本社工場）。
 4. 「**よみがな**」に読み方を入れます（例 ほんしゃこうじょう）。
-5. 「**連絡先・住所**」の「**国**」を選びます（はじめは 日本 が入っています）。
-6. 「**地域**」を選びます（登録していないときは空欄のままでかまいません）。
-7. 「**郵便番号**」「**住所**」「**電話番号**」「**メールアドレス**」「**担当者**」を入れます。
-8. 「**保存**」を押します。
+5. 書類を出す会社が 2 つ以上あるときは、「**自社法人**」でこの拠点が属する会社を選びます（1 つだけなら「既定の法人」のままでかまいません）。
+6. 「**連絡先・住所**」の「**国**」を選びます（はじめは 日本 が入っています）。
+7. 「**地域**」を選びます（登録していないときは空欄のままでかまいません）。
+8. 「**郵便番号**」「**住所**」「**電話番号**」「**メールアドレス**」「**担当者**」を入れます。
+9. 「**保存**」を押します。
 
 ![拠点の新規作成フォーム](../../../assets/screenshots/master-plant-new-01.png)
 
@@ -70,7 +82,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 
 ![拠点の詳細画面](../../../assets/screenshots/master-plant-detail-01.png)
 
-上のほうに、拠点コード・名称・よみがな・国・郵便番号・住所・電話番号・メールアドレス・担当者が表示されます。下には 2 つのタブがあります。
+上のほうに、拠点コード・名称・よみがな・自社法人・国・郵便番号・住所・電話番号・メールアドレス・担当者が表示されます。下には 2 つのタブがあります。
 
 - **概要** … 備考に書いた内容が出ます。
 - **フロアマップ** … フロアの図面を管理します（次の説明をご覧ください）。
@@ -121,6 +133,7 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 |------|------|-------------|
 | [拠点コード](#field-code) | 必須 | 拠点の管理番号 |
 | [名称 / よみがな](#field-name) | 必須 | 拠点の名前 |
+| [自社法人](#field-own-company) | 任意 | この拠点の書類を発行する会社 |
 | [国 / 地域](#field-region) | 任意 | 権限の範囲に使われる区分 |
 | [郵便番号 / 住所](#field-address) | 任意 | 所在地 |
 | [電話番号 / メールアドレス / 担当者](#field-contact) | 任意 | 連絡先 |
@@ -134,6 +147,10 @@ screenshots: [master-plant-list-01, master-plant-new-01, master-plant-detail-01,
 ### 名称 / よみがな [#field-name]
 
 拠点の名前です。在庫・入荷・出荷の「どこの」を表します。
+
+### 自社法人 [#field-own-company]
+
+この拠点が属する会社（[自社法人](/manual/ja/operations/masters/own-company/user)）です。**この拠点で扱う書類（注文請書・出荷書・納品書・請求書など）の発行元と、書類番号の連番は、ここで選んだ会社のものになります。** 選ばなければ「既定の法人」です。変えても、すでに作った書類の会社は変わりません（変えたあとに作る書類から効きます）。
 
 ### 国 / 地域 [#field-region]
 

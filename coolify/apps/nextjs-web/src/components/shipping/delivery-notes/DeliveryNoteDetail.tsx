@@ -41,7 +41,9 @@ import {
   markDelivered,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import type { InvoiceLink } from "@/components/billing/invoices/model";
+import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -66,16 +68,19 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import { downloadFile } from "@/lib/download";
 import { formatMoney } from "@/lib/format";
+import type { PortalShareProps } from "@/lib/portal-share";
 import type { ActionResult } from "@/lib/server-action";
 import { statusLabel } from "@/lib/status-map";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
-import { type DeliveryNote, isEditable } from "./model";
+import { type DeliveryNote, deliveryNoteTotals, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
 export function DeliveryNoteDetail({
+  portalShare = null,
   note,
   pdfMeta,
   auditEntries,
@@ -88,6 +93,8 @@ export function DeliveryNoteDetail({
   auditEntries: AuditEntry[];
   /** この納品書を請求した請求書（手続き状況の「次の書類へ」）。 */
   invoices?: InvoiceLink[];
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -98,9 +105,14 @@ export function DeliveryNoteDetail({
   const [issueOpen, setIssueOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
 
+  // 小計 / 税率ごとの消費税 / 合計（税込）。価格記載なしの納品書では null。
+  // 請求書とまったく同じ数え方を通すので、納品書に刷った金額と後で届く請求書が
+  // 食い違わない。
+  const totals = deliveryNoteTotals(note);
+
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = note.status !== "DRAFT";
-  const pdfFilename = `${note.deliveryNumber}.pdf`;
+  const pdfFilename = `${docNo(note.deliveryNumber)}.pdf`;
   // ユーザー直送で価格記載ありの納品書は、最終需要家へ渡すと事故になる
   // （届けるべき相手は顧客）。開く／ダウンロードの前に一度確認を挟む。
   const showsPriceToDirectUser =
@@ -169,7 +181,7 @@ export function DeliveryNoteDetail({
       items: [
         {
           key: note.deliveryOrderNumber,
-          label: note.deliveryOrderNumber,
+          label: docNo(note.deliveryOrderNumber),
           href: `/shipping/delivery-orders/${note.deliveryOrderNumber}`,
           note: tr("shipping.deliveryNotes.whereThisDeliveryNoteShipsFrom"),
         },
@@ -185,7 +197,7 @@ export function DeliveryNoteDetail({
           : null,
       items: note.orderLineNumbers.map((n) => ({
         key: n,
-        label: n,
+        label: docNo(n),
         href: `/sales/order-lines/${n}`,
       })),
       emptyNote: tr("shipping.deliveryNotes.stockStorageEtcNotTiedTo"),
@@ -199,7 +211,7 @@ export function DeliveryNoteDetail({
       title: tr("common.invoice"),
       items: invoices.map((inv) => ({
         key: inv.number,
-        label: inv.number,
+        label: docNo(inv.number),
         href: `/billing/invoices/${inv.number}`,
         done: inv.status === "PAID",
         note: tr("shipping.deliveryNotes.invoiceNote", {
@@ -324,9 +336,10 @@ export function DeliveryNoteDetail({
         { label: tr("common.deliveryNote"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={note.deliveryNumber}
       createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
-      title={note.deliveryNumber}
+      title={docNo(note.deliveryNumber)}
       updatedAt={fmt.dateTime(note.updatedAt)}
     >
       {showsPriceToDirectUser && (
@@ -344,6 +357,12 @@ export function DeliveryNoteDetail({
           label={tr("common.deliveryNoteNumber")}
           value={<DocNumber>{note.deliveryNumber}</DocNumber>}
         />
+        {note.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{note.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue
           label={tr("common.deliveryOrderNumber")}
           value={
@@ -406,10 +425,22 @@ export function DeliveryNoteDetail({
           value={fmt.date(note.deliveredAt)}
         />
         <FieldValue
-          label={tr("common.totalAmount")}
+          label={tr("common.subtotal")}
+          value={totals ? <MoneyText ta="left" value={totals.subtotal} /> : "—"}
+        />
+        {/* 税率ごとに 1 行（請求書と同じ区分記載）。単一税率なら 1 行。 */}
+        {totals?.buckets.map((b) => (
+          <FieldValue
+            key={b.taxRate}
+            label={taxBucketLabel({ ...b, categoryName: null }, tr)}
+            value={<MoneyText ta="left" value={b.taxAmount} />}
+          />
+        ))}
+        <FieldValue
+          label={tr("common.totalAmountInclTax")}
           value={
-            note.includePrice ? (
-              <MoneyText ta="left" value={note.totalAmount} />
+            totals ? (
+              <MoneyText ta="left" value={totals.totalAmountInclTax} />
             ) : (
               "—"
             )
@@ -467,16 +498,45 @@ export function DeliveryNoteDetail({
                 </Table.Tr>
               ))}
             </Table.Tbody>
-            {note.includePrice && (
+            {totals && (
               <Table.Tfoot>
                 <Table.Tr>
-                  <Table.Td fw={700}>{tr("common.total")}</Table.Td>
+                  <Table.Td fw={700}>{tr("common.subtotal")}</Table.Td>
                   <Table.Td className="tabular-nums" fw={700} ta="right">
                     {note.totalQuantity}
                   </Table.Td>
                   <Table.Td />
                   <Table.Td fw={700} ta="right">
-                    <MoneyText value={note.totalAmount} />
+                    <MoneyText value={totals.subtotal} />
+                  </Table.Td>
+                  <Table.Td />
+                </Table.Tr>
+                {/* 税率ごとの区分記載。対象額は混在時だけ添える。 */}
+                {totals.buckets.map((b) => (
+                  <Table.Tr key={b.taxRate}>
+                    <Table.Td fw={700}>
+                      {taxBucketLabel({ ...b, categoryName: null }, tr)}
+                    </Table.Td>
+                    <Table.Td />
+                    <Table.Td c="dimmed" className="tabular-nums" ta="right">
+                      {totals.buckets.length > 1 ? (
+                        <MoneyText value={b.taxableBase} />
+                      ) : null}
+                    </Table.Td>
+                    <Table.Td fw={700} ta="right">
+                      <MoneyText value={b.taxAmount} />
+                    </Table.Td>
+                    <Table.Td />
+                  </Table.Tr>
+                ))}
+                <Table.Tr>
+                  <Table.Td fw={700}>
+                    {tr("common.totalAmountInclTax")}
+                  </Table.Td>
+                  <Table.Td />
+                  <Table.Td />
+                  <Table.Td fw={700} ta="right">
+                    <MoneyText value={totals.totalAmountInclTax} />
                   </Table.Td>
                   <Table.Td />
                 </Table.Tr>
@@ -490,6 +550,11 @@ export function DeliveryNoteDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          {portalShare && (
+            <Tabs.Tab value="portal">
+              {tr("settings.portal.portalSharing")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
@@ -528,6 +593,12 @@ export function DeliveryNoteDetail({
           />
         </Tabs.Panel>
 
+        {portalShare && (
+          <Tabs.Panel pt="md" value="portal">
+            <PortalShareCard {...portalShare} />
+          </Tabs.Panel>
+        )}
+
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
@@ -538,7 +609,7 @@ export function DeliveryNoteDetail({
         confirmLabel={tr("common.issue")}
         loading={isPending}
         message={tr("shipping.deliveryNotes.confirmIssueBody", {
-          number: note.deliveryNumber,
+          number: docNo(note.deliveryNumber),
         })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
@@ -546,7 +617,7 @@ export function DeliveryNoteDetail({
             () => issueDeliveryNote(note.deliveryNumber),
             tr("common.issued"),
             tr("shipping.deliveryNotes.issuedBody", {
-              number: note.deliveryNumber,
+              number: docNo(note.deliveryNumber),
             }),
           )
         }
@@ -558,7 +629,7 @@ export function DeliveryNoteDetail({
         confirmLabel={tr("shipping.deliveryNotes.markAsDelivered")}
         loading={isPending}
         message={tr("shipping.deliveryNotes.confirmDeliveredBody", {
-          number: note.deliveryNumber,
+          number: docNo(note.deliveryNumber),
         })}
         onClose={() => setDeliverOpen(false)}
         onConfirm={() =>
@@ -566,7 +637,7 @@ export function DeliveryNoteDetail({
             () => markDelivered(note.deliveryNumber),
             tr("shipping.deliveryNotes.markedAsDelivered"),
             tr("shipping.deliveryNotes.deliveredBody", {
-              number: note.deliveryNumber,
+              number: docNo(note.deliveryNumber),
             }),
           )
         }

@@ -16,7 +16,7 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
-  assertFlowConfigured,
+  approvalNeed,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -26,6 +26,8 @@ import {
   sessionUserId,
 } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { companyForUnplaced } from "@/lib/doc-company";
+import { requireDocRef } from "@/lib/doc-ref";
 import {
   PAGE_OWNER_TYPE,
   parsePublishRevisionNote,
@@ -59,6 +61,13 @@ const TASKS_PATH = "/general/tasks";
  * トランザクション内の条件付き UPDATE が 0 件だったときの印。
  */
 class EditBlockedWhilePendingError extends Error {}
+
+/**
+ * アーカイブ中（status = ARCHIVED）の文書を編集しようとした。保存は状態を
+ * DRAFT へ戻すので、通すと**黙ってアーカイブが解除される**。解除は
+ * setPageArchived の明示操作だけに寄せる（解除してから編集する）。
+ */
+class EditBlockedWhileArchivedError extends Error {}
 
 function revalidate(pageNumber?: string) {
   revalidatePath(BASE_PATH);
@@ -152,6 +161,7 @@ export async function createPage(
       const page = await tx.internalPage.create({
         data: {
           pageNumber,
+          ...(await companyForUnplaced(tx)),
           title: parsed.data.title,
           summary: parsed.data.summary || null,
           folder: parsed.data.folder || null,
@@ -202,8 +212,8 @@ export async function updatePageSettings(
     );
 
   try {
-    await prisma.internalPage.update({
-      where: { pageNumber },
+    const moved = await prisma.internalPage.updateMany({
+      where: { pageNumber, status: { not: "ARCHIVED" } },
       data: {
         title: parsed.data.title,
         summary: parsed.data.summary || null,
@@ -212,6 +222,10 @@ export async function updatePageSettings(
         updatedBy: await getCurrentActorId(),
       },
     });
+    if (moved.count === 0)
+      return actionError(
+        tr("general.documentActions.editBlockedWhileArchived"),
+      );
     await recordAudit({
       action: "UPDATE",
       tableName: "internal_pages",
@@ -260,6 +274,9 @@ export async function savePageBody(
   });
   if (current?.status === "PENDING") {
     return actionError(tr("general.documentActions.editBlockedWhilePending"));
+  }
+  if (current?.status === "ARCHIVED") {
+    return actionError(tr("general.documentActions.editBlockedWhileArchived"));
   }
 
   try {
@@ -349,15 +366,24 @@ export async function savePageBody(
       // 公開版より新しい編集が入ったので下書きへ戻す（公開版はそのまま残る）。
       // ただし承認依頼中（PENDING）なら戻さない — 上の事前確認と publishPage の
       // 間に割り込まれても、ここの条件付き UPDATE が 0 件になって tx ごと戻る。
+      // アーカイブ中も同じ — 状態を DRAFT へ戻すと黙ってアーカイブが外れる。
       const moved = await tx.internalPage.updateMany({
-        where: { id: pageId, status: { not: "PENDING" } },
+        where: { id: pageId, status: { notIn: ["PENDING", "ARCHIVED"] } },
         data: {
           title: parsed.data.title,
           updatedBy: actor,
           status: "DRAFT",
         },
       });
-      if (moved.count === 0) throw new EditBlockedWhilePendingError();
+      if (moved.count === 0) {
+        const now = await tx.internalPage.findUnique({
+          where: { id: pageId },
+          select: { status: true },
+        });
+        throw now?.status === "ARCHIVED"
+          ? new EditBlockedWhileArchivedError()
+          : new EditBlockedWhilePendingError();
+      }
       return next;
     });
 
@@ -387,6 +413,11 @@ export async function savePageBody(
   } catch (e) {
     if (e instanceof EditBlockedWhilePendingError) {
       return actionError(tr("general.documentActions.editBlockedWhilePending"));
+    }
+    if (e instanceof EditBlockedWhileArchivedError) {
+      return actionError(
+        tr("general.documentActions.editBlockedWhileArchived"),
+      );
     }
     return actionError(prismaErrorMessage(e, tr("common.saveFailed"), tr));
   }
@@ -425,7 +456,9 @@ export async function restoreRevision(
  * 公開する。承認が要る文書は承認フローを起こし、要らない文書は即座に公開版を進める。
  * **未解決コメントがあっても止めない** — 画面側で件数を警告するだけ。
  */
-export async function publishPage(pageNumber: string): Promise<ActionResult> {
+export async function publishPage(
+  pageNumber: string,
+): Promise<ActionResult<{ approvedWithoutFlow: true } | undefined>> {
   const tr = await getTranslations();
   const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
@@ -437,6 +470,8 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
   if (!page) return actionError(tr("general.documentActions.pageNotFound"));
   if (page.status === "PENDING")
     return actionError(tr("general.documentActions.alreadyPendingPublish"));
+  if (page.status === "ARCHIVED")
+    return actionError(tr("general.documentActions.editBlockedWhileArchived"));
 
   const latest = await prisma.internalPageRevision.findFirst({
     where: { pageId: page.id },
@@ -447,9 +482,29 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
     return actionError(tr("general.documentActions.bodyIsEmpty"));
 
   try {
-    if (page.approvalRequired) {
-      const missing = await assertFlowConfigured("internal_pages");
-      if (missing) return actionError(missing);
+    const need = page.approvalRequired
+      ? await approvalNeed("internal_pages")
+      : null;
+    if (need?.kind === "blocked") return actionError(need.error);
+    if (need?.kind === "skip") {
+      // 承認設定で OFF — 依頼を作らず、最終承認と同じ状態（その版を公開）へ
+      // 直接進める。公開を頼んだ版 = いまの最新版。依頼の判定後に承認依頼中へ
+      // 動いていたら当てない。
+      const applied = await applyFinalApproval(page.id, latest.revision, {
+        notPending: true,
+      });
+      if (!applied)
+        return actionError(tr("general.documentActions.alreadyPendingPublish"));
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "internal_pages",
+        recordId: pageNumber,
+        after: {
+          note: tr("approvals.policy.skippedNote"),
+          revision: latest.revision,
+        },
+      });
+    } else if (page.approvalRequired) {
       // どの版の公開を頼んだかを依頼行に残す。承認後に公開するのはこの版で、
       // 承認中に本文が進んでいても latest を出さない（actOnPage）。
       const started = await startApprovalFlow({
@@ -497,12 +552,40 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
       });
     }
     revalidate(pageNumber);
-    return actionOk();
+    return actionOk({ approvedWithoutFlow: true });
   } catch (e) {
     return actionError(
       prismaErrorMessage(e, tr("general.documentActions.publishFailed"), tr),
     );
   }
+}
+
+/**
+ * 最終承認で文書が行き着く状態（その版を公開）を当てる。承認フローの最終段と、
+ * 承認設定で OFF のときの公開依頼（承認なし）の両方がここを通る。
+ * notPending = 承認なしの経路 — 承認依頼中へ動いていないことを条件に更新し、
+ * 動いていれば false を返す。
+ */
+async function applyFinalApproval(
+  pageId: string,
+  publishedRevision: number | null,
+  opts?: { notPending?: boolean },
+): Promise<boolean> {
+  if (!opts?.notPending) {
+    await prisma.internalPage.update({
+      where: { id: pageId },
+      data: {
+        status: "PUBLISHED",
+        publishedRevision,
+      },
+    });
+    return true;
+  }
+  const res = await prisma.internalPage.updateMany({
+    where: { id: pageId, status: { not: "PENDING" } },
+    data: { status: "PUBLISHED", publishedRevision },
+  });
+  return res.count > 0;
 }
 
 async function actOnPage(
@@ -525,7 +608,11 @@ async function actOnPage(
   // 申請時に頼まれた版。1 段目の依頼行にだけ notes が載る（次段へは複写されない）
   // ので、この文書の最新の 1 段目を読む。無い（旧データ）なら latest に落ちる。
   const firstStep = await prisma.approvalRequest.findFirst({
-    where: { targetType: "internal_pages", targetId: pageNumber, stepNo: 1 },
+    where: {
+      targetType: "internal_pages",
+      targetId: await requireDocRef("internal_pages", pageNumber),
+      stepNo: 1,
+    },
     orderBy: { requestedAt: "desc" },
     select: { notes: true },
   });
@@ -570,13 +657,7 @@ async function actOnPage(
           select: { revision: true },
         }));
       publishedRevision = target?.revision ?? null;
-      await prisma.internalPage.update({
-        where: { id: page.id },
-        data: {
-          status: "PUBLISHED",
-          publishedRevision,
-        },
-      });
+      await applyFinalApproval(page.id, publishedRevision);
     }
     await recordAudit({
       action: "UPDATE",
@@ -619,6 +700,75 @@ export async function rejectPagePublish(
   if (!trimmed)
     return actionError(tr("general.documentActions.rejectReasonRequired"));
   return actOnPage(pageNumber, "REJECTED", trimmed);
+}
+
+/**
+ * アーカイブ / 解除（使い終わった文書を片付ける。フォーム CM02 の ARCHIVED と同じ考え方）。
+ * 公開版・リビジョン・コメント・共有はそのまま残す — 状態だけを動かす。
+ * 解除は公開版が最新版と一致していれば PUBLISHED、そうでなければ DRAFT に戻す
+ * （DRAFT = 公開版が無い / 公開版より新しい編集がある、の定義どおり）。
+ * 公開の承認依頼中（PENDING）は動かさない — 承認が下りた瞬間に公開へ進むため。
+ */
+export async function setPageArchived(
+  pageNumber: string,
+  archived: boolean,
+): Promise<ActionResult> {
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
+  if (!gate.ok) return actionError(gate.error);
+  try {
+    const page = await prisma.internalPage.findUnique({
+      where: { id: gate.page.id },
+      select: {
+        status: true,
+        publishedRevision: true,
+        revisions: {
+          orderBy: { revision: "desc" },
+          take: 1,
+          select: { revision: true },
+        },
+      },
+    });
+    if (!page) return actionError(tr("general.documentActions.pageNotFound"));
+    if (archived === (page.status === "ARCHIVED")) return actionOk();
+    if (page.status === "PENDING")
+      return actionError(
+        tr("general.documentActions.archiveBlockedWhilePending"),
+      );
+    const latest = page.revisions[0]?.revision ?? null;
+    const next = archived
+      ? "ARCHIVED"
+      : page.publishedRevision != null && page.publishedRevision === latest
+        ? "PUBLISHED"
+        : "DRAFT";
+    // 読んでから書くまでに承認依頼中へ動いていたら当てない。
+    const moved = await prisma.internalPage.updateMany({
+      where: { id: gate.page.id, status: page.status },
+      data: { status: next, updatedBy: await getCurrentActorId() },
+    });
+    if (moved.count === 0)
+      return actionError(
+        tr("general.documentActions.archiveBlockedWhilePending"),
+      );
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "internal_pages",
+      recordId: pageNumber,
+      before: { status: page.status },
+      after: {
+        status: next,
+        note: archived
+          ? tr("general.documentActions.archivedNote")
+          : tr("general.documentActions.unarchivedNote"),
+      },
+    });
+    revalidate(pageNumber);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("general.documentActions.updateFailed"), tr),
+    );
+  }
 }
 
 export async function savePageShareGrants(

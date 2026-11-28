@@ -5,10 +5,12 @@ import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { fetchPendingAcceptanceCancel } from "@/lib/order-acceptance-cancel";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { loadPortalShare } from "@/lib/portal-share";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
@@ -27,23 +29,32 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("order-acceptances", "注文請書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 注文請書 詳細 (SA24). URL id = 表示番号（ORD-YYYYMM-NNNNN）. */
+/** 注文請書 詳細 (SA24). URL id = 法人コード付きの番号（CKK~ORD-2026-00001）。 */
 export default async function OrderLineAcceptancesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("order-acceptances");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(decodeURIComponent(id), "ORD");
-  if (!key) notFound();
-  const number = formatDocNumber("ORD", key);
+  const key = await docKeyFromParam(
+    "order_acceptances",
+    "ORD",
+    id,
+    "/sales/order-acceptances",
+    "",
+    searchParams,
+  );
+  // 承認・メモ・添付・監査は参照（法人コード付き）で引く。
+  const number = key.docRef;
 
   const [
     acceptance,
@@ -67,6 +78,12 @@ export default async function OrderLineAcceptancesDetailPage({
     fetchPendingAcceptanceCancel(key),
   ]);
   if (!acceptance) notFound();
+  // 取引先ポータルの書類リンク（機能・権限・状態が揃ったときだけ出す）。
+  const portalShare = await loadPortalShare(
+    "order_acceptances",
+    key.docRef,
+    acceptance.status,
+  );
   // 保留中のキャンセル依頼があれば、その依頼自体の承認状態も引く
   const cancelApproval = cancelRequest
     ? await fetchApprovalState(
@@ -94,6 +111,7 @@ export default async function OrderLineAcceptancesDetailPage({
       cancelRequest={cancelRequest}
       memos={memos}
       plantOptions={plantOptions}
+      portalShare={portalShare}
       priceCheck={priceCheck}
       workLocationOptions={workLocationOptions}
     />

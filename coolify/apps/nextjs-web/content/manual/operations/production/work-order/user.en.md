@@ -1,11 +1,13 @@
 ---
 title: "Work Order — User Manual"
 description: "An app for making the document that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work."
-screenshots: [work-order-list-01, work-order-new-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01]
+screenshots: [work-order-list-01, work-order-new-01, work-order-wip-candidates-01, work-order-detail-01, work-order-approval-01, work-order-steps-01, work-order-step-quantity-01, work-order-step-records-01, work-order-step-due-date-01, work-order-abort-01]
 ---
 This app is for making the document (**指示書**, work order) that decides which product to make, how many, and in what order at the factory, and for recording everything from approval to the end of the work. The operation code is `PD02`.
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
+
+> This app belongs to … [Production flow](/manual/en/process/production)
 
 ## What you can do with this app
 
@@ -22,6 +24,8 @@ This app is for making the document (**指示書**, work order) that decides whi
 - **工程** (step) … one stage of the work, such as cutting, step machining, or inspection.
 - **工程リスト** (step list) … the order of steps, registered in advance. There are two: the **prep step list** (issue / handoff and material prep, one list shared by every product) and the **manufacturing step list** (machining onward, per product × customer). A work order combines both to build its step sequence.
 - **ロット番号** (lot number) … a serial number such as `#9001` given to a batch of products you made. It is assigned automatically when a work order is created, and is used to trace the lot through stock and shipping.
+- **印字番号** (marking number) … a serial number laser-marked on each piece (for example `A200000-001`). It is a different number from the lot number and belongs to the order line ([Check the marking number](#marking-number)).
+- **予定納期 / 工程納期** (planned delivery / step due date) … the planned delivery is the delivery date to the customer (the order line's delivery date); the step due date is an internal deadline set **per step** ([Set a step due date](#step-due-date)).
 - **受入数 / 良品数** (received quantity / good quantity) … the received quantity is how many pieces came into that step; the good quantity is how many pieces are fine to pass on.
 - **承認グループ** (approval group) … the list of people who are allowed to approve. Only people on this list can approve.
 
@@ -37,13 +41,27 @@ When you open the app, you see a list of the work orders made so far.
 
 ![Work order list](../../../assets/screenshots/work-order-list-01.en.png)
 
-- **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
-- **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
+- **指示書番号** (work order number) … a number such as `WOR-2026-00001`, in the same format as other documents (quotes, order acceptances, …), counted from 1 per issuing company and per fiscal year (see [Document number rules](/manual/en/start#doc-number)). The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
+- **種別** (type) … 「**在庫分**」 (from stock — using stock you already have), 「**製造分**」 (to make — making new pieces) or 「**再研磨**」 (regrind — regrinding tools received from the customer).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
 - **承認状態** (approval status) … a coloured badge shows 「承認依頼中」 (pending approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
 - **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
 - Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
+
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  draft("下書き<br/>Draft"):::gray -->|"Request approval"| req("承認依頼中<br/>Pending approval"):::yellow
+  req -->|"Approved at every step"| appr("承認済<br/>Approved"):::blue
+  appr -->|"First step started"| prog("進行中<br/>In progress"):::violet
+  prog -->|"All steps completed (automatic)"| done("完了<br/>Completed"):::green
+  req -.->|"Send back"| draft
+  draft -.->|"Cancel document"| can("キャンセル<br/>Cancelled"):::red
+  req -.->|"Cancel document"| can
+  appr -.->|"Cancel document (no step started)"| can
+```
 
 ## Creating a work order
 
@@ -51,7 +69,7 @@ When you open the app, you see a list of the work orders made so far.
 2. In 「**注文明細の割当**」 (order line allocations), choose the order line to base it on. You can search by order line number, product, or customer. Once you choose it, the customer name, the product, the ordered quantity, and the **remaining allocatable quantity** (the ordered quantity minus what other work orders already cover) appear below.
 3. In 「**割当数量**」 (allocation quantity), enter how many pieces this work order makes for that order line. The remaining quantity is filled in automatically, so change it only when you make just a part (splitting).
 4. To make other order lines of the same product at the same time (a combined lot), press 「**明細を追加（統合ロット）**」 (add order line — combined lot) and add rows. Order lines for different products cannot go on the same work order.
-5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). A from-stock work order can have only one order line. **A from-stock work order has a fixed step set — 「製品出し（在庫）」 (product issue from stock) plus, if needed, 「出荷前検査」 (pre-ship inspection) — and does not use a step list**, so steps 11–13 below (the prep step list, the manufacturing step list, and the place/lot settings) apply to made-to-order work orders only.
+5. In 「**種別**」 (type), choose 「在庫分」 (from stock) or 「製造分」 (to make). **When the order line already decides the type you cannot choose** — the decided type is shown with the reason why (「**再研磨**」 (regrind) for an order line whose order type is regrind — see "[Regrind work orders](#regrind-work-orders)"; 「製造分」 (to make) for a work order with no order line). To change it, edit the order type on the order acceptance line. A from-stock work order can have only one order line. **A from-stock work order does not use a step list — its steps are picked directly**. It always starts with 「製品出し（在庫）」 (product issue from stock); which other steps can be picked is decided by 「使える指示書種別」 (work order types) in the [process step master](/manual/en/operations/masters/process-step/user#how-to-choose-the-work-order-types) (to begin with, only 「出荷前検査」 (pre-ship inspection)). So steps 11–13 below (the prep step list, the manufacturing step list, and the place/lot settings) apply to made-to-order work orders only.
 6. Enter how many pieces to make in 「**予定数量**」 (planned quantity). The total of the allocations is filled in automatically and you cannot enter less than that. Adding extra as spares for defects is up to you.
 7. If you chose 「製造分」 (to make), choose the 「**使用素材**」 (material to use). **If a material matches the product's assumed material type (type × diameter), it is already filled in.** The field shows 「製品の想定材種: …」 (assumed material type) underneath, so if that is right you need not touch it.
 8. If you already know where the finished products will be kept, choose the 「**保管場所**」 (storage location). It can stay empty.
@@ -60,7 +78,7 @@ When you open the app, you see a list of the work orders made so far.
 11. Choose the 「**準備工程リスト**」 (prep step list). See the next section (made-to-order only). It is the order of issue/handoff and material prep steps, shared by every product. If only one is registered, it is chosen automatically.
 12. Choose the 「**製造工程リスト**」 (manufacturing step list). See the next section (machining onward).
 13. For steps that can be done either in-house or outside, choose 「**社内**」 (in-house) or 「**外注**」 (outsourced) — then choose the site for in-house, or the partner company for outsourced. For each step you can also change 「**ロット入力**」 (lot input — default / lot required / lot optional / no lot) and 「**作業時間**」 (work hours — a rough estimate of the time it takes). A step set to "lot required" cannot be started on the floor without entering a lot or slip code. **Prep steps cannot be edited on this screen** — the latest version of the chosen prep step list is used as it is; to change the order, create a new version on the prep step list in the process step master.
-14. In 「**作業計画（担当者）**」 (work plans — assignees), you can enter a person in charge, planned date, and (for steps that require it) a work location. **The assignee is optional unless the process step master marks it required for that step** — it can stay empty and be decided later on the floor. Steps whose master requires a time or quantity too show a note that they must be added after creating the work order, in that step's plan panel.
+14. In 「**作業計画（担当者）**」 (work plans — assignees), you can enter a person in charge, planned date, and (for steps that require it) a work location. **The assignee is optional unless the process step master marks it required for that step** — it can stay empty and be decided later on the floor. Steps whose master requires a time too show a note that it must be added after creating the work order, in that step's plan panel.
 15. Press 「**保存**」 (Save).
 
 ![New work order form](../../../assets/screenshots/work-order-new-01.png)
@@ -73,7 +91,7 @@ If there is not enough material, you see a note such as 「**素材在庫が 30 
 
 ### About the step list
 
-The order of the steps is registered as a 「工程リスト」 (step list). **Made-to-order work orders only** — from-stock work orders have a fixed step set and do not use one. There are two step lists — the **prep step list** (shared) and the **manufacturing step list** (product × customer) — and a work order combines both into one step sequence.
+The order of the steps is registered as a 「工程リスト」 (step list). **Made-to-order work orders only** — a from-stock work order does not use one; its steps are picked directly. There are two step lists — the **prep step list** (shared) and the **manufacturing step list** (product × customer) — and a work order combines both into one step sequence.
 
 #### Prep step list (shared)
 
@@ -101,11 +119,58 @@ You pick steps from a checklist. **Only manufacturing steps can be picked here**
 
 After saving, the work order detail screen shows 「**準備工程リスト**」 (prep step list) and 「**工程ルート**」 (step route, the manufacturing step list), each with the name and version used, for example "standard steps v1". If a newer version than the one used has been registered, a 「**最新 v◯ あり**」 (newer v◯ available) badge appears, so you can tell it is not reflected in this work order. You can open the prep step list in the process step master, or the product's manufacturing step list, from there.
 
+#### Starting from WIP in stock (Usable WIP)
+
+Once the product and step lists are set, **Usable WIP** appears below them. It lists the parts that were processed part-way and put into stock (WIP) that **can be continued into this product**. Parts started for a different product also appear here when the material type, size and processing progress match.
+
+![「使える仕掛品」 (usable WIP) on the work order create screen](../../../assets/screenshots/work-order-wip-candidates-01.png)
+
+Candidates are split into three groups.
+
+| Group | What kind of WIP |
+|---|---|
+| **Exact** | Same diameter and length |
+| **Longer** | Same diameter but longer (cut to length) |
+| **Larger diameter** | Larger diameter (ground down; the length is sufficient) |
+
+Each row shows the **processing state** (the steps already completed), **finished size**, **target product** (what it was originally being made into), **lot**, **available** quantity and **skipped steps**.
+
+To use one, tick the checkbox on the left of the row and enter the **Issue quantity (pcs)**.
+
+- Once selected, the steps that WIP has already been through are **not performed in this work order**. They stay in the step list in grey marked **Done in WIP**, and the work order starts from “Semi-finished issue (stock)”.
+- Only the **already-completed steps** are skipped. When you select longer or larger-diameter WIP, check that the steps that bring it to size (cutting, grinding) remain. To redo a completed step (for example, re-cutting a longer blank), choose it under **Steps to perform again**.
+- **WIP in different processing states cannot be mixed in one work order.** You can select several items in the same processing state.
+- A work order that starts from WIP **does not use a material** (the field disappears and no material is reserved).
+- The selected WIP is **reserved on approval** and can no longer be used by other work orders. It is deducted from stock **when all steps are completed**. If another work order used it before approval, “The WIP selected for issue is no longer sufficient” appears — edit the work order and select again.
+
+Click **Show WIP whose processing state does not match** below the list to also see WIP whose size is usable but whose completed steps do not fit this product's steps. Using it **requires a reason** after checking the actual parts, and the reason is recorded in the activity log.
+
+After saving, the work order detail screen shows **Start state**: the processing state of the WIP to issue, the skipped steps, and the WIP to issue with its reservation status.
+
+#### Regrind step list (shared)
+
+The one list used only by regrind work orders. It starts with 「製品受入（再研磨）」 (tool receipt) and lines up grinding steps (OD, flute, tip, radius, chamfer, cut-off) and, if needed, coating, inspection and pre-ship inspection. Like the prep step list it is tied to neither product nor customer, and **the latest version is always used**. See "[Regrind work orders](#regrind-work-orders)".
+
+## Regrind work orders
+
+A regrind work order is for tools the customer has used (our own or another maker's) that are received to be reground. Nothing is manufactured, so it differs from a made-to-order work order in a few ways.
+
+- **It starts from an order acceptance.** Make it from an order line whose order type is 「**再研磨**」 (regrind); **The order line's order type decides it, so the work order comes out as regrind no matter which screen you start from** — [pending work orders](/manual/en/operations/production/pending-work-order/user), the order line's "create a work order" button, or "new" on the work order list with the line picked there. A regrind order line points at two items: **what is sold is the regrinding service**, and **what becomes the work order's product is the tool to regrind**. The service is registered as a [regrind item](/manual/en/operations/masters/regrind-item/user), and the tool in the [product master](/manual/en/operations/masters/product/user) (as an 「**他社製品**」 (external product) when another maker made it).
+- **Exactly one order line**, and the planned quantity equals the allocation. The number of tools that actually arrived is recorded on the first step, 「製品受入（再研磨）」 (tool receipt) — it may differ from the plan.
+- **Put the number of the box the tools arrived in into the receipt step's 「ロット/伝票コード」 (lot / slip code) field.** There is no dedicated "box number" field. When filled in, it is kept on the [stock movement](/manual/en/operations/inventory/inventory-movements/user) as 「箱番号 ◯◯」 (box number), so you can trace later which box a batch came in (optional).
+- **No material and no storage location.** The steps come from the "[regrind step list](#field-regrind-route)". Which steps a regrind work order may carry is decided by 「使える指示書種別」 (work order types) in the [process step master](/manual/en/operations/masters/process-step/user#how-to-choose-the-work-order-types) (to begin with, material prep and machining steps are not included).
+- **Completing the tool receipt step books the received quantity as the customer's stock** (「預り品」). It is counted separately from our own stock and can be viewed on the [stock overview](/manual/en/operations/inventory/stock-overview/user) with the owner filter. Tools that cannot be reground go into the 「廃棄」 bucket with the reason 「**返却（再研磨不可）**」 (returned as-is — register it under [defect types](/manual/en/operations/masters/defect-type/user)); they do not flow to later steps and are not counted as finished.
+- **When every tool comes back as 「返却（再研磨不可）」, the remaining steps are cancelled automatically and the work order closes there and then.** Nothing is left to regrind, so later steps would only ever receive zero. The cancelled steps keep the reason "Auto-cancelled: everything was returned as-is", so it is clear later why those steps were skipped. A partial return (say 2 of 10 received) does not trigger this — the other 8 flow on through the later steps as usual.
+- **Completion does not add to our own stock.** The detail screen shows the three regrind quantities: received / returned / finished. The reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user) (dispatch). The unit price comes from the [regrind item](/manual/en/operations/masters/regrind-item/user) the order line points at — its **standard price**, or the customer's price list when there is one.
+- Sending the tools to a coater is recorded as customer-owned stock moving to the subcontractor (never into our own stock).
+
 ## Getting approval
 
 Work cannot start on a work order until it is approved. **How many approval stages it goes through** is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user), and the number of stages can differ depending on what is in the document. The card on the screen shows which stage it is currently on.
 
 > ⚠️ **Work plans must be complete before you can request approval.** Every in-house step needs at least one work plan with a planned date plus whatever that step requires (assignee, work location, and so on — see "Work plans and work actuals" below). If they are not complete, the 「**承認依頼**」 button is disabled and you see a note such as 「**作業計画が揃っていません: ◯◯（作業場所 なし）**」 (work plans are incomplete: ◯◯ (missing work location)) listing which steps are missing what. Outsourced steps and cancelled steps are not counted.
+
+> ⚠️ If the work order approval flow in [approval settings](/manual/en/operations/masters/approval-setting/user) has no steps at all, the approval request is refused with「**指示書の承認フローが未設定です（承認設定 MS0B で設定してください）**」(The approval flow for work orders is not configured). Ask an administrator to set up the steps.
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
@@ -119,7 +184,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
 - Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
-You can also approve from the list in [approval management](/manual/en/operations/production/approval/user) (PD03).
+You can also approve from the list in [Pending list](/manual/en/operations/general/my-tasks/user) (`CM01`).
 
 When a 「製造分」 (to make) work order is approved, the material it will use is **set aside (reserved)** for that work order.
 
@@ -136,6 +201,8 @@ Once a preceding work order is connected, the first step here cannot start until
 ## Working through the steps
 
 At the bottom of the work order screen is 「**工程ワークフロー**」 (step workflow), where the steps are listed in order. Next to the heading is a 「**予定納期**」 (planned delivery) badge — the earliest delivery date among the allocated order lines (for a combined lot, whichever line is most urgent). It turns red if that date has passed and the work order is not yet finished. For a for-stock work order with no delivery date, the badge does not appear.
+
+Each step card and the flow chart also show a 「**工程納期 ◯/◯**」 (step due date) badge when one is set. This is the internal deadline of that step, and it turns red if the date has passed and the step is not finished ([Set a step due date](#step-due-date)).
 
 ![Work order detail screen and step workflow](../../../assets/screenshots/work-order-detail-01.png)
 
@@ -162,11 +229,18 @@ Once you start a step, the 「**数量・不良**」 (quantity and defects) boxe
 - **良品数** (good quantity) … calculated automatically (it shows 「自動計算」 — calculated automatically). It goes down by the number of defects you enter.
 - **総不良数** (total defects) … the total of the numbers entered on the defect lines. This is also shown automatically.
 - **不良内訳** (defect breakdown) … enter this only when there are defects. Press 「**不良を追加**」 (Add defect) and fill in the following on each line:
-  - Type … 「**半製品**」 (semi-finished — put back into stock) / 「**廃棄**」 (scrapped) / 「**工程分岐**」 (step branch — pieces sent to another step, such as rework)
+  - Type … 「**半製品**」 (semi-finished — put back into stock) / 「**廃棄**」 (scrapped) / 「**工程分岐**」 (step branch — pieces sent to another step, such as rework). On a regrind work order 「半製品」 cannot be used, and the 「廃棄」 bucket becomes 「**返却（再研磨不可）**」 (returned as-is — pieces that cannot be reground)
   - Defect type (required) … choose from 「**不良種類を選択**」 (Select defect type), which lists what is registered in [defect types](/manual/en/operations/masters/defect-type/user)
   - Number of pieces
   - Details (required) … describe in words what the defect was
 - Finally, press 「**工程完了**」 (Complete step).
+
+**When you put semi-finished pieces into stock** … when you enter 「半製品」 (semi-finished) on a defect row, a 「**在庫に置く仕掛品**」 (WIP going into stock) block appears below it, because semi-finished pieces go into stock as [WIP](/manual/en/operations/inventory/inventory-management/user), separated by processing state and finished size.
+
+- 「**加工状態**」 (processing state) shows the shape-changing steps completed so far (for checking only; you do not enter it).
+- Enter the actual current size in 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length). They are **required** when at least one shape-changing step is completed. When none is completed yet you may leave them empty, and the WIP blank size is used (the size is shown under the fields).
+- At a step where a branch merges before it, also choose 「**通ってきた経路**」 (route taken); the main line is preselected.
+- The same block appears at the last step of a branch that ends in semi-finished stock.
 
 > ⚠️ **A step that has inspection sheets assigned to it cannot be completed until those sheets are saved.** While a sheet is still unsaved, 「工程完了」 is disabled and the names of the missing sheets are shown next to it. A sheet itself cannot be saved while any of its **required** items is empty, so the order is: required items filled → the sheet can be saved → the step can be completed.
 
@@ -184,26 +258,40 @@ Pressing 「**検査表を見る**」 (view the sheet) opens **the inspection sh
 **An inspection approval step does not ask for quantities.** It approves the inspection sheet of an earlier step rather than working on the pieces, so the quantity passes straight through.
 - **最終検査・出荷前確認** (final inspection and pre-shipment checks) … on a step flagged as a 「**最終検査工程**」 (final inspection step) — 「出荷前検査」 (pre-shipment inspection) by default — you record the three checks (drawing and label, protective cap, finished quantity) plus spare stock, packing → delivery note → shipping approval, and the checked-by stamp for defects at shipping. The packing → delivery note → shipping approval chain follows the order on paper: you cannot record a stage until the previous one is recorded. **There is one record per work order**, so a work order whose step list has no flagged step has no final inspection at all.
 - **不良記録（任意）** (defect record, optional) … you can write down the defect type and what happened.
-- **作業計画 / 作業実績** (work plan / work result) … you can record who, when, where, and how many pieces will be done (or were done), using the person in charge, date, time, quantity, and work place (see "Work plans and work actuals" below).
-- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost).
+- **作業計画 / 作業実績** (work plan / work result) … you can record who, when and where the work is planned (or was done). Plans carry the person in charge, date, time and work place; actuals add the **quantity** (see "Work plans and work actuals" below).
+- **外注日程** (outsourcing schedule) … on outsourced steps, you can record 「依頼日」 (sent date), 「入荷予定日」 (expected return date), 「入荷日」 (return date), and 「外注費」 (outsourcing cost). **Entering the sent date records those pieces as "held by the subcontractor"** (shown under 「預け先」 (held by) on the [stock overview](/manual/en/operations/inventory/stock-overview/user)). Entering the return date brings them back. Each of the two creates one [stock movement](/manual/en/operations/inventory/inventory-movements/user) slip, and you can follow its number from the step screen. Pieces held by the subcontractor are not counted as our own stock, so they are not used for shipping or for reservations.
 
 ### Work plans and work actuals
 
-Near the bottom of the step screen there are 「**作業計画**」 (work plans) and 「**作業実績**」 (work actuals) tables. Each row records the person, date (or times), quantity, and the **work location**.
+Near the bottom of the step screen there are 「**作業計画**」 (work plans) and 「**作業実績**」 (work actuals) tables. Each row records the person, date (or times) and the **work location**; actuals additionally record the **quantity**. Plans have no quantity — how many pieces actually went through is held by the step's received/good counts and by the actuals.
 
 ![The work plan and work actual tables with work locations](../../../assets/screenshots/work-order-step-records-01.png)
 
 - **Work plans can be entered from the 「下書き」 (draft) stage.** This is because they are a condition for requesting approval (see "Getting approval" above). They can be added and removed while the work order is draft, approved, or in progress, as long as no one else is operating that step. **Work actuals can only be recorded once approved, on a step that is in progress.**
-- **Which fields are required is decided per step by the process step master.** The planned date is always required for every step. Assignee, work location, start/end time, and quantity only get a red asterisk when the [process step master](/manual/en/operations/masters/process-step/user#field-plan-required-fields) marks them required for that step. **The assignee is optional by default** — you do not need a placeholder person just to request approval; it can be decided on the floor afterwards. Work actuals, on the other hand, always require an assignee and a date, since they are a record of who did the work.
+- **Which fields are required is decided per step by the process step master.** The planned date is always required for every step. Assignee, work location and start/end time only get a red asterisk when the [process step master](/manual/en/operations/masters/process-step/user#field-plan-required-fields) marks them required for that step. **The assignee is optional by default** — you do not need a placeholder person just to request approval; it can be decided on the floor afterwards. Work actuals, on the other hand, always require an assignee and a date, since they are a record of who did the work.
 - **作業場所（work location, required when the process step master requires it）** … which machine or area the work happens (happened) at. For steps whose [process step](/manual/en/operations/masters/process-step/user#field-allowed-locations) restricts allowed work locations, only the allowed places can be chosen. On an environment with no work locations registered at all, this field is not asked for.
 - When a step is started or resumed from a shared floor tablet, the actual row is created automatically and its work location is filled with the tablet's **default work location** (or a scanned work-location QR)
 - Actuals entered by hand here can carry a work location the same way
 - **同時作業数** (concurrent work count) … an actual where one person was working on several steps at the same time gets a 「**同時 ◯**」 (concurrent ◯) badge. The working time is counted as the elapsed time divided by the number of concurrent steps (proration) — for example, two at once counts as half each
 
+### Set a step due date [#step-due-date]
+
+You can set a deadline for each step: by when it should be finished (the **step due date**). It is optional. Separately from the delivery date to the customer (planned delivery), it lets you see **whether an intermediate step is running late**.
+
+- **When creating or editing a work order** … enter a date per step in the 「**工程納期**」 (step due date) section of the create/edit screen.
+- **After approval** … change it with 「**工程納期**」 (step due date) above 「作業計画」 (work plan) on the step screen. It is saved as soon as you choose a date.
+
+![Step due date field on the step screen](../../../assets/screenshots/work-order-step-due-date-01.png)
+
+- When the step due date has passed and the step is not completed (or cancelled), it is shown **in red** on the step card, the flow chart, the [Work location board](/manual/en/operations/production/work-location-board/user) (`PD09`) and the shared shop-floor device. On the due date itself it is not red yet.
+- It can be changed while the step is not started or in progress. Completed and cancelled steps, and steps of a work order that is pending approval, cannot be changed.
+- The change is recorded on the 「履歴」 (History) tab.
+
 ### When you want to redo something
 
-- **中断（巻き戻し）** (pause and roll back) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
-- **巻き戻し** (roll back) … puts a finished step back to not started. It cannot be done if the next step has already started, or if the pieces have already gone into stock.
+- **中断（巻き戻し）** (abort) … puts a step that is in progress back to not started, with a reason. Any quantity you had entered is not kept.
+- **巻き戻し** (roll back) … puts a finished step back to not started, with a reason. **The step's inspection records are deleted too**, so an inspection step has to be recorded again. It cannot be done if the next step has already started, or if the pieces have already gone into stock (the work order is completed, or a completed「製品受入（再研磨）」(product receipt (regrind)) step has already taken the customer's tools into stock).
+- **Pause / resume** … only on the shared device (tablet). The PC screen cannot pause a step.
 
 ## Sending step-branch pieces down a different path (adding a branch)
 
@@ -219,6 +307,17 @@ Sometimes you want the pieces sent to a step branch to go through different step
    - If you choose neither, you see 「合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で終わります。」 (choose where it rejoins, or choose "to stock" — a branch must end in a rejoin or in stock) and the branch cannot be added.
 6. Press 「**分岐を追加**」 (Add branch).
 
+As a diagram, a branch looks like this:
+
+```mermaid
+flowchart TD
+  src["Finished step"] -->|"Good pieces"| main["Next main-line step"]
+  src -.->|"Step-branch pieces (branch quantity)"| br["Added steps (the branch)"]
+  br --> endq{"How the branch ends"}
+  endq -->|"本流へ合流<br/>Rejoin the main line"| merge["Rejoin target<br/>(a main-line step not started yet)"]
+  endq -->|"在庫へ<br/>To stock"| stock["Semi-finished or finished-product stock<br/>(booked when the work order completes)"]
+```
+
 Once you make a branch, a picture of the flow of the steps appears above the step workflow, showing how many pieces go from which step to where.
 
 After creating a branch, you can still change the **branch quantity** (only while every step in the branch is not started) and **how it ends** (the rejoin target or stock destination — only while the last step is not started) from the pencil button on the branch block. To swap the steps themselves, delete the branch and make it again.
@@ -232,15 +331,31 @@ If you add, change, or delete a branch on an approved or in-progress work order,
 
 If the approval settings have no 「工程フロー変更」 (step flow change) stage at all, the change is applied as it is, without approval.
 
+As a diagram:
+
+```mermaid
+flowchart TD
+  chg["Add, change or delete a branch<br/>on an approved / in-progress work order"] --> q{"Do the approval settings have a<br/>「工程フロー変更」 (step flow change) stage?"}
+  q -->|"No"| now["Applied as it is, without approval"]
+  q -->|"Yes (事前承認 — approval first)"| hold["The change is held<br/>(card at the top of the screen)"]
+  hold -->|"Approved"| applied["Applied to the steps"]
+  q -->|"Yes (事後承認 — approval afterwards)"| first["Applied to the steps right away"]
+  first -->|"Approved afterwards"| ok["The change stays"]
+  first -.->|"Sent back afterwards"| red["The steps are not put back automatically<br/>Red notice → 「確認済みにする」 (Mark as checked)"]
+```
+
 ## When everything is finished
 
 When all the steps are finished, the work order automatically becomes 「**完了**」 (finished).
 
 - The good pieces from the last step go into product stock, with the lot number.
-- Pieces marked as 「半製品」 (semi-finished) go into stock as semi-finished items.
+- Pieces marked as 「半製品」 (semi-finished) go into stock as **WIP**. They are entered separately per step they came from, by processing state and finished size.
 - The material that was set aside is taken out of stock as material used.
+- **A regrind work order does not add to our own stock.** Of the tools held as the customer's property, the pieces entered as 「返却（再研磨不可）」 (returned as-is) leave the customer-owned stock at this point; the reground pieces are returned to the customer with a [delivery order](/manual/en/operations/shipping/delivery-order/user).
 
-You can check stock in [inventory management](/manual/en/operations/production/product-inventory/user) (PD04). Pieces still being made are shown on the 「**仕掛品**」 (work in progress) tab of the same app.
+You can check stock in [inventory management](/manual/en/operations/inventory/inventory-management/user) (ST01). Pieces still being made are shown on the 「**工程内**」 (in process) tab of the same app, and WIP placed in stock on the 「**仕掛品**」 (WIP) tab.
+
+The stock movement at completion is kept as one slip under [stock movements](/manual/en/operations/inventory/inventory-movements/user) (reason 「指示書完了」 — work order completed). **For a work order made from semi-finished items, the semi-finished items used are taken out of stock at this point.**
 
 ### Next step: make a delivery order
 
@@ -250,10 +365,62 @@ When a finished work order still has pieces that are not on any delivery order, 
 
 You cannot make one from a for-stock work order (one with no order line). In that case start from the delivery order side and pick the order acceptance there.
 
+## Stopping part-way (close-out)
+
+When an order is cancelled or the drawing changes and you want to **stop a work order in progress**, use close-out. The good parts in the flow **go back to stock as WIP**, and another work order can continue them later from "Usable WIP".
+
+Only a **work order in progress for manufacture** can be closed out. Before work starts, cancel it instead. From-stock and regrind work orders cannot be closed out.
+
+1. On the detail screen, open the three-dot button at the top right and choose "**Close out**".
+2. One box appears for each place where good parts sit.
+   - "**In step**" … parts accepted into a step in progress. That step counts as not done.
+   - "**Waiting**" … parts that left a completed step and are waiting for the next one.
+3. In each box, enter "**Return to stock as WIP**". The rest becomes "**Scrapped**" automatically and is recorded as scrap.
+4. For the parts you return, enter "**Finished diameter**" and "**Finished length**" (if no shaping step is done yet, leave them empty to use the WIP blank size). Where a branch merges before the step, also choose the "**Route taken**" (the main line is preselected).
+5. Enter the "**Reason for close-out**" (required) and press "**Close out**".
+
+![Work order close-out screen](../../../assets/screenshots/work-order-abort-01.png)
+
+If the [approval settings](/manual/en/operations/masters/approval-setting/user) have no steps for "**Work order close-out**", the work order is closed out right away. Otherwise it becomes an approval request and "**Close-out pending approval**" appears at the top of the screen. The work order stays in progress until approved.
+
+When a work order is closed out:
+
+- It becomes "**Cancelled**" with a "**Closed out**" mark. The mark also shows in the work order list and on the order line's "Work orders" tab, so it can be told apart from a plain cancellation. The remaining steps close and any work in progress ends at the close-out time.
+- The returned parts go to stock as WIP (lot number = this work order). You can see them on the "**WIP**" tab of Inventory. The stock movement cause is "**Work order close-out**".
+- Reserved material is consumed and any issued WIP is taken out of stock, the same as on completion.
+- The original order lines go back to not planned when no other live work order is attached, so you can create a new work order.
+
+**If the steps move on while the request waits for approval, the close-out is not applied.** If you see "Could not apply the close-out", request it again for the current state. If it is sent back, the work order simply continues.
+
+## Check the marking number [#marking-number]
+
+The serial number laser-marked on the products (the **marking number**) is shown as 「**印字番号**」 (marking number) near the top of the work order detail screen.
+
+- The base of the number belongs to the **order line** and is assigned automatically when the order acceptance is confirmed.
+- Both forms are always shown. Which one to mark is decided on the shop floor.
+  - 「**1 本ずつ**」 (per piece) … consecutive numbers for the line quantity, such as `A200000-001 〜 A200000-150`.
+  - 「**明細ごと**」 (per line) … a single number with no suffix, such as `A200000`.
+- For a work order allocated to two or more order lines (a combined lot), the numbers are listed per order line.
+
+### Work orders that split an order line [#marking-split]
+
+When one order line is made by several work orders (for example, only 55 of 150 ordered pieces on this work order), each work order gets a **split number** and the head of the marking number changes.
+
+- The head is the line's number followed by the split number: the first split is `A2000001`, the second `A2000002`, and so on.
+- The suffix counts from `001` inside the split. A 55-piece split is `A2000001-001 〜 A2000001-055`, a 10-piece split is `A2000002-001 〜 A2000002-010`. Numbers never overlap with another work order.
+- The screen shows a 「**分割 1**」 (split 1) mark, and 「**分割ごと**」 (per split, `A2000001`) instead of 「明細ごと」.
+- A work order that makes the whole order line is not a split and keeps `A200000-001 〜` as before.
+- The split number is decided **once, when the order line is allocated to the work order**, and never changes. Saving the draft again keeps the same number, and changing the allocated quantity later keeps the number from when it was made (so a number that was marked or printed never moves). A split number whose allocation was removed is not reused for another work order.
+- Which work order has which split is listed on the [order line](/manual/en/operations/sales/order-line/user#marking-number) screen.
+- 「**未採番（注文確定時に採番）**」 (not numbered — assigned at order confirmation) is shown for an order line that has no number yet.
+- A for-stock work order (not linked to an order line) has no marking number field.
+
+The marking number also appears on the strip print and on the step screens of the shared shop-floor device.
+
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.
-- **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
+- **キャンセル** (cancel document) … possible until work starts — while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval), or 「承認済」 (approved) with no step started yet. Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right. Cancelling releases the reservations taken at approval (materials and so on) and withdraws a pending approval request. The original order line goes back to 「確定」 (confirmed) if no other live work order covers it, and its lot number is removed.
 - **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
 - **ストリップ印刷** (strip print) … choose 「**ストリップ印刷**」 (Strip print) from the button with three dots at the top right to print strips with the key points of the work order and a QR code (6 strips on a plain A4 sheet). You can stick them on the pieces or the boxes.
 - The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).
@@ -269,18 +436,21 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Order line allocations](#field-order-line) | Optional | Which orders this work order makes pieces for, and how many |
 | [Allocation quantity](#field-alloc-quantity) | Conditional | How many pieces for that order line |
 | [Product](#field-product) | Required | The product being made |
+| [種別](#field-type) (type) | Required | From stock / to make / regrind (the order line may decide it) |
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
 | [Drawing to use](#field-design-file) | Optional | Which version of the drawing to build from |
 | [Allow short/over delivery](#field-allow-quantity-variance) | Optional | Whether this lot may ship a quantity that does not exactly match the order |
 | [Prep step list](#field-prep-route) | Required (made-to-order) | Issue/handoff and material prep order (always the latest version) |
+| [Regrind step list](#field-regrind-route) | Required (regrind) | Tool receipt through grinding and inspection (always the latest version) |
 | [Manufacturing step list / version](#field-route) | Required (made-to-order) | Which sequence of steps from machining onward to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new manufacturing step list |
 | [Inspection sheets](#field-inspection-templates) | — | Templates auto-assigned per inspection step |
 | [Lot input](#field-lot-input-mode) | Optional | How the lot / slip code is recorded per step |
 | [Work hours](#field-step-work-hours) | Optional | A rough estimate of the time each step takes |
 | [Work plans (assignees)](#field-step-plans) | Conditional | The person in charge, planned date and work location per step |
+| [Step due date](#field-step-due-date) | Optional | The deadline of each step |
 | [Notes](#field-notes) | Optional | Notes |
 
 ### Order line allocations [#field-order-line]
@@ -294,6 +464,22 @@ How many pieces this work order makes for that order line. The upper limit is th
 ### Product [#field-product]
 
 The product being made. Choosing a order line fills in that order's product.
+
+### 種別 (type) [#field-type]
+
+Whether this work order is 「**在庫分**」 (from stock — using stock you already have), 「**製造分**」 (to make — making new pieces) or 「**再研磨**」 (regrind — regrinding the customer's tools).
+
+**This field is not always yours to choose.** The type is decided by the order acceptance line, not by the work order. When it is already decided, no options are offered — the decided type is shown together with the reason why.
+
+| Situation | Type | Can you choose? |
+|---|---|---|
+| An order line whose order type is 「再研磨」 (regrind) is allocated | 再研磨 (regrind) | No |
+| Any other order line is allocated | 在庫分 / 製造分 | **Yes** — which way to fulfil it is production's call |
+| For stock (no order line allocated) | 製造分 (to make) | No |
+
+**To switch a regrind into a made-to-order one (or the other way round), edit 「注文種別」 (order type) on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) line — not here.** If the work order could change its type alone, what is sold (a service or a product) and what is made would no longer agree.
+
+> 💡 It does not matter which screen you start from. From [pending work orders](/manual/en/operations/production/pending-work-order/user), from the order line's "create a work order" button, or from "new" on the list with a line picked there — the type comes from that line's order type either way.
 
 ### Planned quantity [#field-planned-quantity]
 
@@ -327,11 +513,15 @@ Whether this lot may ship a quantity that does not exactly match the order. Opti
 
 ### Prep step list [#field-prep-route]
 
-The order of issue/handoff and material prep steps. Choose the one shared list — it is not tied to a product or a customer. **You cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one prep step list is registered, and chosen automatically if there is only one. Not used for from-stock work orders (their step set is fixed). To change the order, create a new version on the [prep step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list) rather than on the work order.
+The order of issue/handoff and material prep steps. Choose the one shared list — it is not tied to a product or a customer. **You cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one prep step list is registered, and chosen automatically if there is only one. Not used for from-stock work orders (their steps are picked directly). To change the order, create a new version on the [prep step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-prep-step-list) rather than on the work order.
+
+### Regrind step list [#field-regrind-route]
+
+The order of steps from receiving the customer's tools through regrinding and inspection. Like the prep step list it is a shared list tied to neither product nor customer, and **you cannot choose a version** — the latest version of the list you chose is always used. It is required whenever at least one regrind step list is registered, and chosen automatically if there is only one. You may add or remove steps after it has been filled in (the link to the list is then dropped and the composition is saved as hand-built). To change the order, create a new version on the [regrind step list in the process step master](/manual/en/operations/masters/process-step/user#manage-the-regrind-step-list).
 
 ### Manufacturing step list / version [#field-route]
 
-The order of steps from machining onward, chosen from the manufacturing step lists registered for that product × customer. **Choosing a version copies that sequence as it stands** — editing the step list later does not change work orders already created. Not used for from-stock work orders (their step set is fixed).
+The order of steps from machining onward, chosen from the manufacturing step lists registered for that product × customer. **Choosing a version copies that sequence as it stands** — editing the step list later does not change work orders already created. Not used for from-stock work orders (their steps are picked directly).
 
 ### New process list name [#field-new-route-name]
 
@@ -351,7 +541,11 @@ A rough estimate of the time each step takes, in hours. It is shown on the step 
 
 ### Work plans (assignees) [#field-step-plans]
 
-The person in charge, the planned date, and (for steps the process step master requires it) the work location for each step. **Whether each field is required is decided per step by the process step master** (the planned date alone is always required). The assignee is optional by default and can be left empty — filling it in creates a work plan, and the work appears in the 「工程実行」 (step execution) list on that person's floor tablet. To set times or quantities as well, add them in each step's plan table after creating the work order. To request approval, every in-house step needs at least one plan row with its required fields filled in (see "Getting approval" above).
+The person in charge, the planned date, and (for steps the process step master requires it) the work location for each step. **Whether each field is required is decided per step by the process step master** (the planned date alone is always required). The assignee is optional by default and can be left empty — filling it in creates a work plan, and the work appears in the 「工程実行」 (step execution) list on that person's floor tablet. To set times as well, add them in each step's plan table after creating the work order. To request approval, every in-house step needs at least one plan row with its required fields filled in (see "Getting approval" above).
+
+### Step due date [#field-step-due-date]
+
+The deadline of each step. It is optional. If it has passed and the step is not finished, the step card and flow chart show it in red. After approval it can be changed in the plan area of the step screen ([Set a step due date](#step-due-date)).
 
 ### Notes [#field-notes]
 

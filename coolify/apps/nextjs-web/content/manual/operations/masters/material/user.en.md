@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 This is a ledger where you register, one kind at a time, the material bars you buy and keep in stock. The operation code is `MS06`.
 
-If a [Material Type](/manual/en/operations/masters/material-type/user) says "what kind of material it is", a material is **"that material, in this diameter, this length and this surface finish"** — the actual bar you buy and put on the shelf. A material that is not registered here **cannot be chosen** on a [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) or in [Inventory Management (Materials and Work in Progress)](/manual/en/operations/production/material-inventory/user).
+If a [Material Type](/manual/en/operations/masters/material-type/user) says "what kind of material it is", a material is **"that material, in this diameter, this length and this surface finish"** — the actual bar you buy and put on the shelf. A material that is not registered here **cannot be chosen** on a [Material Purchase Order](/manual/en/operations/purchasing/purchase-order/user) or in [Inventory Management (Materials and Work in Progress)](/manual/en/operations/inventory/inventory-management/user).
 
 > ⚠️ This app is currently available **only in the development environment (the environment for testing)**. The screens and the steps may change before it becomes available for real work.
 
@@ -32,6 +32,16 @@ To register a material, the **[Material Type](/manual/en/operations/masters/mate
 You also need **master data permission** to use this app. If the screen does not open, please ask your administrator.
 
 Please note that a [Product](/manual/en/operations/masters/product/user) sets its material as "material type + diameter + length". **A product is not tied to one particular material.** This ledger is only for buying and stock.
+
+As a diagram, material types, materials and products relate like this:
+
+```mermaid
+flowchart TD
+  mt["Material type<br/>what kind of material"]
+  mt -->|"Set thickness, length, surface finish"| mat["Material<br/>the one bar you buy and shelve"]
+  mat --> use["Can be chosen on material purchase orders<br/>and in inventory"]
+  mt -.->|"Set as material type + diameter + length"| prod["Product<br/>not tied to one particular material"]
+```
 
 ## How the material code works
 

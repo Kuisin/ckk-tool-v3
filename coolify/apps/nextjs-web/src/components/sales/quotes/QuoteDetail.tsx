@@ -13,22 +13,29 @@
  */
 
 import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
   IconCopy,
   IconDownload,
+  IconMail,
   IconRuler2,
   IconSend,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
+import {
+  emailQuote,
+  issueQuote,
+  previewQuoteMail,
+} from "@/app/(dashboard)/sales/quotes/actions";
 import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import type { AcceptanceLink } from "@/components/sales/order-acceptances/model";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -53,9 +60,11 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import type { PortalShareProps } from "@/lib/portal-share";
 import { statusLabel } from "@/lib/status-map";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
@@ -71,6 +80,7 @@ import {
 const BASE_PATH = "/sales/quotes";
 
 export function QuoteDetail({
+  portalShare = null,
   quote,
   pdfMeta,
   relatedEntries,
@@ -92,6 +102,8 @@ export function QuoteDetail({
   memos: MemoView[];
   /** この見積から起きた注文請書（手続き状況の「次の書類へ」）。 */
   acceptances?: AcceptanceLink[];
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -107,7 +119,7 @@ export function QuoteDetail({
   const isExpired = displayStatus === "EXPIRED";
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = status !== "DRAFT";
-  const pdfFilename = `${quote.quoteNumber}.pdf`;
+  const pdfFilename = `${docNo(quote.quoteNumber)}.pdf`;
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   const [issueOpen, setIssueOpen] = useState(false);
   // Bumped on 再生成 so the preview iframe reloads the regenerated PDF.
@@ -159,7 +171,11 @@ export function QuoteDetail({
             summary: tr("common.itemsCount", { count: relatedEntries.length }),
             items: relatedEntries.map((e) => ({
               key: e.entryId,
-              label: `${e.customerName} × ${e.productName}`,
+              // 同じ顧客 × 再研磨品目に工具なし・工具ありが並び得るので、
+              // 対象工具も書く（書かないと同じ見出しの行が 2 つ並ぶ）。
+              label: e.toolName
+                ? `${e.customerName} × ${e.productName}（${tr("sales.priceLists.targetTool")}: ${e.toolName}）`
+                : `${e.customerName} × ${e.productName}`,
               href: `/sales/price-lists/${e.entryId}`,
               note: tr("sales.quotes.whereTheUnitPriceCameFrom"),
             })),
@@ -179,7 +195,7 @@ export function QuoteDetail({
           : null,
       items: acceptances.map((a) => ({
         key: a.number,
-        label: a.number,
+        label: docNo(a.number),
         href: `/sales/order-acceptances/${a.number}`,
         done: a.status === "COMPLETED" || a.status === "ARCHIVED",
         note:
@@ -218,6 +234,61 @@ export function QuoteDetail({
     }
   };
 
+  // 「メールで送付」— 宛先を確かめてから送る（宛先は lib/quote-mail-core.ts）。
+  const confirmEmail = async () => {
+    const preview = await previewQuoteMail(quote.quoteNumber);
+    if (!preview.ok) {
+      notifications.show({
+        title: tr("sales.issueQuoteModal.mailFailed"),
+        message: preview.error,
+        color: "orange",
+      });
+      return;
+    }
+    if ("reason" in preview.data) {
+      notifications.show({
+        title: tr("sales.issueQuoteModal.mailFailed"),
+        message: preview.data.reason,
+        color: "orange",
+      });
+      return;
+    }
+    const { email } = preview.data;
+    modals.openConfirmModal({
+      title: tr("sales.issueQuoteModal.resend"),
+      children: (
+        <Text size="sm">
+          {tr("sales.issueQuoteModal.resendConfirm", {
+            number: docNo(quote.quoteNumber),
+            email,
+          })}
+        </Text>
+      ),
+      labels: {
+        confirm: tr("sales.issueQuoteModal.resend"),
+        cancel: tr("common.cancel"),
+      },
+      onConfirm: async () => {
+        const r = await emailQuote(quote.quoteNumber);
+        notifications.show(
+          r.ok
+            ? {
+                title: tr("sales.issueQuoteModal.mailSentTitle"),
+                message: tr("sales.issueQuoteModal.mailSent", {
+                  email: r.data.to,
+                }),
+                color: "green",
+              }
+            : {
+                title: tr("sales.issueQuoteModal.mailFailed"),
+                message: r.error,
+                color: "red",
+              },
+        );
+      },
+    });
+  };
+
   return (
     <DetailShell
       actions={
@@ -240,6 +311,17 @@ export function QuoteDetail({
                     icon: <IconDownload size={14} />,
                     onClick: () =>
                       void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                  },
+                ]
+              : []),
+            // 発行済み（期限内）の見積書を、保存済みの PDF を添付して送る。
+            // 発行時に送れなかった・送らなかった分をあとから送るための口。
+            ...(status === "ISSUED" && !isExpired
+              ? [
+                  {
+                    label: tr("sales.issueQuoteModal.resend"),
+                    icon: <IconMail size={14} />,
+                    onClick: () => void confirmEmail(),
                   },
                 ]
               : []),
@@ -276,9 +358,10 @@ export function QuoteDetail({
         { label: tr("common.quote"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={quote.quoteNumber}
       createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={displayStatus} />}
-      title={quote.quoteNumber}
+      title={docNo(quote.quoteNumber)}
       updatedAt={fmt.dateTime(quote.updatedAt)}
     >
       <SummaryGrid>
@@ -303,6 +386,12 @@ export function QuoteDetail({
           label={tr("common.totalAmountInclTax")}
           value={<MoneyText ta="left" value={totals.grandTotal} />}
         />
+        {quote.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={quote.legacyNumber}
+          />
+        )}
       </SummaryGrid>
 
       <ProcedurePanel
@@ -317,6 +406,11 @@ export function QuoteDetail({
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          {portalShare && (
+            <Tabs.Tab value="portal">
+              {tr("settings.portal.portalSharing")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
@@ -345,10 +439,28 @@ export function QuoteDetail({
                   return (
                     <Table.Tr key={it.id}>
                       <Table.Td>
+                        {/* 品名は「名称 コード」。内部の品目 id は出さない
+                            （以前は名称の下に連番の id が出ていた）。 */}
                         <Text size="sm">{it.productName}</Text>
-                        <Text c="dimmed" ff="mono" size="xs">
-                          {it.productId}
-                        </Text>
+                        {/* 再研磨の明細: 売っているのは役務で、研ぐのはこの工具。 */}
+                        {it.toolLabel && (
+                          <Text c="dimmed" mt={2} size="xs">
+                            {tr(
+                              "sales.orderAcceptanceItemsEditor.toolToRegrind",
+                            )}
+                            : {it.toolLabel}
+                          </Text>
+                        )}
+                        {it.notes && (
+                          <Text
+                            c="dimmed"
+                            mt={4}
+                            size="xs"
+                            style={{ whiteSpace: "pre-line" }}
+                          >
+                            {it.notes}
+                          </Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Badge color="gray" variant="light">
@@ -388,9 +500,18 @@ export function QuoteDetail({
                       <Table.Td>{fmt.date(it.deliveryDate)}</Table.Td>
                       <Table.Td>
                         {tierRef ? (
-                          <Text className="tabular-nums" ff="mono" size="xs">
-                            {tierRef.label}
-                          </Text>
+                          <>
+                            <Text className="tabular-nums" ff="mono" size="xs">
+                              {tierRef.label}
+                            </Text>
+                            {tierRef.toolSpecific && (
+                              <Text c="blue" size="xs">
+                                {tr(
+                                  "sales.productPriceResolverInput.targetToolPrice",
+                                )}
+                              </Text>
+                            )}
+                          </>
                         ) : (
                           <Text c="orange" size="xs">
                             {tr("common.noPriceList")}
@@ -499,7 +620,11 @@ export function QuoteDetail({
                       }
                       size="sm"
                     >
-                      {e.customerName} × {e.productName}（
+                      {e.customerName} × {e.productName}
+                      {e.toolName
+                        ? ` ${tr("sales.priceLists.targetTool")}: ${e.toolName}`
+                        : ""}
+                      （
                       {tr("sales.quoteDetail.orderTypesAndTierCount", {
                         orderTypes: e.variants
                           .map(
@@ -569,6 +694,12 @@ export function QuoteDetail({
             ownerType="quotes"
           />
         </Tabs.Panel>
+
+        {portalShare && (
+          <Tabs.Panel pt="md" value="portal">
+            <PortalShareCard {...portalShare} />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />

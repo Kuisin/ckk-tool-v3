@@ -7,7 +7,12 @@
 import { describe, expect, it } from "vitest";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
 import type { Tr } from "@/lib/i18n";
-import { resolvePriceFromEntries, resolveUnitPriceFromEntries } from "./model";
+import {
+  lineToolItemId,
+  resolvePriceFromEntries,
+  resolveUnitPriceFromEntries,
+  selectPriceEntries,
+} from "./model";
 
 /** テスト用の最小 tr — key と params をそのまま文字列化する。 */
 const tr = ((key: string, params?: Record<string, unknown>) =>
@@ -17,11 +22,18 @@ const CUSTOMER = "bp-1";
 const PRODUCT = "1001";
 
 const entry = (over: Partial<PriceListEntry> = {}): PriceListEntry => ({
-  entryId: "PRC-202604-00001",
+  entryId: "CKK~PRC-2026-00001",
+  ownCompanyId: 1,
+  ownCompanyCode: "CKK",
+  ownCompanyName: "CKK",
   customerId: CUSTOMER,
   customerName: "顧客",
-  productId: PRODUCT,
+  itemId: PRODUCT,
   productName: "製品",
+  itemType: "PRODUCT",
+  toolItemId: null,
+  toolName: null,
+  standardUnitPrice: null,
   currency: "JPY",
   isActive: true,
   variants: [
@@ -265,5 +277,232 @@ describe("resolvePriceFromEntries — 引けなかった理由", () => {
       // 1 本 5,000 円引き × 2 本 = 10,000 > 明細金額 2,000 → 2,000 で止まる
       expect(r.price.discountAmount).toBe(2000);
     }
+  });
+});
+
+describe("標準価格へのフォールバック（S/4HANA 式の 2 段価格）", () => {
+  /** 標準価格つきで引く。 */
+  const withStandard = (
+    entries: PriceListEntry[],
+    orderType: string,
+    qty: number,
+    standard: number | null,
+    date = IN_WINDOW,
+  ) =>
+    resolvePriceFromEntries(
+      entries,
+      CUSTOMER,
+      PRODUCT,
+      orderType,
+      qty,
+      tr,
+      date,
+      standard,
+    );
+
+  it("当たる価格表が無ければ標準価格に落ちる（no-entry / inactive / expired）", () => {
+    // 価格表そのものが無い
+    const noEntry = withStandard([], "REGRIND", 5, 1200);
+    expect(noEntry.ok).toBe(true);
+    if (noEntry.ok) {
+      expect(noEntry.price.unitPrice).toBe(1200);
+      // 標準価格には数量段階も値引きも無い（段階の id は null）。
+      expect(noEntry.price.tierId).toBeNull();
+      expect(noEntry.price.discountAmount).toBe(0);
+    }
+    // 無効化されている
+    const inactive = withStandard(
+      [entry({ isActive: false })],
+      "PRODUCTION",
+      5,
+      1200,
+    );
+    expect(inactive.ok && inactive.price.unitPrice).toBe(1200);
+    // 有効期間外
+    const expired = withStandard(
+      [entry()],
+      "PRODUCTION",
+      5,
+      1200,
+      new Date("2026-10-01T03:00:00Z"),
+    );
+    expect(expired.ok && expired.price.unitPrice).toBe(1200);
+  });
+
+  it("価格表が当たれば価格表が勝つ（標準価格は使わない）", () => {
+    const r = withStandard([entry()], "PRODUCTION", 2, 1200);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.price.unitPrice).toBe(1000);
+  });
+
+  it("数量段階の穴（no-tier）では落ちない — 設定の誤りを隠さないため", () => {
+    // 生きている価格表に数量の穴があるのは設定漏れ。ここで黙って定価に
+    // 落とすと、誰も気づかないまま違う値段で売り続けることになる。
+    const r = withStandard([entry()], "PRODUCTION", 100, 1200);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("no-tier");
+  });
+
+  it("標準価格が無ければ従来どおり引けない", () => {
+    const r = withStandard([], "REGRIND", 5, null);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("no-entry");
+  });
+});
+
+describe("再研磨の対象工具（工具一致 → 工具なし → 標準価格）", () => {
+  const SERVICE = "2001";
+  const TOOL_A = "3001";
+  const TOOL_B = "3002";
+
+  /** 再研磨の価格表 1 本（基準単価 = price、工具は任意）。 */
+  const regrind = (
+    price: number,
+    toolItemId: string | null,
+    over: Partial<PriceListEntry> = {},
+  ): PriceListEntry =>
+    entry({
+      entryId: `CKK~PRC-2026-0${price}`,
+      itemId: SERVICE,
+      itemType: "REGRIND",
+      toolItemId,
+      toolName: toolItemId ? `工具 ${toolItemId}` : null,
+      variants: [
+        {
+          id: `v-${price}`,
+          orderType: "REGRIND",
+          baseUnitPrice: price,
+          validFrom: "2026-01-01",
+          validUntil: null,
+          isActive: true,
+          tiers: [
+            {
+              id: `t-${price}`,
+              minQuantity: 1,
+              maxQuantity: 9,
+              multiplier: 1,
+              priceOverride: null,
+            },
+          ],
+          discounts: [],
+          estimateId: null,
+          estimateNumber: null,
+        },
+      ],
+      ...over,
+    });
+
+  const resolve = (
+    entries: PriceListEntry[],
+    tool: string | null,
+    qty = 5,
+    standard: number | null = 900,
+  ) =>
+    resolvePriceFromEntries(
+      entries,
+      CUSTOMER,
+      SERVICE,
+      "REGRIND",
+      qty,
+      tr,
+      IN_WINDOW,
+      standard,
+      tool,
+    );
+
+  const priceOf = (r: ReturnType<typeof resolve>) =>
+    r.ok ? r.price.unitPrice : r.reason;
+
+  it("工具が一致する価格表があればそれが勝つ", () => {
+    const entries = [regrind(1000, null), regrind(1500, TOOL_A)];
+    expect(priceOf(resolve(entries, TOOL_A))).toBe(1500);
+  });
+
+  it("工具の価格表が無ければ工具なしの価格表へ落ちる", () => {
+    const entries = [regrind(1000, null), regrind(1500, TOOL_A)];
+    expect(priceOf(resolve(entries, TOOL_B))).toBe(1000);
+  });
+
+  it("工具なしの価格表も無ければ標準価格へ落ちる", () => {
+    expect(priceOf(resolve([regrind(1500, TOOL_A)], TOOL_B))).toBe(900);
+    expect(priceOf(resolve([], TOOL_A))).toBe(900);
+  });
+
+  it("工具を渡さない行は工具付きの価格表を決して引かない", () => {
+    // 別の工具のための値段なので、工具が噛み合わない限り当たらない。
+    expect(priceOf(resolve([regrind(1500, TOOL_A)], null))).toBe(900);
+    expect(priceOf(resolve([regrind(1500, TOOL_A)], null, 5, null))).toBe(
+      "no-entry",
+    );
+  });
+
+  it("工具の価格表が使えない（無効・承認待ち）なら工具なしへ進む", () => {
+    const inactive = [
+      regrind(1000, null),
+      regrind(1500, TOOL_A, { isActive: false }),
+    ];
+    expect(priceOf(resolve(inactive, TOOL_A))).toBe(1000);
+    const pending = [
+      regrind(1000, null),
+      regrind(1500, TOOL_A, { approvalStatus: "PENDING" }),
+    ];
+    expect(priceOf(resolve(pending, TOOL_A))).toBe(1000);
+    // どちらも使えなければ最初の理由を返す（標準価格が無いとき）。
+    expect(
+      priceOf(
+        resolve([regrind(1500, TOOL_A, { isActive: false })], TOOL_A, 5, null),
+      ),
+    ).toBe("inactive");
+  });
+
+  it("工具の価格表に数量の段が無ければ止まる（工具なし・標準価格へは落とさない）", () => {
+    const entries = [regrind(1000, null), regrind(1500, TOOL_A)];
+    expect(priceOf(resolve(entries, TOOL_A, 50))).toBe("no-tier");
+  });
+
+  it("selectPriceEntries は 工具一致 → 工具なし の順で返す", () => {
+    const generic = regrind(1000, null);
+    const toolA = regrind(1500, TOOL_A);
+    const toolB = regrind(1700, TOOL_B);
+    const all = [toolB, generic, toolA];
+    expect(selectPriceEntries(all, CUSTOMER, SERVICE, TOOL_A)).toEqual([
+      toolA,
+      generic,
+    ]);
+    expect(selectPriceEntries(all, CUSTOMER, SERVICE, null)).toEqual([generic]);
+    // 別の顧客・別の品目は混ざらない。
+    expect(selectPriceEntries(all, "bp-other", SERVICE, TOOL_A)).toEqual([]);
+    expect(selectPriceEntries(all, CUSTOMER, PRODUCT, TOOL_A)).toEqual([]);
+  });
+
+  it("当たったのが工具の価格表かどうかを返す（画面の言い分け用）", () => {
+    const entries = [regrind(1000, null), regrind(1500, TOOL_A)];
+    const flag = (r: ReturnType<typeof resolve>) =>
+      r.ok ? r.price.toolSpecific : r.reason;
+    expect(flag(resolve(entries, TOOL_A))).toBe(true);
+    expect(flag(resolve(entries, TOOL_B))).toBe(false);
+    // 標準価格も「工具の価格表」ではない。
+    expect(flag(resolve([], TOOL_A))).toBe(false);
+  });
+
+  it("lineToolItemId は再研磨の行の工具だけを返す（空・他種別は null）", () => {
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: "3001" })).toBe(
+      "3001",
+    );
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: 3001 })).toBe(
+      "3001",
+    );
+    expect(lineToolItemId({ orderType: "REGRIND", toolItemId: "" })).toBe(null);
+    expect(lineToolItemId({ orderType: "REGRIND" })).toBe(null);
+    // 種別を再研磨から切り替えた行に工具が残っていても効かない。
+    expect(
+      lineToolItemId({ orderType: "PRODUCTION", toolItemId: "3001" }),
+    ).toBe(null);
+  });
+
+  it("工具の欄を持たない旧データ（undefined）も工具なしとして扱う", () => {
+    const legacy = regrind(1000, null);
+    delete (legacy as { toolItemId?: string | null }).toolItemId;
+    expect(priceOf(resolve([legacy], TOOL_A))).toBe(1000);
   });
 });

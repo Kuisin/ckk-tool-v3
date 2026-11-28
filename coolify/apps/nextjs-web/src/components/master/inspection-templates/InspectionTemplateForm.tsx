@@ -28,7 +28,7 @@ import { useTransition } from "react";
 import { z } from "zod";
 import {
   searchProcessStepOptions,
-  searchProductOptions,
+  searchProductItemOptions,
   searchUserOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -74,7 +74,7 @@ function buildTemplateSchema(tr: Tr) {
         .min(1, tr("master.inspectionTemplateForm.enterNameJa")),
       nameTranslations: z.record(z.string(), z.string()).default({}),
       relatedProcessStepId: z.string().nullable(),
-      productId: z.string().nullable(),
+      itemId: z.string().nullable(),
       groupId: z.string().nullable(),
       samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
       samplingValue: z.union([z.number(), z.literal("")]),
@@ -122,8 +122,8 @@ export interface InspectionTemplateFormInitial {
   nameTranslations: Record<string, string>;
   relatedProcessStepId: string | null;
   relatedProcessStepLabel: string;
-  /** 対象製品。null = どの製品にも使える（汎用）。 */
-  productId: string | null;
+  /** 対象製品（品目, items.id）。null = どの製品にも使える（汎用）。 */
+  itemId: string | null;
   productLabel: string;
   /** ナビゲーション用グループ（任意）。 */
   groupId: string | null;
@@ -164,7 +164,7 @@ export function InspectionTemplateForm({
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
       relatedProcessStepId: initial?.relatedProcessStepId ?? null,
-      productId: initial?.productId ?? null,
+      itemId: initial?.itemId ?? null,
       groupId: initial?.groupId ?? null,
       samplingMode: initial?.samplingMode ?? "ALL",
       samplingValue: initial?.samplingValue ?? "",
@@ -186,7 +186,7 @@ export function InspectionTemplateForm({
         nameJa: values.nameJa,
         nameTranslations: values.nameTranslations,
         relatedProcessStepId,
-        productId: values.productId ? Number(values.productId) : null,
+        itemId: values.itemId ? Number(values.itemId) : null,
         groupId: values.groupId ? Number(values.groupId) : null,
         samplingMode: values.samplingMode,
         samplingValue:
@@ -298,16 +298,16 @@ export function InspectionTemplateForm({
               "master.inspectionTemplates.theProductItIsNarrowedTo",
             )}
             initialOption={
-              initial?.productId
-                ? { value: initial.productId, label: initial.productLabel }
+              initial?.itemId
+                ? { value: initial.itemId, label: initial.productLabel }
                 : undefined
             }
             label={tr("common.targetProduct")}
-            onChange={(value) => form.setFieldValue("productId", value)}
-            onSearch={searchProductOptions}
+            onChange={(value) => form.setFieldValue("itemId", value)}
+            onSearch={searchProductItemOptions}
             placeholder={tr("common.searchByProductCodeOrName")}
-            storageKey="inspection-template-product"
-            value={form.values.productId}
+            storageKey="inspection-template-product-item"
+            value={form.values.itemId}
           />
           <Select
             clearable

@@ -6,20 +6,75 @@
 #               auto-deploys via the Coolify webhook on merge)
 #
 # pnpm workspace（ルート lockfile）。install は必ずリポジトリルートで実行する。
-# E2E (Playwright) not set up yet — add a job here when it lands
-# (see _specs/techstack.md).
+#
+# ジョブは「何が壊れたか」で分けてある — 依存の脆弱性監査（audit）と Python の
+# サービス（python）は、Next.js の lint / build とは別に赤くなる。
+#
+# E2E: `pages` ジョブが 全画面の読み込み確認（tools/docs-screenshots/page-load.spec.ts）
+# を使い捨て DB + 本番ビルドで回す。単体試験と build が見ない「開いたら落ちる」を
+# ここで止める（撮影用のデモシードもここで全部流れるので、シードの腐りも捕まる）。
+#
+# 費用を抑えるための 2 つの約束（2026-11 — PR 1 本・push 1 回ごとに 9 ジョブ
+# 約 20 分を全部回しており、その 2/3 が `pages` だった）:
+#   1. **下書き PR では回さない。** 「レビュー可能にする」で回りはじめる。
+#   2. **触った場所のジョブだけ回す。** 判定は `changes` ジョブ
+#      （tools/ci/changed-areas.sh — 規則の試験つき）。迷ったら回す側へ倒し、
+#      **main 向け（昇格 PR）とこの CI 自身の変更は常に全部回す**。
+#   branch protection が無いので、飛ばしたジョブが merge を止めることはない。
+#   push 前に同じものを手元で回すのは tools/ci/local-check.sh。
 
 name: nextjs-web CI
 
 on:
   pull_request:
     branches: [dev, main]
+    # ready_for_review — 下書きでは回さないので、「レビュー可能にする」を
+    # 押した時点で初めて回るようにする。
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: nextjs-web-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # どのジョブが要るかを決める（上の「費用を抑える約束」）。下書きでは
+  # このジョブ自体が飛ぶので、`needs: changes` の全ジョブも一緒に飛ぶ。
+  changes:
+    name: 変更範囲の判定
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.areas.outputs.web }}
+      pages: ${{ steps.areas.outputs.pages }}
+      kiosk: ${{ steps.areas.outputs.kiosk }}
+      authz: ${{ steps.areas.outputs.authz }}
+      shared_db: ${{ steps.areas.outputs.shared_db }}
+      python: ${{ steps.areas.outputs.python }}
+      walkthroughs: ${{ steps.areas.outputs.walkthroughs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # 規則が壊れたまま「全部飛ばす」CI にならないよう、先に規則の試験を流す。
+      - name: 判定規則の試験
+        run: bash tools/ci/changed-areas.test.sh
+      # 「$変数」の直後の全角文字は macOS の bash 3.2 でだけ落ちる（Linux では
+      # 通る）ので、手元の pnpm check が壊れていても CI は気づかない。ここで止める。
+      - name: シェルスクリプトの変数（macOS bash 3.2 で落ちる書き方）
+        run: bash tools/ci/shell-vars-check.sh
+      - name: 判定
+        id: areas
+        run: |
+          bash tools/ci/changed-areas.sh "origin/${{ github.base_ref }}" "${{ github.base_ref }}" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo "### 変更範囲の判定"
+            echo
+            echo '```'
+            bash tools/ci/changed-areas.sh "origin/${{ github.base_ref }}" "${{ github.base_ref }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # マージ済みマイグレーションの改変を止める。
   # マイグレーションは merge した瞬間に自動で当たる（db-migrate-dev/-main）ので、
   # base に載っているものは既に本物の DB に適用済み = 取り消せない。
@@ -27,6 +82,8 @@ jobs:
   # 直した本人ではなく「次に merge した誰か」になる。
   migrations:
     name: shared-db — 適用済みマイグレーションの保護
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -46,6 +103,8 @@ jobs:
   # pg_cron は preload されていないので cron 系 SQL は entrypoint と同様に飛ぶ。
   migrate-deploy:
     name: shared-db — まっさらな DB へ migrate deploy
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -90,19 +149,162 @@ jobs:
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f ci/pg-cron-stub.sql
-          for f in sql/kiosk-cron.sql sql/user-suspension-cron.sql \
-                   sql/security-cron.sql sql/portal-cron.sql \
-                   sql/user-provision-cron.sql; do
+          # **一覧を手で持たない** — sql/*-cron.sql を全部流す。手書きの一覧だった
+          # ころ、api-cron.sql（db-migrate は流している）がここに無く、この網の
+          # 外にあった。足したファイルは自動で対象になる。
+          for f in sql/*-cron.sql; do
             echo "==> $f"
             sed '/CREATE EXTENSION IF NOT EXISTS pg_cron;/d' "$f" \
               | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q
           done
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: DB 関数の試験（ci/sql-tests/*.sql — 各ファイルは自分で ROLLBACK する）
+        # DB 側にしか無い規則（採番関数・トリガー）の試験。TS の双子と同じ境界の
+        # 表を当てて、双子が割れていないことも見る。
+        run: |
+          for f in ci/sql-tests/*.sql; do
+            echo "==> $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
       - name: schema と DB の差分が空であること
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 
+  # base（merge 先）のデータが入った DB へ head の migration を当てる。
+  # migrate-deploy ジョブは**空の** DB にしか当てないので、行があると落ちる
+  # migration（列を書き換えてから CHECK を張り替える、など）は通ってしまい、
+  # dev の db-migrate で初めて落ちる（2026-09-20、20261101090000 の match_aliases）。
+  # ここでは base の worktree で使い捨て DB を立てて base の migration + 全デモ
+  # シードを流し、その上に head の migration を当てる — デモシードにある表は
+  # 「行がある状態」で試される。
+  migrate-with-data:
+    name: shared-db — base のデータ入り DB へ head の migration を当てる
+    needs: changes
+    if: needs.changes.outputs.shared_db == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: shared-db/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: base を別ディレクトリへ
+        run: git worktree add /tmp/base "origin/${{ github.base_ref }}"
+      - name: base の shared-db / docs-screenshots を install（どちらも workspace 外）
+        run: |
+          (cd /tmp/base/shared-db && pnpm install --frozen-lockfile --ignore-workspace)
+          (cd /tmp/base/tools/docs-screenshots && pnpm install --frozen-lockfile --ignore-workspace)
+      - name: base の migration + 全デモシード（使い捨て DB、残す）
+        working-directory: /tmp/base/tools/docs-screenshots
+        env:
+          SHOT_DB_CONTAINER: ckk-ci-base-db
+          SHOT_DB_PORT: "55472"
+        run: pnpm docs:seed
+      - name: base の grants / analytics-views（本物の DB と同じく「既にビューがある」状態にする）
+        # これが無いと head の analytics-views.sql は**ビューが無い DB** にしか当たらず、
+        # 既存ビューの途中へ列を足す変更（CREATE OR REPLACE では通らない）が CI を
+        # 素通りして db-migrate で初めて落ちる（2026-09-25、v_item_custody_inventory）。
+        working-directory: /tmp/base/shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: head の shared-db を install
+        working-directory: shared-db
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: head の migration を当てる → grants / analytics-views
+        working-directory: shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: |
+          pnpm exec prisma migrate deploy
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/analytics-views.sql
+      - name: schema と DB の差分が空であること
+        working-directory: shared-db
+        env:
+          DATABASE_URL: postgresql://postgres:shots@127.0.0.1:55472/ckk
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
+      - name: 後始末
+        if: always()
+        run: docker rm -f ckk-ci-base-db || true
+
+  # 依存の脆弱性監査は**単独のジョブ**にする。
+  # 以前は nextjs-web ジョブの途中の 1 step で、ここが落ちると後ろの
+  # i18n ガード・typecheck・build が**全部 skipped** になった。advisory は
+  # こちらの変更と無関係に、ある日レジストリ側で公開される — 2026-11 に
+  # picomatch の advisory が出たとき、無関係な PR が軒並み赤くなり、しかも
+  # その PR 自身の build が CI で一度も走らないまま merge される状態になった。
+  # 監査の赤と、変更そのものの赤を別々に読めるようにする。
+  audit:
+    name: 依存の脆弱性監査 (prod, high+)
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
+      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
+      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
+      #
+      # 素の `pnpm audit` ではなくラッパーを通す — npm の監査エンドポイントが
+      # 落ちている間（2026-09-04 に数十分続いた）は脆弱性ゼロでも
+      # ERR_SOCKET_TIMEOUT で赤になり、開いていた PR と昇格 PR を全部止めた。
+      # ラッパーは「届かなかった」を ::warning:: にして通し、脆弱性が
+      # 見つかったときだけ従来どおり落とす。
+      #
+      # install は不要 — pnpm audit は lockfile だけを読む。
+      - name: Dependency audit (prod, high+)
+        run: bash tools/ci/dependency-audit.sh
+
+  # Python のサービス（Coolify / deploy-stack.sh がイメージを組んで動かす）。
+  # 単体試験は書いてあったのに CI に載っておらず、手で回したときしか走って
+  # いなかった。Python の版は各 Dockerfile の FROM に合わせる。
+  python:
+    name: Python サービス — 構文 & 単体試験
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 試験の無いサービス（po-extract / kot-import / exporter 類）はこれが唯一の網。
+      # 構文誤りは merge 後のイメージビルドではなく**起動時**に初めて落ちる。
+      - name: 構文（coolify/ 配下の全 .py）
+        run: python tools/ci/python-syntax.py
+
+      # 注文書のメール取込。TIFF → PDF 変換の試験が img2pdf / pillow を使う
+      # （入っていないと skip されるので、入れてから回す）。
+      - name: intake-gateway — unittest
+        working-directory: coolify/apps/intake-gateway
+        run: |
+          pip install -q -r requirements.txt
+          python -m unittest discover -s tests -t .
+
+      # 純粋部分だけの試験（IMAP にも DB にも繋がない）なので依存は入れない。
+      - name: admintools — unittest
+        working-directory: coolify/apps/admintools
+        run: python -m unittest discover -s tests -t .
+
   authz-core:
     name: authz-core — lint & test
+    needs: changes
+    if: needs.changes.outputs.authz == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -130,6 +332,8 @@ jobs:
 
   web:
     name: nextjs-web — lint & build (base ${{ github.base_ref }})
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -174,19 +378,6 @@ jobs:
         run: node scripts/check-server-action-gates.mjs
       - name: API gate guard (requireApiPermission / requireApiAuth)
         run: node scripts/check-api-gates.mjs
-
-      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
-      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
-      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
-      #
-      # 素の `pnpm audit` ではなくラッパーを通す — npm の監査エンドポイントが
-      # 落ちている間（2026-09-04 に数十分続いた）は脆弱性ゼロでも
-      # ERR_SOCKET_TIMEOUT で赤になり、開いていた PR と昇格 PR を全部止めた。
-      # ラッパーは「届かなかった」を ::warning:: にして通し、脆弱性が
-      # 見つかったときだけ従来どおり落とす。
-      - name: Dependency audit (prod, high+)
-        working-directory: .
-        run: bash tools/ci/dependency-audit.sh
 
       # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
       # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
@@ -257,8 +448,108 @@ jobs:
           fi
           echo "図は DSL と一致しています"
 
+  # 全画面の読み込み確認 — 使い捨て Postgres（docker run）+ 全デモシード +
+  # 本番ビルドの nextjs-web を起動し、静的ルート全部・撮影パス・各一覧の先頭行の
+  # 詳細/編集を Playwright で開いて、HTTP エラー・pageerror・console.error・
+  # MISSING_MESSAGE 等の本文を合否にする（tools/docs-screenshots/README.md
+  # 「全画面の読み込み確認」）。2026-09 の在庫カテゴリ移設・品目統合のように
+  # 「型も build も通るのに開くと落ちる」変更を、merge の前に止めるためのもの。
+  pages:
+    name: nextjs-web — 全画面の読み込み確認 (Playwright)
+    needs: changes
+    if: needs.changes.outputs.pages == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+      - name: Install shared-db（workspace 外 — 自前の lockfile）
+        run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: shared-db
+      - name: Install docs-screenshots（workspace 外）+ Chromium
+        run: |
+          pnpm install --frozen-lockfile --ignore-workspace
+          pnpm exec playwright install --with-deps chromium
+        working-directory: tools/docs-screenshots
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+        working-directory: coolify/apps/nextjs-web
+      - name: Seed → build → start → page-load.spec.ts
+        run: pnpm e2e:pages
+        working-directory: tools/docs-screenshots
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: page-load-report
+          path: /tmp/page-load-report.json
+          if-no-files-found: ignore
+
+  # 業務の通し操作 — 販売 / 購買 / 生産 / 出荷 / 請求 の流れを、マニュアルのプロセス編と
+  # 同じ順に**実際に画面で最後まで行う**（書類を作り、承認し、出荷し、請求書を出す）。
+  # 上の pages は「開けるか」しか見ないので、保存が効かない・承認しても次へ進めない、
+  # といった壊れ方はここでしか分からない。
+  #
+  # 同じスクリプトがマニュアルの動画も録る（pnpm docs:videos — 録画は Coolify の
+  # manual-videos アプリが行い、CI では録らない）。ここは待ち時間なしの検査だけ。
+  #
+  # **本番へ上げる前の検査**: 昇格 PR（main 向け）では必ず回る。dev 向けの PR では
+  # 通し操作自身かデモシードを触ったときだけ（tools/ci/changed-areas.sh）。
+  # 落ちたときは失敗時の画面・動画・トレースが artifact に残る。
+  walkthroughs:
+    name: nextjs-web — 業務の通し操作 (Playwright)
+    needs: changes
+    if: needs.changes.outputs.walkthroughs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install (frozen lockfile, workspace root)
+        run: pnpm install --frozen-lockfile
+      - name: Install shared-db（workspace 外 — 自前の lockfile）
+        run: pnpm install --frozen-lockfile --ignore-workspace
+        working-directory: shared-db
+      - name: Install docs-screenshots（workspace 外）+ Chromium
+        run: |
+          pnpm install --frozen-lockfile --ignore-workspace
+          pnpm exec playwright install --with-deps chromium
+        working-directory: tools/docs-screenshots
+      - name: Sync Prisma schema (shared-db) + generate client
+        run: pnpm db:sync-schema && pnpm db:generate
+        working-directory: coolify/apps/nextjs-web
+      - name: Seed → build → start → walkthroughs.spec.ts
+        run: pnpm walk:check
+        working-directory: tools/docs-screenshots
+      - name: Upload failure evidence（画面・動画・トレース）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walkthroughs-failure
+          path: tools/docs-screenshots/test-results/walkthroughs
+          if-no-files-found: ignore
+          retention-days: 7
+
   kiosk:
     name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
+    needs: changes
+    if: needs.changes.outputs.kiosk == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:

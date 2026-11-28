@@ -1,0 +1,264 @@
+// 业务流程 §7 库存（manual/process/business-flow#inventory）。
+// 与 ja / en 结构相同。修改文字时三份一起改。
+
+/title/
+库存 — 出入库・调拨・盘点
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_admin>
+label: 管理员;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_ST01>
+label: ST01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST02>
+label: ST02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST05>
+label: ST05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST06>
+label: ST06;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST09>
+label: ST09;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<MV>
+label: 出入库单;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+<STK>
+label: 盘点;
+side: right;
+background-color: #ecfdf5;
+border-color: #059669;
+text-color: #065f46;
+
+/line/
+
+if (事由) is (材料到货) than #blue
+  [role_system: 材料入库] <block_system>
+  label: 材料到货;
+  desc: 在材料到货（PU03）或材料采购单上登记到货后，到货据点的材料库存增加。;
+elseif (分配) than #blue
+  [role_system: 预留库存] <block_system>
+  label: 预留;
+  desc: 订单明细的“库存核对”预留空闲的产品；制造分工单获批时预留所用材料。材料可以预留超过现有库存（作为不足的信号）。;
+elseif (工单完成) than #blue
+  [role_system: 成品入库] <block_system>
+  label: 工单完成;
+  desc: 所有工序完成后，良品带批次号入库，半成品作为半成品入库。材料预留解除，已用材料出库（不超过账面数量）。;
+elseif (出货) than #blue
+  if (库存) is (不足) than #orange
+    [role_system: 以负数出库] <block_reject>
+    label: 库存不足;
+    desc: 库存不足也不会阻止出货。不足部分作为“库存不足出库”照样出库，库存变为负数。;
+  elseif (足够) than
+    [role_system: 出库并解除预留] <block_system>
+    label: 出货;
+    desc: 发货类出货单出货后产品出库，预留同时解除。库存保管类出货单则反过来入库。;
+  endif
+elseif (退货) than #blue
+  [role_system: 退货入库] <block_system>
+  label: 退货;
+  desc: 在已出货的出货单上登记退货后，以出货数量为上限退回库存。;
+elseif (取消) than #blue
+  [role_system: 解除预留] <block_system>
+  label: 解除预留;
+  desc: 取消工单、订单明细或订单确认书时，其持有的预留被解除。;
+elseif (外协) than #blue
+  [role_system: 变动寄存库存] <block_system>
+  label: 外协;
+  desc: 交给外协厂商时寄存库存增加，返回时减少。寄存库存不计入本公司库存。;
+elseif (再研磨) than #blue
+  [role_system: 客户寄存品入库] <block_system>
+  label: 再研磨接收;
+  desc: 完成产品接收（再研磨）后，客户的刀具作为客户寄存品入库。本公司库存不增加。;
+endif
+[role_system: 生成出入库单] <block_system>
+label: 出入库单;
+props: MV;
+desc: 库存每变动一次就留下一张带事由和来源单据的出入库单。不能手工新建。;
+[role_prod: 确认库存] <block_neutral>
+label: 库存确认;
+props: APP_ST02;
+desc: 按场所看用库存一览；品目、在制品和预留看库存管理（ST01）；变动记录看出入库单（ST04）。;
+[role_prod: 查看是否够用] <block_neutral>
+label: 所要量;
+props: APP_ST03;
+desc: 把一个品目过去的出入库和今后的计划排在同一条时间线上，看何时会不足。;
+if (预测) is (不足) than #orange
+  [role_prod: 转交采购申请] <block_wait>
+  label: 补充;
+  desc: 将要不足的材料通过采购申请和材料采购单补充。;
+elseif (足够) than
+endif
+if (要修正的) is (存放位置) than #purple
+  [role_prod: 库存调拨] <block_apply>
+  label: 库存调拨;
+  props: APP_ST01,MV;
+  desc: 移到其他货架、存放位置或据点。只能移动未预留的部分。调出方出库和调入方入库记在同一张单据上。;
+elseif (出入库) than #purple
+  [role_admin: 维护移动类型] <block_neutral>
+  label: 移动类型;
+  props: APP_ST09;
+  desc: 决定方向（入库 / 出库 / 调拨）以及是否必须填写出库方和入库方。不能删除，不用的设为停用。;
+  [role_prod: 手动出入库] <block_apply>
+  label: 手动出入库;
+  props: APP_ST06;
+  desc: 选择移动类型，输入品目和数量。每登记一次生成一张事由为“手动”的出入库单。;
+  if (出库方库存) is (不足) than #red
+    [role_prod: 无法登记] <block_reject>
+    label: 库存不足;
+    desc: 出库方不足时被阻止。修改数量或出库方。;
+  elseif (足够) than
+    [role_system: 增减库存] <block_system>
+    label: 反映;
+    props: MV;
+    desc: 调拨先记出库、后记入库。登记错误时，登记反方向来恢复。;
+  endif
+elseif (数量不符) than #purple
+  [role_prod: 新建盘点] <block_apply>
+  label: 新建;
+  props: APP_ST05,STK;
+  desc: 选择据点（必要时选择存放位置），该处全部库存（包括数量为 0 的位置）都成为对象。状态为“草稿”。;
+  [role_prod: 实盘并记录] <block_apply>
+  label: 记录;
+  props: APP_ST05;
+  desc: 输入实测数并保存。第一次保存后变为“记录中”，可以多次保存。;
+  if (下一步) is (取消) than #red
+    [role_prod: 取消盘点] <block_end>
+    label: 取消;
+    desc: 草稿或记录中可以取消。审批中取消时，审批申请也一并撤回。;
+  elseif (提交) than #blue
+    [role_prod: 提交] <block_apply>
+    label: 提交;
+    props: APP_ST05;
+    desc: 只要记录了 1 行即可提交。;
+    if (审批流程) is (有级) than #blue
+      if (审批判断) is (退回) than #red
+        [role_prod: 重盘并再提交] <block_reject>
+        label: 退回;
+        desc: 被附理由退回后，回到可以记录的状态。;
+        [loop]
+      else
+        [role_appr: 批准盘点] <block_approve>
+        label: 批准;
+        props: APP_ST05;
+        desc: 审批中不能记录。所有级都批准后进入确定。;
+      endif
+    elseif (无级) than
+    endif
+    [role_system: 调整差异] <block_system>
+    label: 确定;
+    props: MV;
+    desc: 只对记录数与确定时点库存之间的差异生成“盘点调整”出入库单。没有差异则不生成单据。状态为“已确定”，此后不能撤销。;
+  endif
+endif

@@ -5,7 +5,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 ---
 这是用于逐一登记采购并库存的材料棒的台账。操作码是 `MS06`。
 
-如果说[材种](/manual/zh/operations/masters/material-type/user)表示「是什么样的材料」，那么「素材」（材料）就是 **「该材种中，这个直径、这个长度、这种表面处理的那一根」**，也就是实际买回来放在货架上的那一根。没有在这里登记的材料，在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)和[库存管理（材料・在制品）](/manual/zh/operations/production/material-inventory/user)中 **无法选择**。
+如果说[材种](/manual/zh/operations/masters/material-type/user)表示「是什么样的材料」，那么「素材」（材料）就是 **「该材种中，这个直径、这个长度、这种表面处理的那一根」**，也就是实际买回来放在货架上的那一根。没有在这里登记的材料，在[材料订购单](/manual/zh/operations/purchasing/purchase-order/user)和[库存管理（材料・在制品）](/manual/zh/operations/inventory/inventory-management/user)中 **无法选择**。
 
 > ⚠️ 本应用目前 **仅在开发环境（测试用环境）** 中可用。在正式投入使用之前，画面和操作步骤可能会有变化。
 
@@ -32,6 +32,16 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 另外，使用本应用需要 **主数据权限**。画面打不开时，请咨询管理员。
 
 另请注意，[产品](/manual/zh/operations/masters/product/user)是以「材种 + 直径 + 全长」来指定材料的。**产品并不会与某个特定的材料绑定。** 本台账只用于采购和库存。
+
+材种、材料和产品的关系，用图表示如下。
+
+```mermaid
+flowchart TD
+  mt["材种<br/>是什么样的材料"]
+  mt -->|"确定粗细・长度・表面处理"| mat["材料<br/>实际购买并放在货架上的 1 根"]
+  mat --> use["可在材料采购单・库存管理中选择"]
+  mt -.->|"以 材种 + 直径 + 全长 指定"| prod["产品<br/>不与某个特定的材料绑定"]
+```
 
 ## 材料代码的构成
 
@@ -116,7 +126,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 2. 选择「**無効化**」（停用）。
 3. 在确认画面点击「**無効化する**」（确定停用）。
 
-设为无效后，新的采购单和指示书中就无法再选择它，但是 **过去的数据会原样保留**。
+设为无效后，新的采购单和工单中就无法再选择它，但是 **过去的数据会原样保留**。
 
 ## 输入项
 

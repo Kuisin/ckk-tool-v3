@@ -1,0 +1,309 @@
+/title/
+采购 — 从申请材料到到货
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_prod>
+label: 生产管理;
+text-color: #065f46;
+background-color: #d1fae5;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_purch>
+label: 采购;
+text-color: #115e59;
+background-color: #ccfbf1;
+
+<role_supplier>
+label: 供应商・外协厂商;
+text-color: #92400e;
+background-color: #fffbeb;
+
+<role_recv>
+label: 收货;
+text-color: #155e75;
+background-color: #cffafe;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU01>
+label: PU01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU02>
+label: PU02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU03>
+label: PU03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PU04>
+label: PU04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<PR>
+label: 采购申请;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<PO>
+label: 材料采购单;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<MR>
+label: 材料到货;
+side: right;
+background-color: #f0fdfa;
+border-color: #0d9488;
+text-color: #115e59;
+
+<WO>
+label: 工单;
+side: right;
+background-color: #f5f3ff;
+border-color: #7c3aed;
+text-color: #5b21b6;
+
+/line/
+
+[role_prod: 发现材料不足] <block_neutral>
+label: 不足;
+props: APP_PD02;
+desc: 在工单中选择材料时会与库存比较，不足且无预计到货时显示「没有预计到货」。库存・需求量（ST03）中也能看到。不会自动生成采购申请。;
+if (采购方式) is (通过采购单) than #blue
+  if (起点) is (从采购申请) than #blue
+    [role_prod: 创建采购申请] <block_apply>
+    label: 采购申请;
+    props: APP_PU01,PR;
+    desc: 填写材料、到货据点、数量、希望交期和申请理由。不填单价和供应商。状态为「草稿」。;
+    [role_prod: 申请审批] <block_apply>
+    label: 审批申请;
+    props: APP_PU01;
+    desc: 审批设置（MS0B）中没有流程则无法申请。状态变为「审批中」，并通知第一级审批组。;
+    if (审批判断) is (退回) than #red
+      [role_prod: 修改后重新申请] <block_reject>
+      label: 退回;
+      props: APP_PU01;
+      desc: 审批人填写理由退回后状态为「已退回」。申请人修改后无需重建即可再次申请审批。;
+      [loop]
+    elseif (批准) than #blue
+      [role_appr: 批准采购申请] <block_approve>
+      label: 批准;
+      props: APP_CM01;
+      desc: 有多级时全部批准后才变为「已批准」；中间级仍为审批中并进入下一级。;
+    endif
+    if (申请去向) is (撤回) than #red
+      [role_prod: 取消申请] <block_end>
+      label: 已取消;
+      props: APP_PU01;
+      desc: 转换为采购单之前（草稿・审批中・已批准・已退回）可填写理由取消。流程到此结束。;
+    elseif (转换) than #blue
+      [role_purch: 转换为采购单] <block_apply>
+      label: 转换;
+      props: APP_PU01,PO;
+      desc: 选择供应商后转换。生成继承明细的材料采购单（草稿・单价 0 日元），申请变为「已下单」。;
+    endif
+  elseif (直接创建) than #purple
+    if (创建方式) is (AI 读取) than #purple
+      [role_purch: 读取供应商单据] <block_apply>
+      label: AI 读取;
+      props: APP_PU02;
+      desc: 上传供应商的报价单・订单确认书・采购单副本，匹配供应商和材料。逐行确认（一致・推定・未确定）后「填入表单」。读取失败则手动输入。;
+    elseif (手动输入) than
+    endif
+  endif
+  [role_purch: 完成采购单] <block_apply>
+  label: 采购单;
+  props: APP_PU02,PO;
+  desc: 填写供应商、数量、单价和预计到货日后保存。金额自动计算。仅「草稿」时可修改。;
+  [role_purch: 申请审批] <block_apply>
+  label: 审批申请;
+  props: APP_PU02;
+  desc: 没有审批流程则无法申请。状态变为「审批中」，并通知审批组。;
+  if (审批判断) is (退回) than #red
+    [role_purch: 修改后重新申请] <block_reject>
+    label: 退回;
+    props: APP_PU02;
+    desc: 审批人填写理由退回后，采购单回到「草稿」。修改后再次申请审批。;
+    [loop]
+  elseif (批准) than #blue
+    [role_appr: 批准采购单] <block_approve>
+    label: 批准;
+    props: APP_CM01;
+    desc: 全部级别批准后为「已批准」。此后可添加凭证（订单副本等）。;
+  endif
+  if (下单前) is (撤回) than #red
+    [role_purch: 取消采购单] <block_end>
+    label: 已取消;
+    props: APP_PU02;
+    desc: 仅下单前（草稿・审批中・已批准）可填写理由取消。流程到此结束。;
+  elseif (下单) than #blue
+  endif
+  [role_purch: 向供应商下单] <block_apply>
+  label: 下单;
+  props: APP_PU02;
+  desc: 变为「已下单」；下单日为空则填入当天。未到数量作为预计到货显示在库存・需求量和工单的材料提示中。已下单后不能取消。;
+  [role_supplier: 交付材料] <block_neutral>
+  label: 交货;
+  desc: 材料随送货单到达，不一定一次到齐。;
+  if (到货情况) is (全部) than #blue
+    [role_system: 剩余数量一并入库] <block_system>
+    label: 已入库;
+    props: APP_PU02,MR;
+    desc: 收货人员点击「到货完成」后，剩余数量一并入库，并按明细生成材料到货记录。采购单变为「已入库」，并通知申请人和创建人。;
+  elseif (部分) than #orange
+    [role_recv: 记录分批到货] <block_apply>
+    label: 分批到货;
+    props: APP_PU02,MR;
+    desc: 按明细只入库到达的数量。不能超过下单数量。累计到齐后自动变为「已入库」。;
+    [loop]
+  elseif (剩余不到) than #orange
+    [role_purch: 未到货直接完成] <block_end>
+    label: 截止;
+    props: APP_PU02;
+    desc: 供应商缺货、剩余不会到时，填写理由设为「已入库」。未到数量不入库，也从预计到货中消失。;
+  endif
+elseif (不通过采购单) than #purple
+  [role_supplier: 交付材料] <block_neutral>
+  label: 交货;
+  desc: 未通过采购单购买的材料（直接采购・带入）到达。;
+  if (登记方式) is (逐条) than #purple
+    [role_recv: 登记到货] <block_apply>
+    label: 直接到货;
+    props: APP_PU03,MR;
+    desc: 填写材料、供应商、到货据点、到货日和数量后登记。单位固定为材料主数据的单位。登记后不能修改。;
+  elseif (从送货单) than #purple
+    [role_system: 读取送货单] <block_system>
+    label: AI 读取;
+    props: APP_PU03;
+    desc: 收货人员上传送货单（PDF・图片）后，AI 匹配供应商和各明细的材料。材料编号一致即确定，名称则分级匹配。;
+    [role_recv: 确认各行] <block_apply>
+    label: 确认;
+    props: APP_PU03;
+    desc: 发往其他工厂或附件的行用「不登记此行」排除。材料未确定的行不能登记（不会自动创建）。;
+    [role_recv: 一并登记] <block_apply>
+    label: 一并登记;
+    props: APP_PU03,MR;
+    desc: 所选行在一个事务中登记；中途失败则全部回滚。重新选择的材料・供应商写法会被学习，供下次使用。;
+  endif
+endif
+[role_system: 计入材料库存] <block_system>
+label: 入库;
+desc: 到货据点的材料库存按到货数量增加，并生成出入库单。未指定据点时计入「无据点」库存。;
+[role_recv: 添加凭证] <block_apply>
+label: 凭证;
+props: APP_PU03;
+desc: 可将送货单副本添加到到货记录，将订单副本添加到采购单（已批准之后）（可选）。AI 读取的原件会自动添加，即使失败登记也不会回滚。;
+if (外协工序) is (有) than #blue
+  [role_prod: 指定外协厂商] <block_apply>
+  label: 外协;
+  props: APP_PD02,WO;
+  desc: 在工单工序中将实施场所选为「外协」并指定外协厂商。不另建外协委托单据。;
+  [role_prod: 查看外协情况] <block_neutral>
+  label: 外协委托;
+  props: APP_PU04;
+  desc: 列出外协中的工序（仅查看）。按外协厂商・状态筛选，点击行进入工序画面。;
+  [role_prod: 填写外协日程] <block_apply>
+  label: 外协日程;
+  props: APP_PD02;
+  desc: 在工序画面的「外协日程」中填写委托日、预计到货日、到货日和外协费用并保存后，列表即更新。;
+elseif (无) than
+endif

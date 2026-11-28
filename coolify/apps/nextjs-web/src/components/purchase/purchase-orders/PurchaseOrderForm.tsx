@@ -35,8 +35,8 @@ import { useTranslations } from "next-intl";
 import { useRef, useTransition } from "react";
 import { z } from "zod";
 import {
-  fetchMaterialUnit,
-  searchMaterialOptions,
+  fetchMaterialItemUnit,
+  searchMaterialItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createPurchaseOrder,
@@ -47,6 +47,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { docNo } from "@/lib/doc-number";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -62,9 +63,7 @@ interface Option {
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   const itemSchema = z.object({
     rowId: z.string(),
-    materialId: z
-      .string()
-      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    itemId: z.string().min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
     materialLabel: z.string(),
     plantId: z.string().nullable(),
     quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
@@ -92,7 +91,7 @@ const newRowId = () => `row-${++rowSeq}-${Date.now()}`;
 
 const emptyItem = (): ItemForm => ({
   rowId: newRowId(),
-  materialId: "",
+  itemId: "",
   materialLabel: "",
   plantId: null,
   quantity: 1,
@@ -110,7 +109,7 @@ function toFormValues(po: PurchaseOrderView): FormValues {
     notes: po.notes ?? "",
     items: po.items.map((it) => ({
       rowId: newRowId(),
-      materialId: it.materialId,
+      itemId: it.itemId,
       materialLabel: `${it.materialCode}（${it.materialName}）`,
       plantId: it.plantId,
       quantity: it.quantity,
@@ -132,7 +131,7 @@ export interface PurchaseOrderFormPrefill {
   purchaseDate: string | null;
   notes: string;
   items: {
-    materialId: string;
+    itemId: string;
     materialLabel: string;
     quantity: number;
     unit: string;
@@ -213,16 +212,16 @@ export function PurchaseOrderForm({
   const selectMaterial = (
     ri: number,
     rowId: string,
-    materialId: string | null,
+    itemId: string | null,
     label: string,
   ) => {
-    form.setFieldValue(`items.${ri}.materialId`, materialId ?? "");
+    form.setFieldValue(`items.${ri}.itemId`, itemId ?? "");
     form.setFieldValue(`items.${ri}.materialLabel`, label);
     form.setFieldValue(`items.${ri}.unit`, "");
     const seq = (unitSeq.current[rowId] ?? 0) + 1;
     unitSeq.current[rowId] = seq;
-    if (!materialId) return;
-    fetchMaterialUnit(materialId)
+    if (!itemId) return;
+    fetchMaterialItemUnit(itemId)
       .then((unit) => {
         // 行は並べ替え・削除で位置が変わるので、書き戻す先は rowId で引き直す。
         const at = form.values.items.findIndex((it) => it.rowId === rowId);
@@ -242,7 +241,7 @@ export function PurchaseOrderForm({
         purchaseDate: values.purchaseDate,
         notes: values.notes,
         items: values.items.map((it) => ({
-          materialId: it.materialId,
+          itemId: it.itemId,
           plantId: it.plantId,
           quantity: it.quantity,
           unit: it.unit,
@@ -261,10 +260,10 @@ export function PurchaseOrderForm({
           message:
             mode === "edit"
               ? tr("purchase.purchaseOrderForm.updatedWithNumber", {
-                  poNumber: result.data.poNumber,
+                  poNumber: docNo(result.data.poNumber),
                 })
               : tr("purchase.purchaseOrderForm.createdWithNumber", {
-                  poNumber: result.data.poNumber,
+                  poNumber: docNo(result.data.poNumber),
                 }),
           color: "green",
         });
@@ -308,7 +307,7 @@ export function PurchaseOrderForm({
       title={
         mode === "edit"
           ? tr("purchase.purchaseOrderForm.editWithNumber", {
-              poNumber: poNumber ?? "",
+              poNumber: docNo(poNumber ?? ""),
             })
           : tr("purchase.purchaseOrders.newMaterialPurchaseOrder")
       }
@@ -373,20 +372,20 @@ export function PurchaseOrderForm({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    error={form.errors[`items.${ri}.materialId`]}
+                    error={form.errors[`items.${ri}.itemId`]}
                     initialOption={
-                      item.materialId
-                        ? { value: item.materialId, label: item.materialLabel }
+                      item.itemId
+                        ? { value: item.itemId, label: item.materialLabel }
                         : null
                     }
                     label={tr("common.materials")}
                     onChange={(v, opt) =>
                       selectMaterial(ri, item.rowId, v, opt?.label ?? "")
                     }
-                    onSearch={searchMaterialOptions}
+                    onSearch={searchMaterialItemOptions}
                     placeholder={tr("common.searchMaterials")}
-                    storageKey="material"
-                    value={item.materialId || null}
+                    storageKey="materialItem"
+                    value={item.itemId || null}
                     withAsterisk
                   />
                   <Select

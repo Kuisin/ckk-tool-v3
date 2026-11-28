@@ -44,6 +44,17 @@ Each card shows the work order number, the site, the step name, the product name
 
 > 💡 You can hide finished work from the list with 「**完了した工程を隠す**」 (Hide finished steps). Use it when there are too many items on the screen.
 
+The status moves as follows.
+
+```mermaid
+flowchart TD
+  wait("前工程待ち<br/>Waiting for the previous step") -->|"Previous step finished"| ready("開始可<br/>Can start")
+  ready -->|"工程開始<br/>Start step"| work("作業中<br/>In progress")
+  work -->|"一時停止<br/>Pause"| pause("一時停止中<br/>Paused")
+  pause -->|"再開<br/>Restart"| work
+  work -->|"工程完了<br/>Complete step"| done("完了<br/>Finished")
+```
+
 ## Starting the work
 
 1. From the list, press the card for the work you want to start.
@@ -58,6 +69,22 @@ Each card shows the work order number, the site, the step name, the product name
 Once you start, the status changes to 「作業中」 (in progress) and the work time starts being counted.
 
 > 💡 You can also work on several steps at the same time. While you do, the working time is **divided by the number of steps you are working on at once** and recorded on each step (for example, two at once means the time counts half for each).
+
+## What you can check on the step screen
+
+The top part of the step screen gathers the information you need for the work.
+
+- **印字番号** (marking number) … shown as 「**印字番号 A200000-001 〜 A200000-150（明細ごと A200000）**」. It is the number laser-marked on the products. When marking each piece, use the consecutive numbers from `-001`; when marking one number per line, use the number in brackets. It is not shown for a work order that is not linked to an order (for stock).
+  - When an order line is made by several work orders, each work order gets a split number and the line reads 「**印字番号 A2000001-001 〜 A2000001-050（分割 1・分割ごと A2000001）**」 (split 1, per split A2000001). This range is what this work order marks.
+- **工程納期** (step due date) … shown as 「**工程納期 2026/08/10**」: by when this step should be finished. It turns **red and bold** if the date has passed and the step is not finished. It is not shown for a step with no due date.
+- **加工プログラム** (machining programs) … when programs used in this step are registered, they are listed under 「**加工プログラム**」.
+  - The program name, its version (such as 「**v2**」) and program number, and 「**機種: ◯◯**」 (which machine models it is for; one for any model shows 「**機種を問わない**」 (any machine model)) are shown.
+  - A program for the same machine model as the current machine (this tablet's default work location, or the planned or actual work location) gets a 「**この機種用**」 (for this machine model) mark and is listed first.
+  - **When the step is started, the program versions shown at that moment are recorded.** A started step keeps showing **the versions it was started with**, even if the office creates a new version later (so the program does not change in the middle of the work).
+  - If a file is registered, press the file name to download it. One with only a number noted shows 「**ファイルなし**」 (no file).
+- **系列メモ** (series memo) … if notes shared by every drawing of this product and customer (customer habits, machining notes) have been written, they appear under 「**系列メモ**」. It also says whose drawing it belongs to, such as 「図面（◯◯株式会社）の全版に共通するメモ」. On this screen it is read-only.
+
+> 💡 Machining programs and the series memo are registered by the office on a version of the [drawing](/manual/en/operations/production/design-file/user). If none appears or the content is wrong, please contact the office.
 
 ## Stopping partway and restarting
 
@@ -89,9 +116,18 @@ The step screen has a 「**作業場所**」 (work location) box: **which machin
    - **不良種類** (defect type, required) … choose from the defect types registered in advance
    - **本数** (number of pieces)
    - **詳細** (details, required) … describe in words what the defect was
-4. Press 「**完了する**」 (Complete).
+4. If a row has the type 「**半製品**」 (semi-finished), a 「**在庫に置く仕掛品**」 (WIP going to stock) block appears. Enter the actual current size in 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length) (see "When you put semi-finished pieces into stock" below).
+5. Press 「**完了する**」 (Complete).
 
 > ⚠️ If the defects add up to more than the received quantity, you see 「**不良の合計（n）が受入数（n）を超えています**」 (the defect total, n, is more than the received quantity, n) and you cannot finish. Please check the numbers again. Also, if a defect line is missing its type or details, you see 「**不良の各行に種類と詳細を入力してください**」 (enter a type and details on every defect line). Fill in every line before finishing.
+
+### When you put semi-finished pieces into stock
+
+Pieces assigned to semi-finished go into stock as **WIP**. So that they can be used later to continue another work order, they are entered separately by **how far they were processed (processing state)** and **their current size (finished size)**. That is why you are asked for the size when completing.
+
+- 「**加工状態**」 (processing state) … shows the shape-changing steps completed so far. It is for checking only; you do not enter it.
+- 「**仕上がり径 (mm)**」 (finished diameter) and 「**仕上がり長 (mm)**」 (finished length) … **must be entered** when at least one shape-changing step is completed. Without them 「**仕上がり径を入力してください**」 (enter the finished diameter) is shown and you cannot complete. When none is completed yet you may leave them empty, and the WIP blank size shown under the fields is used.
+- 「**通ってきた経路**」 (route taken) … appears only at a step where a branch merges before it. Choose the route the pieces actually came through (the main line is preselected).
 
 ## Inspection steps
 
@@ -101,6 +137,8 @@ On inspection steps, you enter the inspection record before you finish.
 2. Enter the **実測値** (measured value) for each item. Pass or fail is **judged automatically** if the value is inside the range that was set.
 3. For items that cannot be judged automatically, choose 「合格」 (pass) or 「不合格」 (fail) yourself.
 4. Press 「**検査記録を保存**」 (Save inspection record).
+
+> ⚠️ A step that has an inspection sheet **cannot be completed until the sheet is saved**. If you press「**工程完了**」(Complete step) without saving, you see「**検査記録が未入力の検査表があります。検査表を保存してから完了してください**」(Some inspection sheets have no record yet. Save them before completing the step). The same applies when completing several at once — that step goes to the list of steps that cannot be grouped.
 
 ## Recording several steps at once
 
@@ -200,11 +238,14 @@ A. If the screen shows 「**本日の担当工程はありません**」 (You ha
 **Q. I cannot start because it says 「前工程待ち」 (waiting for the previous step).**
 A. The step before it is not finished yet. Once the person doing that work finishes it, you can start.
 
+**Q. Who can operate a step that has no assigned person?**
+A. A step whose work plan has no assigned person can be started and completed by **anyone** who has the work order permission. It does not appear in the「工程実行」(Step execution) list, so open it from「**指示書スキャン**」(Work order scan) or「**作業場所の工程**」(Steps at this work location). A step assigned to someone else can only be operated by that person (and by whoever is working on it now).
+
 **Q. The received quantity is different from the real number.**
 A. Please change the number when you start. It is only the number carried over from the previous step as a starting value, so it is fine to match it to the number of pieces you really received.
 
 **Q. I finished it by mistake.**
-A. You cannot undo it from the tablet. Please tell the person in charge in the office (they will handle it on the PC).
+A. You cannot undo it from the tablet. Please tell the person in charge in the office (they roll it back on the PC). Rolling back **also deletes the step's inspection records**, so on an inspection step they must be entered again.
 
 **Q. The screen closed while I was working.**
 A. Your record is kept. Log in again and open the same step; it is still 「作業中」 (in progress) and you can carry on from where you were.

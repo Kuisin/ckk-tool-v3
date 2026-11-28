@@ -1,0 +1,271 @@
+/title/
+Billing — from billing closing to payment and accounting export
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: Step;
+left-subtitle: Description;
+
+/role/
+
+<role_admin>
+label: Admin;
+text-color: #334155;
+background-color: #f1f5f9;
+
+<role_system>
+label: System;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_acct>
+label: Accounting;
+text-color: #9d174d;
+background-color: #fce7f3;
+
+<role_appr>
+label: Approver;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: Customer;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SY0J>
+label: SY0J;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL02>
+label: BL02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL11>
+label: BL11;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_BL01>
+label: BL01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<CL>
+label: Closing;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<INV>
+label: Invoice;
+side: right;
+background-color: #fdf2f8;
+border-color: #db2777;
+text-color: #9d174d;
+
+<CSV>
+label: Journal CSV;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+<ACC>
+label: Acct doc;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_admin: Set up export] <block_neutral>
+label: Setup;
+props: APP_SY0J;
+desc: Decide the journal CSV column order, encoding and default account codes (once, up front).;
+if (Start) is (Scheduled) than #blue
+  if (Run) is (Automatic) than #blue
+    [role_system: Daily 6:00 close] <block_system>
+    label: Auto-run;
+    desc: Where auto-run is enabled, every closing day up to today is closed once a day between 6:00 and 7:00 JST.;
+  elseif (Manual) than #purple
+    [role_acct: Simulate first] <block_neutral>
+    label: Simulation;
+    props: APP_BL02;
+    desc: Optional. Shows what a closing on a given date would bill, without writing anything. Future dates are allowed.;
+    [role_acct: Run the closing] <block_apply>
+    label: Run;
+    props: APP_BL02;
+    desc: Pick a date (today at the latest) and run. Running again for the same date never double-bills.;
+  endif
+  [role_system: Total per customer] <block_system>
+  label: Aggregate;
+  props: CL;
+  desc: Per customer closing day (month-end if not set), collects Shipped dispatch delivery orders from the day after the previous closing up to this one and creates an Unprocessed closing row. Stock storage is excluded.;
+  [role_system: Draft the invoice] <block_system>
+  label: Draft;
+  props: INV;
+  desc: Rows whose closing day has passed become a Draft invoice at once and the closing row turns Processed. It is addressed to the bill-to, and due date and tax are filled in automatically.;
+  if (Generate) is (Succeeded) than #blue
+  elseif (Failed) than #orange
+    [role_system: Stays unprocessed] <block_wait>
+    label: Unprocessed;
+    desc: A row that could not become an invoice (e.g. no billable shipments) stays Unprocessed in the list.;
+    [role_acct: Generate invoice] <block_apply>
+    label: Regenerate;
+    props: APP_BL02,INV;
+    desc: Open the closing row (or select several in the list) and generate again.;
+  endif
+elseif (Ad hoc) than #purple
+  [role_acct: Invoice shipments] <block_apply>
+  label: Manual invoice;
+  props: APP_BL11,INV;
+  desc: Without waiting for the closing day, pick a customer's unbilled shipments and create a Draft invoice. A Manual closing row is kept as Processed.;
+endif
+[role_acct: Check the draft] <block_neutral>
+label: Review;
+props: APP_BL01;
+desc: Check the lines, the tax per rate and the due date. Amounts come from the delivery orders and cannot be edited here.;
+if (Extra charges) is (None) than #blue
+elseif (Added) than #orange
+  [role_acct: Add charges] <block_apply>
+  label: Charges;
+  props: APP_BL01,INV;
+  desc: Add charges from the charge master. Totals are recalculated and any approval is reset.;
+  if (Issue approval) is (Sent back) than #red
+    [role_acct: Fix and resubmit] <block_reject>
+    label: Sent back;
+    props: APP_BL01;
+    [loop]
+  elseif (Approved) than #blue
+    [role_appr: Approve issuing] <block_approve>
+    label: Issue approval;
+    props: APP_CM01;
+    desc: Pressing Issue raises an approval request. Approval only unlocks issuing (it does not issue). With no steps configured it passes straight through.;
+  endif
+endif
+[role_acct: Issue the invoice] <block_apply>
+label: Issue;
+props: APP_BL01,INV;
+desc: Becomes Issued with the issue date recorded. The content is fixed, the PDF becomes available and the invoice appears in the partner portal.;
+[role_acct: Send the PDF] <block_neutral>
+label: Send;
+props: APP_BL01;
+desc: Output the PDF (in the recipient's language) and send it by email, fax or post. The app itself sends no email.;
+[role_acct: Mark as sent] <block_apply>
+label: Sent;
+props: APP_BL01,INV;
+desc: Becomes Sent with the sent time recorded.;
+[role_cust: Pay] <block_neutral>
+label: Payment;
+desc: Payment arrives by the due date.;
+[role_acct: Mark as paid] <block_apply>
+label: Paid;
+props: APP_BL01;
+desc: Press after confirming the payment. With no payment-approval steps it becomes Paid immediately.;
+if (Payment approval) is (No steps) than #blue
+elseif (Approved) than #blue
+  [role_appr: Approve payment] <block_approve>
+  label: Payment approval;
+  props: APP_CM01,INV;
+  desc: The final approval turns the invoice Paid.;
+elseif (Sent back) than #red
+  [role_acct: Recheck, resubmit] <block_reject>
+  label: Sent back;
+  props: APP_BL01;
+  desc: Stays Sent. Recheck the payment and press Mark as paid again.;
+  [loop]
+endif
+[role_acct: Export journal CSV] <block_apply>
+label: Acct export;
+props: APP_BL01,CSV;
+desc: Possible any time after issuing. The first export posts and freezes an accounting document; later exports return the same CSV. The export time is recorded.;
+[role_system: Closing → Exported] <block_system>
+label: Closing update;
+props: ACC,CL;
+desc: With the first posting, the source closing row moves from Processed to Exported.;
+if (Correction) is (Not needed) than #blue
+elseif (Needed) than #orange
+  [role_acct: Create reversal] <block_reject>
+  label: Reversal;
+  props: APP_BL01,ACC;
+  desc: With a reason, cancel the posted accounting document with a debit/credit-swapped one. The original is never rewritten.;
+  [role_acct: Fix and re-export] <block_apply>
+  label: Re-post;
+  props: APP_BL01,CSV;
+  desc: After fixing account codes etc., exporting the CSV posts a new accounting document.;
+endif

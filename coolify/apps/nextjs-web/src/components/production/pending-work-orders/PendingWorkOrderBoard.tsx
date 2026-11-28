@@ -34,16 +34,26 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
+import {
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { UnplannedOrderLineRow } from "./model";
 
 const ORDER_LINES_PATH = "/sales/order-lines";
 const WORK_ORDERS_PATH = "/production/work-orders";
 
-/** 不足分の指示書を起こすリンク（種別と数量をプリセット）。 */
+/**
+ * 不足分の指示書を起こすリンク（数量だけをプリセット）。
+ *
+ * **種別は書かない** — 明細の注文種別から決まる（lib/work-order-alloc-core
+ * workOrderTypeForLine）。ここで再研磨かどうかを判定すると、同じ判定が
+ * 入口の数だけ増える。
+ */
 function newWorkOrderHref(r: UnplannedOrderLineRow): string {
-  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&type=MANUFACTURE&qty=${r.unplannedQuantity}`;
+  return `${WORK_ORDERS_PATH}/new?orderLine=${r.uuid}&qty=${r.unplannedQuantity}`;
 }
 
 export function PendingWorkOrderBoard({
@@ -84,6 +94,7 @@ export function PendingWorkOrderBoard({
       !search ||
       String(r.workOrderNumber).includes(search) ||
       r.docNumber.includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     return (
@@ -256,7 +267,7 @@ export function PendingWorkOrderBoard({
       sortValue: (r) => r.type,
       render: (r) => (
         <Badge
-          color={r.type === "MANUFACTURE" ? "violet" : "teal"}
+          color={WORK_ORDER_TYPE_COLOR[r.type] ?? "gray"}
           size="sm"
           variant="light"
         >
@@ -452,7 +463,7 @@ export function PendingWorkOrderBoard({
             )}
             getRowId={(r) => String(r.workOrderNumber)}
             onRowClick={(r) =>
-              router.push(`${WORK_ORDERS_PATH}/${r.docNumber}`)
+              router.push(`${WORK_ORDERS_PATH}/${r.workOrderNumber}`)
             }
             renderCard={(r) => (
               <Group align="flex-start" justify="space-between" wrap="nowrap">

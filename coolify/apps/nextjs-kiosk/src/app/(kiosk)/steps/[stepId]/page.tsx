@@ -9,11 +9,19 @@ import { notFound, redirect } from "next/navigation";
 import { I18nProvider } from "@/components/I18nProvider";
 import { StepExecutionView } from "@/components/steps/StepExecutionView";
 import { readableCodes } from "@/lib/authz";
+import { getStepPrograms } from "@/lib/design-programs";
+import { getStepSeriesMemo } from "@/lib/design-series-memo";
 import { resolveBoardLocationByCode } from "@/lib/device-work-location";
+import { type LocalizedText, localized } from "@/lib/format";
 import { getSession } from "@/lib/kiosk-auth";
 import { boardQuery, parseScope } from "@/lib/location-board-core";
 import { getStepRecordingData } from "@/lib/step-records";
-import { getMyStep, getStepLocationGate } from "@/lib/steps";
+import {
+  getMyStep,
+  getStepLocationGate,
+  getWorkOrderMarkings,
+} from "@/lib/steps";
+import { loadWipRecording } from "@/lib/wip-recording";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +30,12 @@ export default async function StepExecutionPage({
   searchParams,
 }: {
   params: Promise<{ stepId: string }>;
-  searchParams: Promise<{ from?: string; loc?: string; scope?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    loc?: string;
+    scope?: string;
+    via?: string;
+  }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -53,11 +66,28 @@ export default async function StepExecutionPage({
     session.locale,
   );
 
+  const markings = await getWorkOrderMarkings(step.workOrderNumber);
+
+  // この工程の加工プログラム（図面の版から。機械一致が先頭）
+  const programs = await getStepPrograms(
+    step.stepId,
+    session.deviceId,
+    session.locale,
+  );
+  // 図面系列のメモ（全版共通の注意。プログラムと同じ規則で選んだ系列）
+  const seriesMemo = await getStepSeriesMemo(step.stepId, session.locale);
+
+  // 仕掛品として在庫に置く分を記録するための材料（半製品を記録するときに
+  // 加工状態を見せ、仕上がり寸法を入れてもらう）。
+  const wipRecording = await loadWipRecording(step.stepId);
+
   // 来た経路で戻り先を決める。**任意 URL は受けない** — 決め打ちの値のときだけ
   // 固定の遷移先を組み立て、クエリの中身もサーバー側で検証してから使う。
   //   from=wo  → その指示書のビュー
   //   from=loc → 作業場所の一覧（見ていた場所と広さを保つ）
-  const { from, loc, scope: rawScope } = await searchParams;
+  //   via=list → その指示書のビューへ「指示書一覧」から来ていた（戻ったあとも
+  //              一覧へ戻れるように持ち回る。落とすと戻り先がスキャンに変わる）
+  const { from, loc, scope: rawScope, via } = await searchParams;
   const backTo =
     from === "wo"
       ? ("workOrder" as const)
@@ -84,7 +114,9 @@ export default async function StepExecutionPage({
           code: boardLocationCode,
           scope: parseScope(rawScope ?? null),
         })
-      : "";
+      : backTo === "workOrder" && via === "list"
+        ? "?from=list"
+        : "";
 
   return (
     <I18nProvider locale={session.locale}>
@@ -93,8 +125,24 @@ export default async function StepExecutionPage({
         backTo={backTo}
         initialWorkLocationCode={boardLocationCode}
         locationGate={locationGate}
+        markings={markings}
+        programs={programs}
         recording={recording}
+        seriesMemo={seriesMemo}
         step={step}
+        wipRecording={
+          wipRecording
+            ? {
+                ...wipRecording,
+                stepNames: Object.fromEntries(
+                  Object.entries(wipRecording.stepNames).map(([id, name]) => [
+                    id,
+                    localized(name as LocalizedText | null, session.locale),
+                  ]),
+                ),
+              }
+            : null
+        }
       />
     </I18nProvider>
   );

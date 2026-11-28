@@ -2,14 +2,14 @@
  * f4-presets.ts — SearchSelect の F4（詳細検索ポップアップ）標準設定。
  *
  * フィルタ定義・結果列と、_shared/option-search.ts のサーバー検索を束ねる。
- * 画面側は `f4={productF4(tr)}` のように呼び出し側の `tr` を渡すだけでよい
+ * 画面側は `f4={productItemF4(tr)}` のように呼び出し側の `tr` を渡すだけでよい
  * （ui/SearchSelect.tsx）。
  */
 
 import type { useTranslations } from "next-intl";
 import {
   f4SearchCustomers,
-  f4SearchProducts,
+  f4SearchProductItems,
   f4SearchStructuredMaterialTypes,
 } from "@/app/(dashboard)/_shared/option-search";
 import type { Option } from "@/lib/mock";
@@ -17,7 +17,13 @@ import type { F4Config } from "./F4SearchModal";
 
 type Tr = ReturnType<typeof useTranslations>;
 
-export function productF4(tr: Tr): F4Config {
+/**
+ * 製品 F4。value は **items.id**（`searchProductItemOptions` と対）。
+ *
+ * 旧 products.id 版（`productF4` / `f4SearchProducts`）は使い手が無くなった
+ * ので品目統合 第 3 段で消した。旧 id を返すピッカーはもう 1 本も無い。
+ */
+export function productItemF4(tr: Tr): F4Config {
   return {
     title: tr("ui.f4Presets.productTitle"),
     description: tr("ui.f4Presets.productDescription"),
@@ -31,7 +37,7 @@ export function productF4(tr: Tr): F4Config {
       tr("ui.f4Presets.materialType"),
       tr("ui.f4Presets.unit"),
     ],
-    onSearch: f4SearchProducts,
+    onSearch: f4SearchProductItems,
   };
 }
 

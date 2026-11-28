@@ -1,8 +1,9 @@
 /**
  * model.ts — 価格表 view-model types + pure display/pricing helpers.
  *
- * Model (per sales.price_list_entries — combined key (year_month, seq)):
- *   Entry — 表示番号 PRC-YYYYMM-NNNNN はキーから導出（URL id と同一）。
+ * Model (per sales.price_list_entries — 行は参照 doc_ref で引く):
+ *   Entry — 価格表番号 PRC-FFFF-NNNNN は DB が払い出す。entryId は法人コード付きの
+ *           id（CKK~PRC-2026-00001 — URL id と同一。表示は docNo() で番号だけ）。
  *           (顧客, 製品) は作成後不変の識別（unique）。通貨 + 状態を持つ。
  *     └ Variant  = 注文種別ごとの価格。基準単価（価格試算の見積単価 or 手動）+
  *                  有効期間 + 状態 + 価格試算リンクを持つ。
@@ -17,6 +18,7 @@
  * everything here is pure and client-safe.
  */
 
+import type { PriceListApprovalStatus } from "@/lib/custom-value-approval-core";
 import { type Formatters, formatMoney } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 
@@ -55,7 +57,12 @@ export interface PriceDiscount {
   isActive: boolean;
 }
 
-export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
+export type EntryOrderType =
+  | "PRODUCTION"
+  | "TEST"
+  | "SAMPLE"
+  | "REGRIND"
+  | "OTHER";
 
 /**
  * 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
@@ -76,21 +83,66 @@ export interface PriceVariant {
   tiers: PriceTier[];
   /** 期間・数量条件つき値引きルール（専用リスト）. */
   discounts: PriceDiscount[];
-  /** 価格試算元の文書番号 EST-…（手動設定は null）— URL id と同一。 */
+  /** 価格試算元の id（`CKK~EST-2026-00001`。手動設定は null）— URL id と同一。 */
   estimateId: string | null;
   estimateNumber: string | null;
 }
 
 /** A price entry (顧客×製品) — owns the currency/active flag shared by variants. */
 export interface PriceListEntry {
-  /** 価格表番号 PRC-YYYYMM-NNNNN（URL id と同一）。 */
+  /** 価格表の id（法人コード + 番号 `CKK~PRC-2026-00001`。URL id と同一）。 */
   entryId: string;
+  /** 旧番号（PRC-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
+  /**
+   * 発行会社（自社法人 id / コード / 表示名）。**価格表は会社ごとに別々**で、
+   * 識別は (発行会社, 顧客, 品目, 工具)。価格の解決は書類の発行会社の価格表だけを
+   * 引く（`entriesForCompany`）。作成後は変えない（DB トリガー）。
+   */
+  ownCompanyId: number;
+  ownCompanyCode: string;
+  ownCompanyName: string;
   customerId: string;
   customerName: string;
-  productId: string;
+  /**
+   * 対象製品 — 値は**品目 id**（items.id、`itemType: "PRODUCT"`）。
+   * 品目統合 第 2 段 C。見積明細・注文明細・出荷明細も同じ id 空間なので、
+   * 価格の解決（`resolvePriceFromEntries`）はそのまま突き合わせられる。
+   * DB の自然キー (customer_bp_id, product_id) は products.id のまま —
+   * 識別は作成後不変という約束なので、鍵の差し替えは別の判断
+   * （shared-db の 20261030090000_items_stage2c_sales）。
+   */
+  itemId: string;
   productName: string;
+  /**
+   * 品目の種別。**製品と再研磨品目は同じ価格表に並ぶ** — 売り物である点も、
+   * 顧客ごとに値段を持つ点も同じなので、別のアプリには分けない。ただし
+   * 「研ぎ直しという役務」と「製品」は読み手にとって別物なので、行には
+   * 種別を出す（出さないと、工具の名前と役務の名前が同じ列に混ざる）。
+   */
+  itemType: "PRODUCT" | "REGRIND";
+  /**
+   * 対象工具（品目 id の文字列）。**再研磨の品目の価格表だけ**が持てる任意の欄で、
+   * null = 工具を問わない価格。同じ顧客 × 役務に、工具なしの 1 本と工具ごとの
+   * 複数本が並び得る。解決の順は `selectPriceEntries`（quotes/model.ts）。
+   */
+  toolItemId: string | null;
+  /** 対象工具の表示名（`名称 コード`）。工具なしは null。 */
+  toolName: string | null;
+  /**
+   * 品目の標準価格（定価）。**この画面では読むだけ** — 持ち主は品目マスタ
+   * （再研磨品目 MS0H）で、直すのはあちら。ここに出すのは「当たる価格表が
+   * 無いときいくらで売れるのか」が、価格表の画面から見えないと分からない
+   * ため。標準価格を読む品目は今のところ再研磨だけなので、製品は null。
+   */
+  standardUnitPrice: number | null;
   currency: string;
   isActive: boolean;
+  /**
+   * 独自値の追加承認の状態（承認設定 MS0B）。PENDING / REJECTED の間は価格の
+   * 解決に使われない（lib/custom-value-approval-core.ts priceEntryUsable）。
+   */
+  approvalStatus?: PriceListApprovalStatus;
   /** 注文種別ごとの価格（少なくとも 1 件）。 */
   variants: PriceVariant[];
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
@@ -112,13 +164,71 @@ export function requiresEndDate(orderType: string): boolean {
   return END_DATE_REQUIRED_TYPES.includes(orderType);
 }
 
-/** Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。 */
+/**
+ * Bare entry identity（顧客×製品 + 登録済み種別）— duplicate warnings 用。
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export interface EntryIdentity {
+  /** 発行会社（自社法人 id）— 識別の一部。 */
+  ownCompanyId: number;
+  /** 発行会社のコード・表示名（他社の価格表からコピーの案内に出す）。 */
+  ownCompanyCode: string;
+  ownCompanyName: string;
   customerBpId: string;
-  productId: string;
+  itemId: string;
+  /** 対象工具（null = 工具を問わない価格表）。識別の一部。 */
+  toolItemId: string | null;
   orderTypes: string[];
-  /** 既存エントリの PRC 番号（重複警告からのリンク先）。 */
+  /** 既存エントリの id（`CKK~PRC-…`。重複警告からのリンク先）。 */
   entryId: string;
+}
+
+/** 数量段階の行が持つ範囲（フォームの行もこの形を満たす）。 */
+interface TierRange {
+  minQuantity: number;
+  maxQuantity: number | null;
+}
+
+/**
+ * `index` 行の最大数量を `max` にし、次の行があればその最小数量を **max + 1** で
+ * 埋める（前の行の終わりが次の行の始まりになるので、隙間も重なりもできない）。
+ * `max` が空（上限なし）のときは次の行を触らない。
+ */
+export function setTierEnd<T extends TierRange>(
+  tiers: readonly T[],
+  index: number,
+  max: number | null,
+): T[] {
+  return tiers.map((t, i) => {
+    if (i === index) return { ...t, maxQuantity: max };
+    if (i === index + 1 && max != null) return { ...t, minQuantity: max + 1 };
+    return t;
+  });
+}
+
+/** 範囲を 1 行足すときの、最後の行の終わりを閉じる幅（上限なしだったとき）。 */
+const APPEND_RANGE_STEP = 100;
+
+/**
+ * 末尾に範囲を足す。新しい行の最小数量は最後の行の最大数量 + 1。最後の行が
+ * 上限なしなら、その行を「最小数量 + 99」で閉じてから続ける。`make` は最小数量
+ * から新しい行を作る。
+ */
+export function appendTierRange<T extends TierRange>(
+  tiers: readonly T[],
+  make: (minQuantity: number) => T,
+): T[] {
+  const last = tiers[tiers.length - 1];
+  if (!last) return [make(1)];
+  if (last.maxQuantity != null) {
+    return [...tiers, make(last.maxQuantity + 1)];
+  }
+  const start = last.minQuantity + APPEND_RANGE_STEP;
+  return [
+    ...tiers.slice(0, -1),
+    { ...last, maxQuantity: start - 1 },
+    make(start),
+  ];
 }
 
 /**
@@ -267,16 +377,23 @@ export function findApplicableDiscount(
   );
 }
 
-/** The entry for a (顧客, 製品), if registered — pure over a list. */
+/**
+ * The entry for a (顧客, 製品), if registered — pure over a list.
+ * `itemId` は品目 id（`PriceListEntry.itemId` と同じ空間）。
+ */
 export function findEntryByCustomerProduct(
   customerId: string | null | undefined,
-  productId: string | null | undefined,
+  itemId: string | null | undefined,
   entries: PriceListEntry[],
 ): PriceListEntry | null {
-  if (!(customerId && productId)) return null;
+  if (!(customerId && itemId)) return null;
+  // 工具を問わないエントリだけ（工具付きは再研磨の工具ごとの値段 — 別の識別）。
   return (
     entries.find(
-      (e) => e.customerId === customerId && e.productId === productId,
+      (e) =>
+        e.customerId === customerId &&
+        e.itemId === itemId &&
+        (e.toolItemId ?? null) == null,
     ) ?? null
   );
 }

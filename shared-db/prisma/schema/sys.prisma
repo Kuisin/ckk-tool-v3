@@ -22,6 +22,10 @@ model File {
   userAvatars      User[]               @relation("UserAvatarFile")
   userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
   inspectionTemplateImages InspectionTemplate[] @relation("InspectionTemplateImage")
+  ownCompanySeals  OwnCompany[]         @relation("OwnCompanySeal")
+  ownCompanyLogos  OwnCompany[]         @relation("OwnCompanyLogo")
+  designPrograms   DesignProgram[]      @relation("DesignProgramFile")
+  designProgramChanges DesignProgramChange[] @relation("DesignProgramChangeFile")
 
   @@map("files")
   @@schema("app")
@@ -115,6 +119,28 @@ model NumberingSequence {
   @@schema("app")
 }
 
+// 書類番号の連番（PREFIX-FFFF-NNNNN）— 自社法人 × 会計年度ごと。
+// 払い出しは DB 関数 app.allocate_document_seq だけが行う（アプリから直接
+// 書かない）。呼び出し側のトランザクション内で動くので、巻き戻れば番号も戻る。
+// 1 行でもある法人は会計年度の開始月を変えられない（トリガー
+// own_companies_fiscal_month_lock）。範囲は CHECK（last_seq 1..99999 /
+// fiscal_year 4 桁）。年度の引き方は app.fiscal_year_of（TS 双子:
+// nextjs-web lib/fiscal-year-core.ts）。
+model DocumentSequence {
+  key          String
+  ownCompanyId Int    @map("own_company_id")
+  /// 会計年度のラベル = 年度が始まる暦年
+  fiscalYear   Int    @map("fiscal_year")
+  lastSeq      Int    @map("last_seq")
+
+  ownCompany OwnCompany @relation("DocumentSequenceOwnCompany", fields: [ownCompanyId], references: [id], onDelete: Restrict)
+
+  @@id([key, ownCompanyId, fiscalYear])
+  @@index([ownCompanyId])
+  @@map("document_sequences")
+  @@schema("app")
+}
+
 // フィーチャーフラグ（_specs/tables.md §Other）。アプリの環境別 ON/OFF に使用:
 // key = `app:<appKey>:<env>`（env = dev | main）。行が無ければ有効（デフォルト
 // ON — 既存挙動を変えない）。dev/main は同一 DB を共有するため env をキーに含める。
@@ -134,7 +160,7 @@ model FeatureFlag {
 // 監査ログ（業務操作履歴）。各レコードの CREATE/UPDATE/DELETE を before/after
 // JSON 付きで記録し、詳細画面の「履歴」タブと管理者向け操作履歴一覧で表示する。
 // record_id は業務識別子（文書番号 QOT-… / EST-…、価格表エントリキー、
-// マスタの文字列 id）を格納する TEXT — 文書テーブルが複合キーのため uuid ではない。
+// マスタの文字列 id）を格納する TEXT。一意な指し先は record_key。
 // user_id は認証実装後に実ユーザーへ解決する弱参照（現状は null 可）。
 model AuditLog {
   id         BigInt   @id @default(autoincrement())
@@ -143,7 +169,7 @@ model AuditLog {
   tableName  String   @map("table_name") // quotes / estimates / price_list_entries / products …
   recordId   String?  @map("record_id") // 業務識別子（文書番号・エントリキー・id。表示用）
   // レコードの安定キー（record_id とは別物 — こちらは機械用）。uuid / int /
-  // 文字列 PK はそのまま、複合 PK は "YYYYMM:seq"。record_id は表示用の
+  // 文字列 PK はそのまま、番号を持つ書類は参照（doc_ref = `CKK/QOT-…`）。record_id は表示用の
   // 業務識別子（QOT-… / ロット番号）のまま残す。採番リセットで番号が
   // 再利用されても、この列は別の書類を指す（approval_requests で実際に
   // 起きた穴と同じ考え方を audit_logs にも入れる）。

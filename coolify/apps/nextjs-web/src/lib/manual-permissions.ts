@@ -48,7 +48,36 @@ interface ManualPageSource {
   code?: string | null;
   /** 特権操作を引くときのアプリ key（app と違う場合のみ）。 */
   privilegedAppKey?: string;
+  /**
+   * **日本語だけ書いてある**ページ（en / zh は未着手）。
+   *
+   * 機械的に訳した英語・中国語を置くより、既定言語へ落ちて日本語が出るほうが
+   * 読める（プロセス編が前からそうしている）。メニュー（meta.en/zh.json）には
+   * 並べたままにするので、行き先が消えるわけではない。訳を書いたらこの印を
+   * 外す — 外すと試験が 3 言語ぶんのファイルを要求しはじめる。
+   */
+  jaOnly?: boolean;
+  /**
+   * 画面そのものは開ける（`code: null` / requiredPermission が null）けれど、
+   * **中の操作ごとに権限が要る**ページの、操作 → 権限の表。
+   * 例: フォーム（CM02）は誰でも開いて回答できるが、作るのは `form:CREATE`、
+   * 書き出すのは `form:EXPORT`。キオスクはログインに権限は要らないが、
+   * ログイン後のアプリはどれも `work_order`。
+   * 「特別な権限は要りません」だけを書くと、作れない・書き出せない理由が
+   * マニュアルから辿れなくなる。
+   */
+  actionRows?: readonly ManualActionRow[];
 }
+
+interface ManualActionRow {
+  code: string;
+  action: string;
+  what: Record<Locale, string>;
+}
+
+/** 共有端末（nextjs-kiosk）のアプリが要求する権限。`nextjs-kiosk/src/lib/app-list.ts` の
+ * requiredPermission と一致していること（manual-permissions.test.ts が突き合わせる）。 */
+export const KIOSK_APP_PERMISSION = "work_order";
 
 export const MANUAL_PAGES: readonly ManualPageSource[] = [
   // ── 販売 ────────────────────────────────────────────────────────────────
@@ -79,8 +108,30 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "pending-work-orders",
   },
   { path: "operations/production/design-file/user", app: "design-files" },
-  { path: "operations/production/product-inventory/user", app: "inventory" },
-  { path: "operations/production/material-inventory/user", app: "inventory" },
+  {
+    path: "operations/production/work-location-board/user",
+    app: "work-location-board",
+  },
+  // ── 在庫 ────────────────────────────────────────────────────────────────
+  {
+    path: "operations/inventory/inventory-management/user",
+    app: "inventory",
+  },
+  {
+    path: "operations/inventory/stock-overview/user",
+    app: "stock-overview",
+  },
+  {
+    path: "operations/inventory/stock-requirements/user",
+    app: "stock-requirements",
+  },
+  {
+    path: "operations/inventory/inventory-movements/user",
+    app: "inventory-movements",
+  },
+  { path: "operations/inventory/stock-takes/user", app: "stock-takes" },
+  { path: "operations/inventory/goods-movement/user", app: "goods-movement" },
+  { path: "operations/inventory/movement-types/user", app: "movement-types" },
   // 旧 承認管理（PD03）は 一般カテゴリの 未処理一覧（CM01）へ移設した。画面自体は
   // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
   // ── 出荷 ────────────────────────────────────────────────────────────────
@@ -97,13 +148,53 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   // 旧 承認管理 (PD03) はここへ統合 — my-tasks 自体は無権限で開けるが、
   // 承認依頼中タブは approve 権限がある人にだけ出る（ページ側の判定）。
   { path: "operations/general/my-tasks/user", app: "my-tasks" },
-  { path: "operations/general/forms/user", app: "forms" },
+  {
+    path: "operations/general/forms/user",
+    app: "forms",
+    actionRows: [
+      {
+        code: "form",
+        action: "CREATE",
+        what: {
+          ja: "フォームを作る・取り込む",
+          en: "Create or import a form",
+          zh: "新建或导入表单",
+        },
+      },
+      {
+        code: "form",
+        action: "UPDATE",
+        what: {
+          ja: "フォームの設定・項目・共有を変える（そのフォームの編集権限も要る）",
+          en: "Change a form's settings, fields or sharing (also needs edit access to that form)",
+          zh: "变更表单的设置、项目或共享（还需要该表单的编辑权限）",
+        },
+      },
+      {
+        code: "form",
+        action: "EXPORT",
+        what: {
+          ja: "回答を CSV / PDF に書き出す",
+          en: "Export responses to CSV / PDF",
+          zh: "将回答导出为 CSV / PDF",
+        },
+      },
+    ],
+  },
+  {
+    path: "operations/general/internal-pages/user",
+    app: "internal-pages",
+  },
   // ── マスタ ──────────────────────────────────────────────────────────────
   {
     path: "operations/masters/business-partner/user",
     app: "master-business-partners",
   },
   { path: "operations/masters/product/user", app: "master-products" },
+  {
+    path: "operations/masters/tax-category/user",
+    app: "master-tax-categories",
+  },
   {
     path: "operations/masters/material-type/user",
     app: "master-material-types",
@@ -132,6 +223,18 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     path: "operations/masters/storage-location/user",
     app: "master-storage-locations",
   },
+  {
+    path: "operations/masters/charge-item/user",
+    app: "master-charge-items",
+  },
+  {
+    path: "operations/masters/regrind-item/user",
+    app: "master-regrind-items",
+  },
+  {
+    path: "operations/masters/own-company/user",
+    app: "master-own-companies",
+  },
   // ── システム ────────────────────────────────────────────────────────────
   { path: "operations/system/user-management/user", app: "user-management" },
   { path: "operations/system/app-management/user", app: "app-management" },
@@ -148,11 +251,38 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     app: "privileged-access",
   },
   { path: "operations/system/external-api/user", app: "api-clients" },
+  { path: "operations/system/accounting/user", app: "accounting" },
+  {
+    path: "operations/system/ai-provider/user",
+    app: "ai-provider",
+  },
+  {
+    path: "operations/system/notification-email/user",
+    app: "notification-email",
+  },
+  { path: "operations/system/portal/user", app: "portal-admin" },
   // ── キオスク（現場のタブレット。nextjs-web のアプリ一覧には無い）───────────
   // ログイン画面。QRカードと PIN があれば入れる — 権限の話ではない。
-  { path: "operations/kiosk/start/user", code: null },
-  { path: "operations/kiosk/steps/user", code: "work_order" },
-  { path: "operations/kiosk/work-location/user", code: "work_order" },
+  // ただしログインしたあとに並ぶアプリはどれも指示書（work_order）の権限が要る
+  // — 権限が無いと、ログインできてもアプリが 1 つも出ない。
+  {
+    path: "operations/kiosk/start/user",
+    code: null,
+    actionRows: [
+      {
+        code: KIOSK_APP_PERMISSION,
+        action: "READ",
+        what: {
+          ja: "ログイン後にアプリ（工程実行・指示書スキャン・指示書一覧・作業場所）を使う",
+          en: "Use the apps after logging in (step execution, work order scan, work order list, work location)",
+          zh: "登录后使用应用（工序执行、工单扫描、工单列表、作业场所）",
+        },
+      },
+    ],
+  },
+  { path: "operations/kiosk/steps/user", code: KIOSK_APP_PERMISSION },
+  { path: "operations/kiosk/wo-list/user", code: KIOSK_APP_PERMISSION },
+  { path: "operations/kiosk/work-location/user", code: KIOSK_APP_PERMISSION },
 ];
 
 /** そのページが要求する権限コード（null = ログインのみ）。 */
@@ -178,6 +308,8 @@ interface Phrases {
   heading: string;
   needs: (label: string, code: string) => string;
   loginOnly: string;
+  openWithoutPermission: string;
+  actionsHeading: string;
   tableHead: string;
   rowOpen: (label: string) => string;
   rowEdit: (label: string) => string;
@@ -196,6 +328,9 @@ const PHRASES: Record<Locale, Phrases> = {
     needs: (label, code) =>
       `この画面を使うには **${label}**（\`${code}\`）の権限が要ります。`,
     loginOnly: "この画面に特別な権限は要りません。ログインしていれば使えます。",
+    openWithoutPermission:
+      "この画面を開くだけなら特別な権限は要りません。ただし、次の操作にはそれぞれ権限が要ります。",
+    actionsHeading: "### 操作ごとに要る権限",
     tableHead: "| したいこと | 必要な権限 |\n| --- | --- |",
     rowOpen: (label) => `| 画面を開く・一覧や詳細を見る | ${label} の 閲覧 |`,
     rowEdit: (label) =>
@@ -217,6 +352,9 @@ const PHRASES: Record<Locale, Phrases> = {
       `Using this screen requires the **${label}** (\`${code}\`) permission.`,
     loginOnly:
       "This screen needs no special permission — being signed in is enough.",
+    openWithoutPermission:
+      "Opening this screen needs no special permission, but the operations below each need one.",
+    actionsHeading: "### Permissions per operation",
     tableHead: "| What you want to do | Permission needed |\n| --- | --- |",
     rowOpen: (label) =>
       `| Open the screen, view lists and details | ${label} — View |`,
@@ -237,6 +375,9 @@ const PHRASES: Record<Locale, Phrases> = {
     heading: "## 所需权限",
     needs: (label, code) => `使用本画面需要 **${label}**（\`${code}\`）权限。`,
     loginOnly: "本画面不需要特别权限，登录后即可使用。",
+    openWithoutPermission:
+      "仅打开本画面不需要特别权限，但下列操作分别需要相应权限。",
+    actionsHeading: "### 各操作所需权限",
     tableHead: "| 想做的事 | 所需权限 |\n| --- | --- |",
     rowOpen: (label) => `| 打开画面、查看列表与明细 | ${label} — 查看 |`,
     rowEdit: (label) => `| 新增・变更・删除 | ${label} — 创建 / 更新 / 删除 |`,
@@ -261,8 +402,9 @@ export function buildPermissionBlock(
   const ops = pageOperations(page);
   const lines: string[] = [t.heading, ""];
 
+  const rows = page.actionRows ?? [];
   if (code === null) {
-    lines.push(t.loginOnly);
+    lines.push(rows.length > 0 ? t.openWithoutPermission : t.loginOnly);
   } else {
     const label = permissionLabel(code, locale);
     lines.push(t.needs(label, code), "");
@@ -270,6 +412,15 @@ export function buildPermissionBlock(
     lines.push(t.rowOpen(label));
     lines.push(t.rowEdit(label));
     lines.push("", t.editNote);
+  }
+
+  if (rows.length > 0) {
+    lines.push("", t.actionsHeading, "", t.tableHead);
+    for (const r of rows) {
+      lines.push(
+        `| ${r.what[locale]} | ${permissionLabel(r.code, locale)}（\`${r.code}\`）— ${actionLabel(r.action, locale)} |`,
+      );
+    }
   }
 
   if (ops.length > 0) {

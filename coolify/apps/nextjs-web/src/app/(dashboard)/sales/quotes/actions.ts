@@ -3,7 +3,7 @@
 /**
  * Server Actions — 見積書 (sales.quotes + quote_items).
  *
- * Quotes are keyed (year_month, seq); QOT-YYYYMM-NNNNN is derived. 見積書は
+ * 番号（QOT-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。見積書は
  * 価格表からのみ価格を解決する — 明細の単価・値引きは保存時にもサーバー側で
  * 価格表から再解決してスナップショットする（クライアント表示値は信用しない）。
  */
@@ -14,15 +14,18 @@ import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { isoDateJst } from "@/components/sales/price-lists/model";
 import {
+  lineToolItemId,
   type PriceMissReason,
   resolvePriceFromEntries,
 } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { resolveIssuingCompany } from "@/lib/doc-company";
+import { type DocKey, docIdOf, parseDocKey } from "@/lib/doc-number";
 import { lineAmountYen, roundYen } from "@/lib/money";
-import { allocateDocumentKey } from "@/lib/numbering";
+import { planQuoteMail, sendQuoteMail } from "@/lib/quote-mail";
+import { salesLineItemError } from "@/lib/sales-item-guard";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
@@ -30,9 +33,10 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
 import { loadTaxCatalog } from "@/lib/tax-categories";
 import { resolveLineTax } from "@/lib/tax-rate";
-import { fetchEntriesForCustomer } from "./data";
+import { fetchCompanyEntriesForCustomer } from "./data";
 
 const BASE_PATH = "/sales/quotes";
 
@@ -49,11 +53,11 @@ class LineItemResolveError extends Error {}
 async function quoteInScope(
   access: Access,
   userId: string,
-  key: { yearMonth: string; seq: number },
+  key: DocKey,
 ): Promise<boolean> {
   if (access.kind === "ALL") return true;
   const row = await prisma.quote.findUnique({
-    where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+    where: { docRef: key.docRef },
     select: { createdBy: true },
   });
   if (!row) return true;
@@ -62,8 +66,14 @@ async function quoteInScope(
 
 function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   return z.object({
-    productId: z.string().min(1, tr("common.selectAProduct")),
-    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    /** 製品 — 値は品目 id（items.id、`itemType: "PRODUCT"`）。 */
+    itemId: z.string().min(1, tr("common.selectAProduct")),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "REGRIND", "OTHER"]),
+    /**
+     * 研ぎ直す工具（品目 id の文字列）。再研磨の明細だけが持つ — それ以外の
+     * 種別では保存時に落とす（`lineToolItemId`）。再研磨では必須（下の検査）。
+     */
+    toolItemId: z.string().nullable().optional(),
     quantity: z.number().int().min(1, tr("sales.quoteActions.quantityMinOne")),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
@@ -79,6 +89,12 @@ function quoteInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
     // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
     salesRepId: z.string().nullable().optional(),
+    /**
+     * 発行会社（自社法人 id）。拠点を持たない書類なので作成フォームで決める。
+     * 未指定は初期値（所属拠点の法人が 1 つならそれ、でなければ既定の法人）。
+     * 選べる法人かどうかはサーバーが検証する（lib/doc-company-core.ts）。
+     */
+    ownCompanyId: z.number().int().positive().nullable().optional(),
     validUntil: z.string().nullable(),
     notes: z.string(),
     items: z
@@ -115,6 +131,8 @@ function lineResolveMessage(
       return tr("sales.quoteActions.priceListInactive", { line });
     case "expired":
       return tr("sales.quoteActions.priceListExpired", { line });
+    case "unapproved":
+      return tr("sales.quoteActions.priceListUnapproved", { line });
     default:
       return tr("sales.quoteActions.noPriceListEntry", { line });
   }
@@ -129,13 +147,13 @@ async function customerTaxCategoryIdOf(bpId: string): Promise<number | null> {
   return row?.taxCategoryId ?? null;
 }
 
-/** 製品 id → 課税区分 id（未設定は map に載らない = 既定に従う）。 */
+/** 品目 id → 課税区分 id（未設定は map に載らない = 既定に従う）。 */
 async function productTaxCategoryMap(
-  productIds: readonly number[],
+  itemIds: readonly number[],
 ): Promise<Map<number, number | null>> {
-  if (productIds.length === 0) return new Map();
-  const rows = await prisma.product.findMany({
-    where: { id: { in: [...new Set(productIds)] } },
+  if (itemIds.length === 0) return new Map();
+  const rows = await prisma.item.findMany({
+    where: { id: { in: [...new Set(itemIds)] } },
     select: { id: true, taxCategoryId: true },
   });
   return new Map(rows.map((r) => [r.id, r.taxCategoryId]));
@@ -150,28 +168,58 @@ async function productTaxCategoryMap(
 async function resolveItems(
   v: QuoteInput,
   tr: Awaited<ReturnType<typeof getTranslations>>,
+  /** 見積書の発行会社 — その会社の価格表だけを引く。null = 既定の法人。 */
+  ownCompanyId: number | null | undefined,
 ) {
-  const entries = await fetchEntriesForCustomer(v.customerBpId);
+  const entries = await fetchCompanyEntriesForCustomer(
+    v.customerBpId,
+    ownCompanyId,
+  );
   // 税は**行ごと**（製品ごとに課税区分が違い得る）。見積書は印刷して外に出す書類
   // なので、単価・値引きと同じく保存時に凍結する — 発行後に税率マスタが変わっても
   // 刷り直した PDF が動いてはいけない。
-  const [catalog, customerTaxCategoryId, productTaxCategoryIds] =
+  const [catalog, customerTaxCategoryId, productTaxCategoryIds, standard] =
     await Promise.all([
       loadTaxCatalog(),
       customerTaxCategoryIdOf(v.customerBpId),
-      productTaxCategoryMap(v.items.map((it) => Number(it.productId))),
+      productTaxCategoryMap(v.items.map((it) => Number(it.itemId))),
+      // 標準価格（品目の定価）— 顧客の価格表が無い再研磨の品目はこちらで解決する。
+      loadStandardUnitPrices(v.items.map((it) => it.itemId)),
     ]);
+  // 明細の品目が種別と噛み合っているか（他社製品は売り物にならない・
+  // 再研磨の行は再研磨の品目を指す）。
+  // 工具は再研磨の行だけが持つ（他の種別で送られてきても持たない）。
+  const lines = v.items.map((it) => ({
+    ...it,
+    toolItemId: lineToolItemId(it),
+  }));
+  const itemError = await salesLineItemError(lines, tr);
+  if (itemError) throw new LineItemResolveError(itemError);
+  // 再研磨の行は「どの工具を研ぐのか」が決まっていないと値段が決まらない —
+  // 工具ごとの価格表があれば、工具なしの値段で見積ると注文請書と食い違う。
+  const noTool = lines.findIndex(
+    (it) => it.orderType === "REGRIND" && it.toolItemId == null,
+  );
+  if (noTool >= 0) {
+    throw new LineItemResolveError(
+      tr("sales.quoteActions.regrindToolRequired", { line: noTool + 1 }),
+    );
+  }
   // 基準日は見積の作成日（まだ注文日が無い）。
   const basisDate = isoDateJst(new Date());
 
-  const resolved = v.items.map((it, i) => {
+  const resolved = lines.map((it, i) => {
+    // 注文請書と同じ 1 本の解決（工具一致 → 工具なし → 標準価格）。
     const resolution = resolvePriceFromEntries(
       entries,
       v.customerBpId,
-      it.productId,
+      it.itemId,
       it.orderType,
       it.quantity,
       tr,
+      new Date(),
+      standard.get(Number(it.itemId)) ?? null,
+      it.toolItemId,
     );
     if (!resolution.ok) {
       throw new LineItemResolveError(
@@ -182,11 +230,13 @@ async function resolveItems(
     const lineTax = resolveLineTax(catalog, {
       customerTaxCategoryId,
       productTaxCategoryId:
-        productTaxCategoryIds.get(Number(it.productId)) ?? null,
+        productTaxCategoryIds.get(Number(it.itemId)) ?? null,
       basisDate,
     });
+    const itemId = Number(it.itemId);
     return {
-      productId: Number(it.productId),
+      itemId,
+      toolItemId: it.toolItemId != null ? Number(it.toolItemId) : null,
       orderType: it.orderType,
       quantity: it.quantity,
       unitPrice: r.unitPrice,
@@ -201,7 +251,8 @@ async function resolveItems(
         roundYen(lineAmountYen(r.unitPrice, it.quantity) - r.discountAmount),
       ),
       deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
-      notes: it.notes,
+      // 明細の備考（複数行）。空白だけなら持たない — PDF に空の行を刷らない。
+      notes: it.notes?.trim() ? it.notes.trimEnd() : null,
       sortOrder: i,
     };
   });
@@ -222,18 +273,21 @@ export async function createQuote(
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
-    const items = await resolveItems(v, tr);
-    const { yearMonth, seq } = await allocateDocumentKey("QUOTE");
+    const company = await resolveIssuingCompany(authz.userId, v.ownCompanyId);
+    if (!company.ok) {
+      return actionError(tr("common.issuingCompanyNotAllowed"));
+    }
+    const items = await resolveItems(v, tr, company.data.ownCompanyId);
     // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,
       null,
     );
-    await prisma.quote.create({
+    // 番号は DB が払い出す（INSERT トリガー）— 作った行から読み戻す。
+    const created = await prisma.quote.create({
       data: {
-        yearMonth,
-        seq,
+        ...company.data,
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
         salesRepId,
@@ -243,8 +297,9 @@ export async function createQuote(
         createdBy: authz.userId,
         items: { create: items },
       },
+      select: { docRef: true },
     });
-    const number = formatQuoteNumber({ yearMonth, seq });
+    const number = docIdOf(created);
     await recordAudit({
       action: "CREATE",
       tableName: "quotes",
@@ -291,8 +346,9 @@ export async function updateQuote(
   const v = parsed.data;
   try {
     const prior = await prisma.quote.findUnique({
-      where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+      where: { docRef: key.docRef },
       select: {
+        ownCompanyId: true,
         customerBpId: true,
         salesRepId: true,
         status: true,
@@ -305,7 +361,7 @@ export async function updateQuote(
     if (prior.status !== "DRAFT") {
       return actionError(tr("sales.quoteActions.onlyDraftCanBeEdited"));
     }
-    const items = await resolveItems(v, tr);
+    const items = await resolveItems(v, tr, prior.ownCompanyId);
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,
@@ -313,10 +369,10 @@ export async function updateQuote(
     );
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({
-        where: { quoteYearMonth: key.yearMonth, quoteSeq: key.seq },
+        where: { quote: { docRef: key.docRef } },
       }),
       prisma.quote.update({
-        where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
+        where: { docRef: key.docRef },
         data: {
           customerBpId: v.customerBpId,
           customerBranchBpId: v.customerBranchBpId,
@@ -402,7 +458,7 @@ export async function issueQuote(
   }
   try {
     const updated = await prisma.quote.updateMany({
-      where: { yearMonth: key.yearMonth, seq: key.seq, status: "DRAFT" },
+      where: { docRef: key.docRef, status: "DRAFT" },
       data: {
         status: "ISSUED",
         validUntil: new Date(parsedValidUntil.data),
@@ -425,4 +481,64 @@ export async function issueQuote(
       prismaErrorMessage(e, tr("sales.quoteActions.issueFailed"), tr),
     );
   }
+}
+
+/**
+ * 発行ダイアログ・「メールで送付」の確認用: 誰に送るか（送れないなら理由）。
+ * 宛先の決め方は lib/quote-mail-core.ts。
+ */
+export async function previewQuoteMail(
+  number: string,
+): Promise<ActionResult<{ name: string; email: string } | { reason: string }>> {
+  const tr = await getTranslations();
+  const key = parseDocKey(number, "QOT");
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("sales.quoteActions.scopeDenied"));
+  }
+  const plan = await planQuoteMail(key);
+  if (!plan.ok) {
+    return actionOk({
+      reason: tr(`sales.issueQuoteModal.reason.${plan.reason}`),
+    });
+  }
+  return actionOk({
+    name: plan.recipient.displayName,
+    email: plan.recipient.email,
+  });
+}
+
+/**
+ * 発行済みの見積書を顧客へメールで知らせる（PDF は添付せず、宛先に束縛した
+ * 書類リンクを載せる — lib/quote-mail.ts）。発行とは別の操作 — 発行は成功
+ * したのに送れなかった、を「メールで送付」から送り直せるようにする。
+ */
+export async function emailQuote(
+  number: string,
+): Promise<ActionResult<{ to: string }>> {
+  const tr = await getTranslations();
+  const key = parseDocKey(number, "QOT");
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  const authz = await checkPermission("quote", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (!(await quoteInScope(authz.access, authz.userId, key))) {
+    return actionError(tr("sales.quoteActions.scopeDenied"));
+  }
+  const actorId = await sessionUserId();
+  if (!actorId) return actionError(tr("common.invalidInput"));
+  const result = await sendQuoteMail(key, actorId);
+  if (!result.ok) {
+    return actionError(tr(`sales.issueQuoteModal.reason.${result.reason}`));
+  }
+  // 誰に送ったかを履歴に残す（取引先へ書類を出したという事実）。
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "quotes",
+    recordId: number,
+    after: { emailedTo: result.to },
+  });
+  revalidate(number);
+  return actionOk({ to: result.to });
 }

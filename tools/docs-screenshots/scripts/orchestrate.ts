@@ -45,6 +45,14 @@
  *   SHOT_DB_PORT       DB のホスト側ポート（既定 55432）
  *   SHOT_APP_PORT      nextjs-web のポート（既定 3100）
  *   SHOT_KIOSK_PORT    nextjs-kiosk のポート（既定 3101）
+ *
+ *   SHOT_DATABASE_URL  **docker を使わず、この DB へシードする**（外部 DB モード）。
+ *                      コンテナの中から走らせるとき用（録画用の
+ *                      coolify/apps/manual-videos — 中に docker が無く、DB は
+ *                      compose の隣のサービス）。この DB は起動も削除もしない。
+ *                      psql を PATH から使う。**空の使い捨て DB を渡すこと** —
+ *                      シードは固定 ID のデモデータを入れるので、実データのある
+ *                      DB に向けてはいけない。
  */
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
@@ -72,7 +80,8 @@ const KIOSK_URL = process.env.KIOSK_URL ?? `http://localhost:${KIOSK_PORT}`;
 // 名前も逃がして、SHOT_* を揃えて渡せば完全に独立して回せるようにする。
 const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-shots-db";
 const DB_IMAGE = "groonga/pgroonga:4.0.6-alpine-17";
-const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
+const EXTERNAL_DATABASE_URL = process.env.SHOT_DATABASE_URL;
+const DATABASE_URL = EXTERNAL_DATABASE_URL ?? `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
 // フッターに出るバージョン。**固定しないと撮り直すたびに全画像が変わる** —
 // 未設定だと AppFooter が "0.0.0" にフォールバックするので、撮る人の環境
@@ -109,6 +118,9 @@ const SEED_FILES_POST = [
   "sql/production-demo-seed.sql",
   "sql/shipping-billing-demo-seed.sql",
   "sql/system-demo-seed.sql",
+  // 再研磨品目（MS0H）だけ。工程リスト・注文・価格表は**作らない** —
+  // 理由はシードの頭に書いてある（既存の撮影がずれる / e2e の自動選択が止まる）。
+  "sql/regrind-demo-seed.sql",
   // キオスク撮影用の端末（既知トークン）+ カード（PIN 4321・demo_shot 割当）。
   // 拠点 F01（masters-demo）とユーザー demo_shot が先に要るので最後。
   "sql/kiosk-shot-seed.sql",
@@ -177,7 +189,23 @@ function containerRunning(): boolean {
   }
 }
 
+/** 外部 DB モード: 起動はせず、つながるまで待つだけ。 */
+async function waitForExternalDb(): Promise<void> {
+  log("external DB (SHOT_DATABASE_URL) — waiting for it to accept connections");
+  for (let i = 0; i < 60; i++) {
+    try {
+      sh("psql", [DATABASE_URL, "-q", "-At", "-c", "select 1"]);
+      log("postgres is ready");
+      return;
+    } catch {
+      await sleep(1000);
+    }
+  }
+  throw new Error("external postgres did not become ready in 60s");
+}
+
 async function startDb(): Promise<void> {
+  if (EXTERNAL_DATABASE_URL) return waitForExternalDb();
   if (containerRunning()) {
     log(`DB container ${DB_CONTAINER} already running — reusing`);
     return;
@@ -205,6 +233,7 @@ async function startDb(): Promise<void> {
 }
 
 function stopDb(): void {
+  if (EXTERNAL_DATABASE_URL) return; // 借り物の DB は消さない
   try {
     sh("docker", ["rm", "-f", DB_CONTAINER]);
     log("DB container removed");
@@ -220,6 +249,12 @@ function psqlFile(path: string): void {
 }
 
 function psqlInput(sql: Buffer | string): void {
+  if (EXTERNAL_DATABASE_URL) {
+    sh("psql", [DATABASE_URL, "-v", "ON_ERROR_STOP=1", "-q"], {
+      input: Buffer.isBuffer(sql) ? sql : Buffer.from(sql),
+    });
+    return;
+  }
   sh(
     "docker",
     ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-d", "ckk", "-v", "ON_ERROR_STOP=1", "-q"],
@@ -290,6 +325,9 @@ function buildApp(): void {
     cwd: HERE,
     stdio: "inherit",
   });
+  // マニュアルの生成物（.source）を先に作る（まっさらなチェックアウトでは無いまま
+  // next build が落ちることがある — scripts/scenarios.ts と同じ手当て）。
+  execFileSync("pnpm", ["exec", "fumadocs-mdx"], { cwd: NEXTJS_WEB, stdio: "inherit" });
   log("next build (production)");
   execFileSync("pnpm", ["run", "build"], {
     cwd: NEXTJS_WEB,
@@ -445,6 +483,10 @@ async function main(): Promise<void> {
     await startDb();
     seed();
     setLocale();
+    if (EXTERNAL_DATABASE_URL) {
+      log("seeded the external DB (SHOT_DATABASE_URL)");
+      return;
+    }
     log(`DB left running — DATABASE_URL=${DATABASE_URL}`);
     log(`stop it with: docker rm -f ${DB_CONTAINER}`);
     return;

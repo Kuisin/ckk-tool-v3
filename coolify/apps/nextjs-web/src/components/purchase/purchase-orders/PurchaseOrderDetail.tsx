@@ -89,6 +89,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { ActionResult } from "@/lib/server-action";
 import {
   canAttachEvidence,
@@ -204,7 +205,7 @@ export function PurchaseOrderDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `${tr("common.materialPurchaseOrder")} ${po.poNumber}`,
+          message: `${tr("common.materialPurchaseOrder")} ${docNo(po.poNumber)}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -271,7 +272,7 @@ export function PurchaseOrderDetail({
           items: [
             {
               key: po.sourceRequestNumber,
-              label: po.sourceRequestNumber,
+              label: docNo(po.sourceRequestNumber),
               href: `/purchase/purchase-requests/${encodeURIComponent(po.sourceRequestNumber)}`,
               note: tr("purchase.purchaseOrders.whatThisPurchaseOrderCameFrom"),
             },
@@ -328,7 +329,7 @@ export function PurchaseOrderDetail({
         onReject={(reason) => rejectPurchaseOrder(po.poNumber, reason)}
         onRequest={() => requestPurchaseApproval(po.poNumber)}
         rejectReason={null}
-        subject={`${tr("common.materialPurchaseOrder")} ${po.poNumber}`}
+        subject={`${tr("common.materialPurchaseOrder")} ${docNo(po.poNumber)}`}
       />
     );
   } else if (po.status === "APPROVED") {
@@ -415,9 +416,10 @@ export function PurchaseOrderDetail({
         { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
         tr("common.detailBreadcrumb"),
       ]}
+      company={po.poNumber}
       createdAt={fmt.dateTime(po.createdAt)}
       status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
-      title={po.poNumber}
+      title={docNo(po.poNumber)}
       updatedAt={fmt.dateTime(po.updatedAt)}
     >
       {actionCard}
@@ -427,6 +429,12 @@ export function PurchaseOrderDetail({
           label={tr("common.pONumber")}
           value={<DocNumber>{po.poNumber}</DocNumber>}
         />
+        {po.legacyNumber && (
+          <FieldValue
+            label={tr("common.legacyNumber")}
+            value={<DocNumber>{po.legacyNumber}</DocNumber>}
+          />
+        )}
         <FieldValue label={tr("common.supplier")} value={po.supplierName} />
         <FieldValue label={tr("common.createdBy")} value={po.createdByName} />
         <FieldValue
@@ -667,7 +675,7 @@ export function PurchaseOrderDetail({
       >
         <Text size="sm">
           {tr("purchase.purchaseOrders.confirmCancelBody", {
-            number: po.poNumber,
+            number: docNo(po.poNumber),
           })}
         </Text>
         <Textarea
@@ -698,7 +706,7 @@ export function PurchaseOrderDetail({
       >
         <Text size="sm">
           {tr("purchase.purchaseOrders.confirmOrderBody", {
-            number: po.poNumber,
+            number: docNo(po.poNumber),
           })}
         </Text>
       </ModalShell>
@@ -848,7 +856,7 @@ export function PurchaseOrderDetail({
         <Text size="sm">
           {tr("purchase.purchaseOrders.confirmCloseShortBody", {
             count: unreceivedItems.length,
-            number: po.poNumber,
+            number: docNo(po.poNumber),
           })}
         </Text>
         <Textarea

@@ -56,7 +56,11 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
+import {
+  type ApprovalMode,
+  defaultStepName,
+  validateFlowSteps,
+} from "@/lib/approval-flow";
 import { approvalModeOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import {
@@ -108,6 +112,7 @@ export function ApprovalFlowEditor({
   embedded = false,
   allowIndividual = false,
   searchApprovers,
+  allowEmpty = false,
 }: {
   targetType: string;
   targetLabel: string;
@@ -163,6 +168,11 @@ export function ApprovalFlowEditor({
   searchApprovers?: (
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
+  /**
+   * 段 0 本の保存を許す（独自値の追加承認 — 0 本 = 追加の承認なし）。
+   * 通常のフローは 0 本だと承認依頼が出せなくなるので許さない。
+   */
+  allowEmpty?: boolean;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -195,25 +205,27 @@ export function ApprovalFlowEditor({
       ...prev,
       {
         key: nextKey(),
-        nameJa: tr("master.approvalFlowEditor.nthApproval", {
-          n: prev.length + 1,
-        }),
-        nameTranslations: {},
+        ...defaultStepName(prev.length + 1, locale, tr),
         groupId: null,
         mode: "ANY",
       },
     ]);
 
-  const issues = validateFlowSteps(
-    steps.map((s) => ({
-      nameJa: s.nameJa,
-      groupId: s.custom ? null : s.groupId ? Number(s.groupId) : null,
-      mode: s.mode,
-      approverUserIds: s.custom ? (s.approvers ?? []).map((a) => a.value) : [],
-    })),
-    allowIndividual,
-    tr,
-  );
+  const issues =
+    allowEmpty && steps.length === 0
+      ? []
+      : validateFlowSteps(
+          steps.map((s) => ({
+            nameJa: s.nameJa,
+            groupId: s.custom ? null : s.groupId ? Number(s.groupId) : null,
+            mode: s.mode,
+            approverUserIds: s.custom
+              ? (s.approvers ?? []).map((a) => a.value)
+              : [],
+          })),
+          allowIndividual,
+          tr,
+        );
 
   const save = () => {
     if (issues.length > 0) {
@@ -301,17 +313,19 @@ export function ApprovalFlowEditor({
         variant="light"
       >
         <Text size="sm">
-          {targetLabel}の承認・差し戻しには、「{permissionLabel}
-          」を閲覧または編集できる権限（
-          <Text component="span" ff="mono" size="sm">
-            {permissionCode}:READ / UPDATE
-          </Text>
-          ）が要ります。誰が承認するかは、この画面で指定した
-          {allowIndividual
-            ? tr("master.approvalFlowEditor.approvalGroupAndApprovers")
-            : tr("common.approvalGroup")}
-          だけで決まります。書類を開けない人は、指定しても承認できません
-          （権限はユーザー管理 SY01 のロールで決まります）。
+          {tr.rich("master.approvalFlows.permissionNote", {
+            target: targetLabel,
+            permission: permissionLabel,
+            code: permissionCode,
+            who: allowIndividual
+              ? tr("master.approvalFlowEditor.approvalGroupAndApprovers")
+              : tr("common.approvalGroup"),
+            mono: (chunks) => (
+              <Text component="span" ff="mono" size="sm">
+                {chunks}
+              </Text>
+            ),
+          })}
         </Text>
       </Alert>
 
@@ -331,7 +345,7 @@ export function ApprovalFlowEditor({
                 variant="light"
                 w={isMobile ? undefined : 60}
               >
-                第{i + 1}段
+                {tr("master.approvalFlows.stepNumber", { n: i + 1 })}
               </Badge>
             );
             const nameField = (

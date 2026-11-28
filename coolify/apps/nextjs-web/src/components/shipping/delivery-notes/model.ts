@@ -1,14 +1,19 @@
 /**
  * model.ts — 納品書 (SH02) view-model types + pure helpers.
  *
- * Model (app.delivery_notes — 複合キー (year_month, seq)):
- *   表示番号 DRN-YYYYMM-NNNNN はキーから導出（保存しない）。URL id も導出番号。
+ * Model (app.delivery_notes):
+ *   納品書番号 DRN-FFFF-NNNNN は DB が払い出す（法人 × 会計年度の連番）。
+ *   画面では id（法人コード + 番号 `CKK~DRN-2026-00001`）で持ち、URL id を兼ねる。
+ *   表示するときは `<DocNumber>` / `docNo()` で番号だけにする（lib/doc-number.ts）。
  *   出荷書 1 : N 納品書（通常は 1:1）。納品方法が DIRECT_TO_USER（ユーザー直送）
  *   のときは最終需要家が必須で、価格記載（include_price）は既定 OFF。
  *
  * Decimal 列（unitPrice / amount）はサーバー境界で Number() 済み。
  * ここは pure / client-safe のみ。
  */
+
+import { type TaxBucket, totalsByRateYen } from "@/lib/money";
+import { taxRateFor } from "@/lib/tax-rate";
 
 export type DeliveryNoteStatus = "DRAFT" | "ISSUED" | "DELIVERED";
 
@@ -17,24 +22,40 @@ export type DeliveryMethod = "NORMAL" | "DIRECT_TO_USER";
 
 export interface DeliveryNoteItem {
   id: string;
-  /** 製品の内部 id（連番）を文字列で保持 — SearchSelect の値と揃える。 */
-  productId: string;
+  /**
+   * 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。
+   * SearchSelect（`searchProductItemOptions`）の値と揃える。
+   */
+  itemId: string;
+  /**
+   * 製品コード（`items.code` = `PRD-YYYYMM-NNNN`）。**PDF の「コード」欄に
+   * 刷る値**（納品書テンプレートの `code`）。採番前のレガシー品目は null で、
+   * そのときは欄を空で刷る。判定・突合には使わない（すべて `itemId`）。
+   */
+  productCode: string | null;
   productName: string;
   quantity: number;
   /** 価格記載なし（includePrice=false）の納品書では null。 */
   unitPrice: number | null;
   amount: number | null;
+  /**
+   * その行に当たった税率（0.1 = 10%）。**出荷書の確定時**に請求単価と一緒に
+   * 焼き込んだスナップショット。価格記載なしの納品書と、税区分マスタ以前の
+   * 行は null（その場合は顧客の課税区分から起こす — `deliveryNoteTotals`）。
+   */
+  taxRate: number | null;
   notes: string | null;
 }
 
 export interface DeliveryNote {
-  /** 導出文書番号 DRN-YYYYMM-NNNNN — URL id と同一。 */
+  /** 納品書の id（`CKK~DRN-2026-00001`）— URL id と同一。 */
   id: string;
   deliveryNumber: string;
-  /** 導出番号 DOR-YYYYMM-NNNNN。 */
+  /** 旧番号（DRN-YYYYMM-NNNNN）。番号設計の移行前に発行された書類だけが持つ。 */
+  legacyNumber: string | null;
+  /** 出荷書の id（`CKK~DOR-2026-00001`）。 */
   deliveryOrderNumber: string;
-  /** 出荷書経由の注文明細番号（参考表示）。 */
-  /** 束ねている注文明細の番号（1 出荷書は複数の注文明細を持てる）。 */
+  /** 束ねている注文明細の id（`CKK~ORD-…-NN`。1 出荷書は複数の注文明細を持てる）。 */
   orderLineNumbers: string[];
   deliveryMethod: DeliveryMethod;
   recipientId: string;
@@ -60,10 +81,51 @@ export interface DeliveryNote {
   notes: string | null;
   items: DeliveryNoteItem[];
   totalQuantity: number;
-  /** 明細金額の合計 — 価格記載なしの納品書では null。 */
+  /** 明細金額の合計（税抜）— 価格記載なしの納品書では null。 */
   totalAmount: number | null;
+  /**
+   * 受取先の課税区分。税率スナップショットを持たない旧データの行だけが使う
+   * （請求書・見積書と同じフォールバック）。
+   */
+  customerTaxType: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** 小計 / 税率ごとの内訳 / 合計(税込)。価格記載なしの納品書では null を返す。 */
+export interface DeliveryNoteTotals {
+  subtotal: number;
+  taxAmount: number;
+  totalAmountInclTax: number;
+  /** 率の降順。0% の束も落とさない（請求書と同じ形）。 */
+  buckets: TaxBucket[];
+}
+
+/**
+ * 納品書の税。**請求書とまったく同じ数え方**（`totalsByRateYen`）を通す —
+ * 納品書に刷った金額と、後で届く請求書の金額が食い違ってはいけない。
+ *
+ * 率は行に凍結されたものが正。無い（税区分マスタ以前の）行だけ受取先の課税区分から
+ * 起こすので、移行の前後で発行済みの納品書は動かない。
+ *
+ * 価格記載なし（includePrice=false）の納品書は金額そのものを出さないので null。
+ */
+export function deliveryNoteTotals(note: {
+  includePrice: boolean;
+  customerTaxType: string | null;
+  /** 必要なのは金額と率だけ（取引先ポータルなど、view model を組み立てない
+      呼び出し元からも使えるように構造だけで受ける）。 */
+  items: readonly { amount: number | null; taxRate: number | null }[];
+}): DeliveryNoteTotals | null {
+  if (!note.includePrice) return null;
+  const fallbackRate = taxRateFor(note.customerTaxType);
+  const { subtotal, taxAmount, totalAmount, buckets } = totalsByRateYen(
+    note.items.map((it) => ({
+      amount: it.amount ?? 0,
+      taxRate: it.taxRate ?? fallbackRate,
+    })),
+  );
+  return { subtotal, taxAmount, totalAmountInclTax: totalAmount, buckets };
 }
 
 /**

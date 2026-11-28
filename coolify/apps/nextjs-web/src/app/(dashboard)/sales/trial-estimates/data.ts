@@ -1,9 +1,9 @@
 /**
  * data.ts — server-side fetch/mapping for the 価格試算 (SA01) pages.
  *
- * Maps sales.estimates rows (combined key year_month+seq) to the
- * TrialEstimateRecord view-model; the derived EST- number doubles as the
- * URL id. Also builds the shared select options (顧客 = bp CUSTOMER role,
+ * Maps sales.estimates rows to the TrialEstimateRecord view-model. 番号
+ * （EST-FFFF-NNNNN）は DB が払い出し、行は参照 doc_ref で引く。DTO の
+ * estimateNumber は id の姿（CKK~EST-2026-00001 — URL と Server Action の引数）。 Also builds the shared select options (顧客 = bp CUSTOMER role,
  * 素材 / 製品 = active masters) and the existing price-entry identities for
  * duplicate warnings.
  */
@@ -16,14 +16,16 @@ import type {
 } from "@/components/sales/trial-estimates/types";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import { type DocKey, docIdOf, formatProductNumber } from "@/lib/doc-number";
 import {
-  formatEstimateNumber,
-  formatPriceListNumber,
-  formatProductNumber,
-} from "@/lib/doc-number";
+  canSeeEstimateKind,
+  ESTIMATE_COST_PERMISSION,
+  estimateKindWhere,
+} from "@/lib/estimate-cost";
 import { type LocalizedText, localized } from "@/lib/format";
 import type { Option } from "@/lib/mock";
 import type { TrialInput } from "@/lib/trial-pricing";
+import { ownCompanyLabel } from "../price-lists/data";
 
 /** estimate.result JSON → 価格スナップショット（lots を持つもののみ採用）。 */
 function toPriceSnapshot(value: unknown): TrialPriceSnapshot | null {
@@ -44,12 +46,12 @@ type EstimateRow = NonNullable<
   Awaited<ReturnType<typeof fetchEstimateRowByKey>>
 >;
 
-function fetchEstimateRowByKey(yearMonth: string, seq: number) {
+function fetchEstimateRowByKey(key: DocKey) {
   return prisma.estimate.findUnique({
-    where: { yearMonth_seq: { yearMonth, seq } },
+    where: { docRef: key.docRef },
     include: {
       customerBp: true,
-      product: true,
+      item: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -82,18 +84,20 @@ export function materialTypeLabel(r: {
 }
 
 export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
-  const number = formatEstimateNumber({ yearMonth: r.yearMonth, seq: r.seq });
+  const number = docIdOf(r);
   return {
     id: number,
     estimateNumber: number,
+    legacyNumber: r.legacyNumber,
     name: r.name,
     status: r.status,
+    kind: r.kind,
     customerId: r.customerBpId,
     customerName: r.customerBp
       ? localized(r.customerBp.name as LocalizedText | null)
       : null,
-    productId: r.productId != null ? String(r.productId) : null,
-    productName: r.product ? productOptionLabel(r.product) : null,
+    itemId: r.itemId != null ? String(r.itemId) : null,
+    productName: r.item ? productOptionLabel(r.item) : null,
     materialTypeId: r.materialTypeId != null ? String(r.materialTypeId) : "",
     diameterCode: r.diameterCode ?? "",
     surfaceFinishCode: r.surfaceFinishCode ?? "",
@@ -113,18 +117,28 @@ export function mapEstimate(r: EstimateRow): TrialEstimateRecord {
 
 export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
   // スコープ行フィルタ（OWN = 自分の作成分のみ。ALL は {} で従来通り全件）。
-  const authz = await checkPermission("price_list", "READ");
+  const [authz, costAuthz] = await Promise.all([
+    checkPermission("price_list", "READ"),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+  ]);
   if (!authz.ok) return [];
   const rows = await prisma.estimate.findMany({
     take: LIST_FETCH_CAP,
-    where: ownWhere(
-      authz.access,
-      authz.userId,
-      "createdBy",
-    ) as Prisma.EstimateWhereInput,
+    where: {
+      AND: [
+        ownWhere(
+          authz.access,
+          authz.userId,
+          "createdBy",
+        ) as Prisma.EstimateWhereInput,
+        // 原価試算は estimate_cost の持ち主にしか出さない（行ごと — 画面で
+        // 隠すのではなく、クエリの段階で落とす）。
+        estimateKindWhere(costAuthz.ok),
+      ],
+    },
     include: {
       customerBp: true,
-      product: true,
+      item: true,
       materialType: true,
       diameter: true,
       surfaceFinish: true,
@@ -137,13 +151,17 @@ export async function fetchTrialEstimates(): Promise<TrialEstimateRecord[]> {
 }
 
 export async function fetchTrialEstimate(
-  yearMonth: string,
-  seq: number,
+  key: DocKey,
 ): Promise<TrialEstimateRecord | null> {
-  const authz = await checkPermission("price_list", "READ");
+  const [authz, costAuthz] = await Promise.all([
+    checkPermission("price_list", "READ"),
+    checkPermission(ESTIMATE_COST_PERMISSION, "READ"),
+  ]);
   if (!authz.ok) return null;
-  const row = await fetchEstimateRowByKey(yearMonth, seq);
+  const row = await fetchEstimateRowByKey(key);
   if (!row) return null;
+  // 原価試算は estimate_cost の無い人には存在しないものとして扱う（notFound）。
+  if (!canSeeEstimateKind(row.kind, costAuthz.ok)) return null;
   // スコープ外の行は不可視（null → 呼び出し側の notFound に乗せる）。
   if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
     return null;
@@ -203,10 +221,17 @@ export async function fetchSurfaceFinishOptions(): Promise<Option[]> {
   }));
 }
 
-/** 製品 options — active products (名称 + コード、レガシーは名称のみ). */
+/**
+ * 製品 options — 有効な**品目**（`itemType: "PRODUCT"`。名称 + コード、
+ * 採番前のレガシー行は名称のみ）。value は items.id。
+ *
+ * 品目統合 第 2 段 C — 価格試算 (estimates.item_id) と価格表
+ * (price_list_entries.item_id) の製品はこの値で指す。製品マスタ画面
+ * （products.id で回る URL）とは値の意味が違うので混ぜないこと。
+ */
 export async function fetchProductOptions(): Promise<Option[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true },
+  const rows = await prisma.item.findMany({
+    where: { itemType: "PRODUCT", isActive: true },
     orderBy: { id: "asc" },
   });
   return rows.map((p) => ({
@@ -226,11 +251,16 @@ function productOptionLabel(p: {
   return code ? `${name} ${code}` : name;
 }
 
-/** 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）. */
+/**
+ * 単一製品の option（ロック表示・編集初期値用 — 全件を送らない）。
+ * `id` は品目 id（items.id）— `fetchProductOptions` と対。
+ */
 export async function fetchProductOption(id: string): Promise<Option | null> {
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) return null;
-  const p = await prisma.product.findUnique({ where: { id: idNum } });
+  const p = await prisma.item.findFirst({
+    where: { id: idNum, itemType: "PRODUCT" },
+  });
   if (!p) return null;
   return { value: String(p.id), label: productOptionLabel(p) };
 }
@@ -242,21 +272,28 @@ export async function fetchCustomerOption(id: string): Promise<Option | null> {
   return { value: r.id, label: localized(r.name as LocalizedText | null) };
 }
 
-/** All current price-entry identities (顧客×製品) — duplicate warnings. */
+/** All current price-entry identities (顧客×製品×対象工具) — duplicate warnings. */
 export async function fetchExistingEntryRefs(): Promise<EntryIdentity[]> {
   const rows = await prisma.priceListEntry.findMany({
     select: {
-      yearMonth: true,
-      seq: true,
+      docRef: true,
+      ownCompany: { select: { id: true, code: true, name: true } },
       customerBpId: true,
-      productId: true,
+      itemId: true,
+      toolItemId: true,
       variants: { select: { orderType: true } },
     },
   });
-  return rows.map((r) => ({
-    customerBpId: r.customerBpId,
-    productId: String(r.productId),
-    orderTypes: r.variants.map((v) => v.orderType),
-    entryId: formatPriceListNumber({ yearMonth: r.yearMonth, seq: r.seq }),
-  }));
+  return rows
+    .filter((r) => r.itemId != null)
+    .map((r) => ({
+      ownCompanyId: r.ownCompany.id,
+      ownCompanyCode: r.ownCompany.code,
+      ownCompanyName: ownCompanyLabel(r.ownCompany),
+      customerBpId: r.customerBpId,
+      itemId: String(r.itemId),
+      toolItemId: r.toolItemId != null ? String(r.toolItemId) : null,
+      orderTypes: r.variants.map((v) => v.orderType),
+      entryId: docIdOf(r),
+    }));
 }

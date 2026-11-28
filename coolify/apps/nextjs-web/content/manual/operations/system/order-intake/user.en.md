@@ -20,7 +20,7 @@ An app for dropping received **order documents (PDFs / scanned images)** into th
 - **Intake folder** … a watched folder on the server; anything placed there is automatically brought in as an order acceptance (environment variable `INTAKE_DIR`).
 - **Drop in** … placing a file into the folder from this screen. It **only places the file** — numbering and AI extraction happen automatically afterward.
 - **Scan** … the process that checks the folder's contents and brings in waiting files in order. It runs automatically at a set interval, and can also be triggered right away from this screen.
-- **Numbering** … assigning an order-acceptance number (`ORD-YYYYMM-NNNNN`) to a file once it has been brought in.
+- **Numbering** … assigning an order-acceptance number (such as `ORD-2026-00001`) to a file once it has been brought in.
 
 ## Before you start
 
@@ -32,12 +32,24 @@ Press **注文書取込** (Order Document Intake) inside 「システム」 (Sys
 
 ## How to read the screen
 
-From top to bottom there are four blocks: "Drop into folder", "Waiting", "Failed", and "Processed".
+At the very top is the 「**取込口の自社法人**」 (own company of the intake channel) box ([Own company of the intake channel](#intake-company)), and below it four blocks: "Drop into folder", "Waiting", "Failed", and "Processed".
 
 - **フォルダへ投入** (Drop into folder) … a button to choose files, a button to scan right away, and the intake folder's path and auto-scan interval.
 - **取込待ち** (Waiting) … files not yet brought in. The one file currently being extracted also stays here.
 - **失敗** (Failed) … files whose extraction failed. Each has a retry button.
 - **取込済** (Processed) … files that have finished being brought in and became an order acceptance.
+
+A file moves through them like this:
+
+```mermaid
+flowchart TD
+  a["Dropped in from this screen"] --> w["取込待ち (Waiting)<br/>(in the intake folder)"]
+  m["Email (automatic)"] --> w
+  w -->|"Scan: numbering → AI extraction"| r{"Extraction succeeded?"}
+  r -->|"Yes"| d["取込済 (Processed)<br/>(becomes an order acceptance)"]
+  r -->|"No"| x["失敗 (Failed)"]
+  x -.->|"再取込 (Retry) — number is kept"| w
+```
 
 Each row shows:
 
@@ -50,12 +62,15 @@ While at least one file is waiting, the screen refreshes itself automatically ev
 ## The three ways an order arrives
 
 Besides dropping files in from this screen, orders also arrive by the routes
-below. **All of them land in the same intake folder**, so numbering and AI
-extraction work identically for each.
+below. Files dropped in from this screen and email **land in the intake folder**
+and are picked up by the automatic scan. "Priority intake" on the order acceptance
+app **bypasses the intake folder**: it numbers the file on the spot and queues it
+for AI extraction. The entry point differs, but numbering and AI extraction work
+the same way from there.
 
 | Route | How it gets in |
 |---|---|
-| **Upload** | This screen, or "Priority intake" on the order acceptance app |
+| **Upload** | This screen (via the intake folder), or "Priority intake" on the order acceptance app (does not use the intake folder) |
 | **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
 | **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
 
@@ -80,6 +95,20 @@ Files that arrived by email are named `mail_sender_originalname`. For example
 If one email carries three order documents, you get **three order acceptances**
 (one document = one record). Images embedded in the signature — company logos
 and the like — are not taken in.
+
+## Own company of the intake channel [#intake-company]
+
+When two or more companies issue documents ([own companies](/manual/en/operations/masters/own-company/user)), this setting decides **which company's order acceptance an imported order becomes**. If you have only one company, leave it at 「既定の法人」 (default company).
+
+1. In the 「**取込口の自社法人**」 (own company of the intake channel) box at the very top of the screen, press 「**編集**」 (Edit).
+2. Choose 「**自社法人**」 (own company).
+3. Press 「**保存**」 (Save).
+
+- Files that enter the intake folder (including those dropped in from this screen, and those from email and external integrations) become order acceptances of **the company chosen here**. Their numbers are also taken from that company's sequence.
+- **Files uploaded with 「優先取込」 (priority import) on the [order acceptance](/manual/en/operations/sales/order-acceptance/user) screen** become order acceptances of the uploader's company, if the uploader's assigned sites resolve to exactly one company. When they do not (the assigned sites span two or more companies, or there are none), the company chosen here is used.
+- The company of an order acceptance cannot be changed after it is created, so **changing the setting only affects files imported from now on**. Order acceptances already imported keep their company.
+
+> 💡 There is one intake channel, so only one company can be chosen. For orders addressed to the other company, have someone who belongs to that company upload them with 「優先取込」 (priority import), or create the [order acceptance](/manual/en/operations/sales/order-acceptance/user) by hand.
 
 ## Dropping in files
 

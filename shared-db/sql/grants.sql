@@ -155,6 +155,10 @@ REVOKE SELECT ON app.push_subscriptions  FROM metabase_ro;  -- Web Push 秘密�
 -- BI からはテーブルごと外す。
 REVOKE SELECT ON app.login_attempts      FROM metabase_ro;  -- 認証イベント（個人データ）
 REVOKE SELECT ON app.user_devices        FROM metabase_ro;  -- 端末台帳（個人データ）
+-- 共有端末の位置履歴（GPS 緯度・経度・精度）。login_attempts / user_devices と同じく
+-- 従業員監視に隣接する個人データで、BI で集計する対象ではない（90 日で pg_cron が刈る。
+-- 閲覧は SY09 端末管理に閉じる）。analytics-views.sql は参照していない。
+REVOKE SELECT ON app.kiosk_device_locations FROM metabase_ro;  -- 端末の位置履歴（GPS・個人データ）
 -- 特権アクセスの申請と決裁。「誰がどの秘密を見たがったか」「誰が誰を止めよう
 -- としたか」が理由つきで並ぶ表で、BI で集計する対象ではない。閲覧は SY0G と
 -- 監査ログに閉じる。
@@ -208,6 +212,12 @@ GRANT SELECT (id, name, location, plant_id, status,
 -- content_config は「何を映しているか」で、METABASE の locked パラメータや URL 種別の
 -- 宛先が入る。どちらも社内の設定値で、閲覧できて困るものではないため出している。
 -- ★ 列を足したらここにも足すこと（列単位の GRANT なので、書かない列は見えない）。
+
+-- 外向き Webhook（_specs/api.md §9）。送信先 URL には認証トークンが埋まる
+-- ことが多く（n8n の Webhook URL 自体が秘密）、secret は署名鍵の封筒。
+-- 配送の本文は業務データの写し。いずれも BI へ出さない。
+REVOKE SELECT ON app.webhook_endpoints  FROM metabase_ro;
+REVOKE SELECT ON app.webhook_deliveries FROM metabase_ro;
 
 -- 取引先ポータル（社外向け）。生きた資格情報とその使われ方が並ぶので、
 -- 生の秘密を持つ表はまるごと外す。閲覧は SY0H に閉じる。

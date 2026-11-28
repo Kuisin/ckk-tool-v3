@@ -36,10 +36,11 @@ import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
-  fetchMaterialUnit,
-  searchMaterialOptions,
+  fetchMaterialItemUnit,
+  searchMaterialItemOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createMaterialReceipt } from "@/app/(dashboard)/purchase/material-receipts/actions";
+import { OpenPoWarning } from "@/components/purchase/material-receipts/OpenPoWarning";
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_MAX_BYTES,
@@ -60,9 +61,8 @@ interface Option {
 
 function buildSchema(tr: ReturnType<typeof useTranslations>) {
   return z.object({
-    materialId: z
-      .string()
-      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    /** 選んだ素材の品目 id（items.id）を文字列で受ける。 */
+    itemId: z.string().min(1, tr("purchase.materialReceipts.selectAMaterial")),
     supplierBpId: z.string().nullable(),
     plantId: z.string().nullable(),
     quantity: z
@@ -185,10 +185,14 @@ export function MaterialReceiptForm({
     }
   };
 
+  // 同じ素材の「発注済み・未入荷あり」があるときの確認（OpenPoWarning）。
+  const [openPoConflict, setOpenPoConflict] = useState(false);
+  const [acknowledgeOpenPo, setAcknowledgeOpenPo] = useState(false);
+
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
     initialValues: {
-      materialId: "",
+      itemId: "",
       supplierBpId: null,
       plantId: null,
       quantity: 1,
@@ -201,12 +205,12 @@ export function MaterialReceiptForm({
   // 素材を選んだらその単位を引いて固定する（最近使用の候補は単位を持たない
   // ので毎回サーバーへ聞く）。選び直しが重なったら最後の選択だけを採用する。
   const unitSeq = useRef(0);
-  const selectMaterial = (materialId: string | null) => {
-    form.setFieldValue("materialId", materialId ?? "");
+  const selectMaterial = (itemId: string | null) => {
+    form.setFieldValue("itemId", itemId ?? "");
     form.setFieldValue("unit", "");
     const seq = ++unitSeq.current;
-    if (!materialId) return;
-    fetchMaterialUnit(materialId)
+    if (!itemId) return;
+    fetchMaterialItemUnit(itemId)
       .then((unit) => {
         if (seq === unitSeq.current) form.setFieldValue("unit", unit ?? "");
       })
@@ -216,9 +220,18 @@ export function MaterialReceiptForm({
   };
 
   const handleSubmit = (values: FormValues) => {
+    if (openPoConflict && !acknowledgeOpenPo) {
+      notifications.show({
+        title: tr("purchase.materialReceipts.openPo.title"),
+        message: tr("purchase.materialReceipts.openPo.acknowledge"),
+        color: "orange",
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await createMaterialReceipt({
-        materialId: values.materialId,
+        acknowledgeOpenPo,
+        itemId: values.itemId,
         supplierBpId: values.supplierBpId,
         plantId: values.plantId,
         quantity: values.quantity,
@@ -263,6 +276,17 @@ export function MaterialReceiptForm({
       submitLabel={tr("common.register")}
       title={tr("purchase.materialReceipts.newMaterialReceipt")}
     >
+      <OpenPoWarning
+        acknowledged={acknowledgeOpenPo}
+        candidates={[
+          {
+            itemId: form.values.itemId,
+            supplierBpId: form.values.supplierBpId,
+          },
+        ]}
+        onAcknowledgedChange={setAcknowledgeOpenPo}
+        onConflictsChange={setOpenPoConflict}
+      />
       <FormSection
         description={tr(
           "purchase.materialReceipts.registersADirectPurchaseAReceipt",
@@ -271,15 +295,15 @@ export function MaterialReceiptForm({
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
-            error={form.errors.materialId}
+            error={form.errors.itemId}
             label={
               <HelpLabel {...fieldHelp(tr, "materialReceipt", "material")} />
             }
             onChange={selectMaterial}
-            onSearch={searchMaterialOptions}
+            onSearch={searchMaterialItemOptions}
             placeholder={tr("common.searchMaterials")}
-            storageKey="material"
-            value={form.values.materialId || null}
+            storageKey="materialItem"
+            value={form.values.itemId || null}
             withAsterisk
           />
           <Select

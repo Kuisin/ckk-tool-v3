@@ -29,6 +29,9 @@ TABLES = {
     "files": "ファイル",
     "system_settings": "システム設定",
     "numbering_sequences": "採番シーケンス",
+    "document_sequences": "書類番号の連番（自社法人×会計年度）",
+    "own_companies": "自社法人",
+    "outsource_orders": "外注依頼",
     "match_aliases": "照合エイリアス（学習）",
     "notifications": "通知",
     "push_subscriptions": "プッシュ購読",
@@ -372,8 +375,20 @@ COLS = {
     "recorded_by": "記録者",
     # 試算・価格・見積
     "tool_type": "工具種",
+    # 旧番号の部品（PREFIX-YYYYMM-NNNNN）。新しい行は NULL — 番号設計 PR-C 以降は
+    # 下の fiscal_year / doc_seq / doc_number が正。analytics ビューの seq は doc_seq。
     "year_month": "年月",
     "seq": "連番",
+    # 書類番号（PREFIX-FFFF-NNNNN。自社法人 × 会計年度の連番を DB が払い出す）
+    "fiscal_year": "会計年度",
+    "doc_seq": "年度内連番",
+    "doc_number": "書類番号",
+    "doc_ref": "書類参照（法人コード/書類番号）",
+    "legacy_number": "旧番号",
+    "line_number": "注文明細番号",
+    "line_ref": "注文明細参照（法人コード/明細番号）",
+    "own_company_id": "発行会社ID",
+    "last_seq": "最終連番",
     "reference_unit_price": "参照単価",
     "reference_date": "参照日",
     "reference_overridden": "参照単価上書き",
@@ -458,6 +473,12 @@ COLS = {
     "planned_work_hours": "予定作業時間",
     "work_hours": "作業時間",
     "worked_date": "作業日",
+    # 価格試算の原価（v_estimates / v_estimate_cost_items）
+    "estimate_unit_price": "見積単価", "minimum_price": "最低単価",
+    "cost_total": "原価合計", "gross_margin": "粗利",
+    "item_order": "評価順", "criterion_id": "計算基準ID", "criterion_name": "計算基準",
+    "criterion_role": "計算基準の役割", "is_cost": "原価",
+    "cost_only": "原価のみ",
     "outsource_requested_at": "外注依頼日",
     "outsource_expected_at": "外注入荷予定日",
     "outsource_received_at": "外注入荷日",
@@ -502,7 +523,7 @@ COLS = {
     "due_date": "支払期限",
     "sent_at": "送付日時",
     "pdf_file_id": "PDF",
-    "yayoi_exported_at": "弥生出力日時",
+    "accounting_exported_at": "会計連携日時",
     "closing_date": "締日",
     "processed_at": "処理日時",
     "processed_by": "処理者",
@@ -583,7 +604,8 @@ BLOB_JSON = [
 # created_at / quantity …）は上の COLS を流用し、ビュー固有の解決名列だけ
 # ANALYTICS_COLS で足す（適用時に {**COLS, **ANALYTICS_COLS} で合成）。
 ANALYTICS_TABLES = {
-    "v_estimates": "価格試算", "v_price_list_entries": "価格表",
+    "v_estimates": "価格試算", "v_estimate_cost_items": "価格試算の計算基準別内訳",
+    "v_price_list_entries": "価格表",
     "v_price_list_variants": "価格表バリアント", "v_quotes": "見積書",
     "v_quote_items": "見積明細", "v_order_acceptances": "注文請書",
     "v_order_lines": "注文明細", "v_design_requests": "設計依頼",
@@ -594,7 +616,9 @@ ANALYTICS_TABLES = {
     "v_work_order_steps": "指示書工程", "v_work_order_step_plans": "工程作業計画",
     "v_work_order_step_actuals": "工程作業実績", "v_inspection_records": "検査記録",
     "v_defect_records": "不良記録", "v_product_inventory": "製品在庫",
-    "v_material_inventory": "素材在庫", "v_inventory_reservations": "在庫予約",
+    "v_material_inventory": "素材在庫", "v_item_inventory": "在庫（統合）",
+    "v_wip_inventory": "仕掛品在庫", "v_wip_states": "加工状態",
+    "v_inventory_reservations": "在庫予約",
     "v_inventory_transactions": "在庫取引", "v_delivery_orders": "出荷書",
     "v_delivery_order_items": "出荷明細", "v_delivery_notes": "納品書",
     "v_delivery_note_items": "納品明細", "v_invoices": "請求書",
@@ -618,6 +642,8 @@ ANALYTICS_COLS = {
     "order_line_nos": "注文明細番号(一覧)", "work_order_no": "指示書番号",
     "delivery_order_no": "出荷書番号", "delivery_no": "納品番号", "invoice_no": "請求番号",
     "lot_number": "ロット番号",
+    # 発行した自社法人のコード（番号は法人ごとに 00001 から — 番号 + これで一意）
+    "company_code": "発行会社コード",
     # 解決した名前（人）
     "sales_staff": "営業担当", "created_by_name": "作成者", "approved_by_name": "承認者",
     "requested_by_name": "依頼者", "ordered_by_name": "発注者", "processed_by_name": "処理者",
@@ -636,6 +662,15 @@ ANALYTICS_COLS = {
     "surface_finish_name": "黒皮研磨", "region_name": "地域",
     # 多言語マスタの分割列
     "name_ja": "名称(日本語)", "name_en": "名称(英語)",
+    # 仕掛品（途中まで加工して在庫に置いた品 — v_wip_inventory ほか在庫ビュー）
+    "wip_state": "加工状態", "state_label": "加工状態", "wip_step_count": "済んだ工程数",
+    "is_unclassified": "未分類", "aimed_product_id": "目標製品ID",
+    "aimed_product_name": "目標製品", "blank_item_id": "仕掛ブランクID",
+    "blank_code": "仕掛ブランクコード", "material_type_code": "材種コード",
+    "source_process_step_name": "発生工程", "source_work_order_no": "発生元指示書番号",
+    "stocked_at": "在庫に入った日時", "age_days": "経過日数",
+    "available_quantity": "利用可能数", "shelf_code": "棚",
+    "item_code": "品目コード", "item_name": "品目名", "item_type": "品目種別",
     # その他ビュー固有
     "acceptance_status": "請書状態", "roles": "ロール", "work_hours": "作業時間",
     "worked_date": "作業日",
@@ -731,6 +766,7 @@ VIEW_FKS = [
     # 価格表・試算（PRC / EST）
     ("v_price_list_variants", "price_list_no", "v_price_list_entries", "price_list_no"),
     ("v_price_list_variants", "estimate_no", "v_estimates", "estimate_no"),
+    ("v_estimate_cost_items", "estimate_no", "v_estimates", "estimate_no"),
 ]
 
 

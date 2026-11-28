@@ -30,7 +30,13 @@
  * 差異ではないが、no-tier は価格表があるのに使えていない状態なので、黙って
  * 自由入力にすると価格表の外の単価が確認なしに通る。
  */
-export type PriceMissReason = "no-entry" | "inactive" | "expired" | "no-tier";
+export type PriceMissReason =
+  | "no-entry"
+  | "inactive"
+  | "expired"
+  | "no-tier"
+  /** 価格表が独自値の追加承認の承認待ち / 差し戻し（承認されるまで使わない）。 */
+  | "unapproved";
 
 /** 明細 1 行の単価の状態。 */
 export type AcceptancePriceState =

@@ -1,8 +1,8 @@
 /**
  * model.ts — 見積書 view-model types + pure 価格表 resolution helpers.
  *
- * Model (sales.quotes / quote_items — combined key year_month+seq, QOT-
- * number derived):
+ * Model (sales.quotes / quote_items — 行は参照 doc_ref で引く。番号 QOT-FFFF-NNNNN は
+ * DB が払い出す):
  *   Quote = (顧客, 支店?, 状態, 有効期限) + a list of items.
  *     └ Item = (製品, 注文種別, 数量) → 単価 AND 値引き are resolved from the
  *               価格表 (tiers + 値引きルール) for that (顧客 × 製品 × 注文種別 ×
@@ -24,6 +24,7 @@ import {
   tierUnitPrice,
   unitDiscountOf,
 } from "@/components/sales/price-lists/model";
+import { priceEntryUsable } from "@/lib/custom-value-approval-core";
 import { formatMoney } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -45,6 +46,12 @@ export interface ResolvedPrice {
   discountId: string | null;
   /** e.g. "夏季キャンペーン（5%）" — null when no rule applies. */
   discountLabel: string | null;
+  /**
+   * 当たったのが**対象工具つき**の価格表か（再研磨の工具一致）。画面の
+   * 「価格表 ¥900（21〜30本）」が、工具ごとの値段なのか工具を問わない値段なのかを
+   * 言い分けるための印。標準価格・工具なしの価格表では false。
+   */
+  toolSpecific: boolean;
 }
 
 /**
@@ -59,29 +66,62 @@ export type PriceResolution =
   | { ok: false; reason: PriceMissReason };
 
 /**
- * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
- * 日付), pure over `entries`. Entry は顧客×製品で一意、注文種別はその中の
- * variant を選ぶ。
- *
- * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
- * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
- * バリアントは価格を返さない — 以前はここを見ておらず、終了日を過ぎたテスト
- * 価格が見積書・注文請書にそのまま載っていた。
+ * 価格表の解決に渡す工具 — **再研磨の行だけ**。空は null。
+ * 見積書・注文請書の画面と保存側が同じこの 1 つを通る（種別を再研磨から
+ * 切り替えた行に工具が残っていても、値段の解決には効かない）。
  */
-export function resolvePriceFromEntries(
-  entries: PriceListEntry[],
+export function lineToolItemId(item: {
+  orderType: string;
+  toolItemId?: string | number | null;
+}): string | null {
+  if (item.orderType !== "REGRIND") return null;
+  const t = item.toolItemId;
+  return t == null || t === "" ? null : String(t);
+}
+
+/**
+ * 価格表の候補 — 引く順に並べたエントリ（0〜2 件）。
+ *
+ * 再研磨の価格は**どの工具を研ぐか**でも顧客ごとに違い得るので、価格表は
+ * 任意の対象工具（`toolItemId`）を持てる。引く順は:
+ *
+ *   1. 顧客 × 品目 × **工具が一致**するエントリ（工具を渡したときだけ）
+ *   2. 顧客 × 品目 × **工具なし**のエントリ
+ *   3. （ここには無い）品目の標準価格 — `resolvePriceFromEntries` の fallback
+ *
+ * 工具なしの行（見積書・製品の明細）は 2 だけを見る — 工具付きのエントリは
+ * 別の工具のための値段なので、**工具が噛み合わない限り決して当たらない**。
+ * 既存の価格表は全部「工具なし」なので、この関数を通しても結果は変わらない。
+ */
+export function selectPriceEntries(
+  entries: readonly PriceListEntry[],
   customerId: string,
-  productId: string,
+  itemId: string,
+  toolItemId: string | null = null,
+): PriceListEntry[] {
+  const forItem = entries.filter(
+    (e) => e.customerId === customerId && e.itemId === itemId,
+  );
+  const generic = forItem.find((e) => (e.toolItemId ?? null) == null);
+  const specific = toolItemId
+    ? forItem.find((e) => e.toolItemId === toolItemId)
+    : undefined;
+  return [specific, generic].filter((e): e is PriceListEntry => e != null);
+}
+
+/** 1 エントリから価格を引く（標準価格への落とし込みはしない）。 */
+function resolveFromEntry(
+  entry: PriceListEntry,
   orderType: string,
   quantity: number,
   tr: Tr,
-  date: Date = new Date(),
+  date: Date,
 ): PriceResolution {
-  const entry = entries.find(
-    (e) => e.customerId === customerId && e.productId === productId,
-  );
-  if (!entry) return { ok: false, reason: "no-entry" };
   if (!entry.isActive) return { ok: false, reason: "inactive" };
+  // 独自値の追加承認が済んでいない価格表は引かない — 引けた時点で、承認されて
+  // いない価格が見積書・注文請書へ流れ込む。
+  if (!priceEntryUsable(entry.approvalStatus))
+    return { ok: false, reason: "unapproved" };
   const variant = entry.variants.find((v) => v.orderType === orderType);
   if (!variant) return { ok: false, reason: "no-entry" };
   if (!variant.isActive) return { ok: false, reason: "inactive" };
@@ -114,8 +154,90 @@ export function resolvePriceFromEntries(
       discountLabel: discount
         ? `${discount.label}（${discountValueLabel(discount, tr)}）`
         : null,
+      toolSpecific: entry.toolItemId != null,
     },
   };
+}
+
+/**
+ * Resolve 単価 + 値引き from the 価格表 for (顧客 × 製品 × 注文種別 × 数量 ×
+ * 日付), pure over `entries`. Entry は顧客×製品（再研磨は × 対象工具）で一意、
+ * 注文種別はその中の variant を選ぶ。製品は**品目 id**（items.id）で指す —
+ * 価格表の行も書類の行も同じ id 空間なので、突き合わせは 1 本のままでよい
+ * （品目統合 第 2 段 C）。
+ *
+ * **価格を出せるのは、有効なエントリの有効なバリアントで、`date`（JST の暦日）
+ * が有効期間に入っているものだけ。** 無効化された価格表・期限切れ / 開始前の
+ * バリアントは価格を返さない — 以前はここを見ておらず、終了日を過ぎたテスト
+ * 価格が見積書・注文請書にそのまま載っていた。
+ *
+ * 再研磨の明細は `toolItemId`（研ぎ直す工具）を渡す。引く順は
+ * 工具一致 → 工具なし → 標準価格（`selectPriceEntries`）。
+ */
+export function resolvePriceFromEntries(
+  entries: PriceListEntry[],
+  customerId: string,
+  itemId: string,
+  orderType: string,
+  quantity: number,
+  tr: Tr,
+  date: Date = new Date(),
+  /**
+   * 品目の**標準価格**（定価。items.standard_unit_price）。顧客の価格表が
+   * 当たらないときの拠り所で、価格表があればそちらが勝つ — S/4HANA の
+   * 「定価 + 顧客ごとの条件レコード」と同じ順。
+   *
+   * 渡すかどうかは呼び出し側が決める（lib/standard-price.ts）。いま渡るのは
+   * **再研磨の品目だけ** — 製品は価格表が無ければ単価を解決できないままにする。
+   */
+  standardUnitPrice: number | null = null,
+  /**
+   * 研ぎ直す工具（品目 id の文字列）。再研磨の明細だけが渡す。null = 工具を
+   * 問わない価格表だけを見る（従来どおり）。
+   */
+  toolItemId: string | null = null,
+): PriceResolution {
+  /**
+   * 顧客の価格表が当たらなかったときの答え。
+   *
+   * **「当たる価格表が無い」ときだけ標準価格へ落ちる**（エントリが無い /
+   * 無効化されている / 承認待ち / 期間外）。`no-tier` は落とさない — 価格表は
+   * 現に効いていて、その数量の段だけが抜けている状態なので、定価で埋めると
+   * 設定の穴が見えなくなる。
+   */
+  const fallback = (reason: PriceMissReason): PriceResolution => {
+    if (standardUnitPrice == null || reason === "no-tier") {
+      return { ok: false, reason };
+    }
+    return {
+      ok: true,
+      price: {
+        unitPrice: standardUnitPrice,
+        tierId: null,
+        tierLabel: tr("sales.priceLists.standardPriceLabel"),
+        discountAmount: 0,
+        discountId: null,
+        discountLabel: null,
+        toolSpecific: false,
+      },
+    };
+  };
+
+  // 工具一致 → 工具なし の順に引く。当たる価格表が無い（無効・承認待ち・
+  // 期間外・その種別が無い）ときは次の候補へ進む。数量の段だけが無いときは
+  // 進まない — 標準価格へ落とさないのと同じ理由で、設定の穴を隠さない。
+  let firstMiss: PriceMissReason | null = null;
+  for (const entry of selectPriceEntries(
+    entries,
+    customerId,
+    itemId,
+    toolItemId,
+  )) {
+    const r = resolveFromEntry(entry, orderType, quantity, tr, date);
+    if (r.ok || r.reason === "no-tier") return r;
+    firstMiss ??= r.reason;
+  }
+  return fallback(firstMiss ?? "no-entry");
 }
 
 /**
@@ -125,20 +247,24 @@ export function resolvePriceFromEntries(
 export function resolveUnitPriceFromEntries(
   entries: PriceListEntry[],
   customerId: string,
-  productId: string,
+  itemId: string,
   orderType: string,
   quantity: number,
   tr: Tr,
   date: Date = new Date(),
+  standardUnitPrice: number | null = null,
+  toolItemId: string | null = null,
 ): ResolvedPrice | null {
   const r = resolvePriceFromEntries(
     entries,
     customerId,
-    productId,
+    itemId,
     orderType,
     quantity,
     tr,
     date,
+    standardUnitPrice,
+    toolItemId,
   );
   return r.ok ? r.price : null;
 }
@@ -156,8 +282,23 @@ export function tierLabel(t: PriceTier, tr: Tr): string {
 /** One quote line — 単価・値引きとも価格表から自動解決（手入力なし）。 */
 export interface QuoteItem {
   id: string;
-  productId: string;
+  /** 製品 — 値は品目 id（items.id）。品目統合 第 2 段 C。 */
+  itemId: string;
+  /**
+   * 製品コード（`items.code` = `PRD-YYYYMM-NNNN`）。**PDF の「コード」欄に
+   * 刷る値**（見積書テンプレートの `code`）。採番前のレガシー品目は null で、
+   * そのときは欄を空で刷る — 以前ここには内部の連番 id が入っていた。
+   * 判定・突合には使わない（すべて `itemId`）。
+   */
+  productCode: string | null;
   productName: string;
+  /**
+   * 研ぎ直す工具（品目 id の文字列）。**再研磨の明細だけ**が持つ —
+   * 価格は 工具一致 → 工具なし → 標準価格 の順で引く（注文明細と同じ）。
+   */
+  toolItemId: string | null;
+  /** 研ぎ直す工具の表示名（名称 + コード）。 */
+  toolLabel: string | null;
   orderType: string;
   quantity: number;
   unitPrice: number;
@@ -186,9 +327,16 @@ export type QuoteStatus = "DRAFT" | "ISSUED";
 export type QuoteDisplayStatus = QuoteStatus | "EXPIRED";
 
 export interface Quote {
-  /** Derived document number QOT-YYYYMM-NNNNN — also the URL id. */
+  /**
+   * 書類の id（法人コード + 番号 `CKK~QOT-2026-00001`）— URL と Server Action の
+   * 引数。表示するときは docNo() / <DocNumber> で番号だけにする。
+   */
   id: string;
   quoteNumber: string;
+  /** 旧番号（QOT-YYYYMM-NNNNN）。番号設計の切り替え前に採番された書類だけ。 */
+  legacyNumber?: string | null;
+  /** 発行会社（自社法人 id）。価格はこの会社の価格表だけから引く。 */
+  ownCompanyId?: number;
   customerId: string;
   customerName: string;
   customerBranchId: string | null;
@@ -281,6 +429,8 @@ export interface PriceTierRef {
   estimateNumber: string | null;
   /** e.g. "1〜9本 ¥8,000" */
   label: string;
+  /** 対象工具つきの価格表の段か（再研磨の工具一致）。 */
+  toolSpecific: boolean;
 }
 
 export function findPriceTierRefIn(
@@ -297,6 +447,7 @@ export function findPriceTierRefIn(
           entryId: entry.entryId,
           estimateNumber: variant.estimateNumber,
           label: `${tierLabel(tier, tr)} ${formatMoney(tierUnitPrice(variant, tier))}`,
+          toolSpecific: entry.toolItemId != null,
         };
       }
     }

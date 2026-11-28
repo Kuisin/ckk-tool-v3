@@ -116,7 +116,8 @@ async function visit(
     if (status >= 400) issues.push({ url, viewport, kind: `http-${status}`, detail: "" });
     await page.waitForTimeout(500);
     const finalUrl = page.url();
-    if (finalUrl.includes("/login")) {
+    // `/settings/login-history` が "/login" を含むので、パスの完全一致で見る。
+    if (new URL(finalUrl).pathname === "/login") {
       issues.push({ url, viewport, kind: "redirected-to-login", detail: finalUrl });
       return;
     }
@@ -195,7 +196,7 @@ async function runWeb(): Promise<Issue[]> {
   // パターンごとに最大 2 件に間引く
   const byPattern = new Map<string, string[]>();
   for (const d of detailUrls) {
-    const key = d.replace(/\/[0-9a-f-]{20,}|\/[A-Z]{2,4}-\d{6}-\d+|\/\d+/g, "/:id");
+    const key = d.replace(/\/[0-9a-f-]{20,}|\/(?:[^/~]+(?:~|%7E))?[A-Z]{2,4}-\d{4,6}-\d+(?:-\d{2})?|\/\d+/g, "/:id");
     const arr = byPattern.get(key) ?? [];
     if (arr.length < 2) arr.push(d);
     byPattern.set(key, arr);

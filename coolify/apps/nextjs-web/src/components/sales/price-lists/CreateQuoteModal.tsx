@@ -87,11 +87,17 @@ export function CreateQuoteModal({
         // 見積書 form opens pre-filled with this entry's line.
         const params = new URLSearchParams({
           customer: source.customerId,
-          product: source.productId,
+          // 品目 id（items.id）— 見積フォームの製品はこの空間。
+          product: source.itemId,
           orderType: variant.orderType,
           quantity: String(quantity),
+          // 価格表は会社ごと — 見積書もこの価格表の会社で作る。
+          company: String(source.ownCompanyId),
         });
         if (deliveryDate) params.set("delivery", deliveryDate);
+        // 工具ごとの価格表から開いたら、その工具を研ぐ見積にする（工具を
+        // 入れないと工具を問わない値段になる）。
+        if (source.toolItemId) params.set("tool", source.toolItemId);
         handleClose();
         router.push(`/sales/quotes/new?${params.toString()}`);
       }}

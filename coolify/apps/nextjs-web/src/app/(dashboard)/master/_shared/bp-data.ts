@@ -10,7 +10,7 @@
 import { getTranslations } from "next-intl/server";
 import { bpSearchKeys } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
-import { formatQuoteNumber } from "@/lib/doc-number";
+import { docIdOf } from "@/lib/doc-number";
 import {
   type LocalizedText,
   localized,
@@ -237,6 +237,11 @@ export interface CustomerAttrs {
   deliveryToleranceOver: number | null;
   varianceApprovalWithin: boolean;
   varianceApprovalOutside: boolean;
+  // ── 会計連携（仕訳 CSV）— 空文字 = 未設定 = SY0J の既定に従う ──────────
+  /** 売掛金の勘定科目コード（借方）。 */
+  receivableAccountCode: string;
+  /** 売掛金の補助科目コード（得意先）。社内の顧客コードとは別の番号体系。 */
+  receivableSubAccountCode: string;
   /** 営業担当（複数可）。書類の営業担当はこの一覧から選ぶ。 */
   salesReps: SalesRepRow[];
 }
@@ -309,7 +314,7 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
       },
       quotesAsCustomer: {
         include: { items: true },
-        orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 20,
       },
     },
@@ -349,6 +354,8 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
               : null,
           varianceApprovalWithin: c.varianceApprovalWithin,
           varianceApprovalOutside: c.varianceApprovalOutside,
+          receivableAccountCode: c.receivableAccountCode ?? "",
+          receivableSubAccountCode: c.receivableSubAccountCode ?? "",
           salesReps: r.salesReps.map((s) => ({
             userId: s.user.id,
             name: s.user.displayName,
@@ -390,7 +397,8 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
       contact: b.contacts[0]?.name ?? "—",
     })),
     history: r.quotesAsCustomer.map((q) => ({
-      number: formatQuoteNumber({ yearMonth: q.yearMonth, seq: q.seq }),
+      // 見積書の id（`CKK~QOT-…`）— リンクにそのまま使う。表示は <DocNumber>。
+      number: docIdOf(q),
       label: tr("common.quote"),
       amount: q.items.reduce((sum, it) => sum + Number(it.amount), 0),
       status: { entity: "Quote" as const, value: q.status },

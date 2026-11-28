@@ -1,0 +1,334 @@
+/title/
+出货 — 从出货单到交货
+
+/option/
+show-step-block-captions: false;
+show-right-gutter: false;
+left-title: 步骤;
+left-subtitle: 说明;
+
+/role/
+
+<role_ship>
+label: 出货;
+text-color: #9a3412;
+background-color: #ffedd5;
+
+<role_system>
+label: 系统;
+text-color: #3730a3;
+background-color: #eef2ff;
+icon: #database;
+
+<role_appr>
+label: 审批人;
+text-color: #166534;
+background-color: #f0fdf4;
+
+<role_cust>
+label: 客户;
+text-color: #92400e;
+background-color: #fffbeb;
+icon: #mail;
+
+/block/
+
+<block_neutral>
+background-color: #f8fafc;
+text-color: #334155;
+border-color: #64748b;
+shape: rounded;
+
+<block_apply>
+background-color: #dbeafe;
+text-color: #1e40af;
+border-color: #2563eb;
+shape: rounded;
+icon: #zap;
+
+<block_approve>
+background-color: #dcfce7;
+text-color: #166534;
+border-color: #16a34a;
+shape: rounded;
+icon: #circle-check;
+
+<block_reject>
+background-color: #fee2e2;
+text-color: #991b1b;
+border-color: #dc2626;
+shape: hex;
+icon: #alert-triangle;
+
+<block_system>
+background-color: #e0e7ff;
+text-color: #3730a3;
+border-color: #4f46e5;
+shape: rect;
+icon: #database;
+
+<block_wait>
+background-color: #fef3c7;
+text-color: #92400e;
+border-color: #d97706;
+shape: rounded;
+icon: #clock;
+
+<block_end>
+background-color: #f1f5f9;
+text-color: #475569;
+border-color: #94a3b8;
+shape: rounded;
+icon: #circle-x;
+
+/prop/
+
+<APP_SH03>
+label: SH03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH01>
+label: SH01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SH02>
+label: SH02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA04>
+label: SA04;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_SA05>
+label: SA05;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_PD02>
+label: PD02;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_CM01>
+label: CM01;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<APP_ST03>
+label: ST03;
+side: left;
+background-color: #f1f5f9;
+border-color: #475569;
+text-color: #0f172a;
+
+<DO>
+label: 出货单;
+side: right;
+max-chars: 12;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<DN>
+label: 送货单;
+side: right;
+background-color: #fff7ed;
+border-color: #ea580c;
+text-color: #9a3412;
+
+<OL>
+label: 订单明细;
+side: right;
+max-chars: 12;
+background-color: #fef3c7;
+border-color: #d97706;
+text-color: #92400e;
+
+<MV>
+label: 出入库单;
+side: right;
+background-color: #f1f5f9;
+border-color: #64748b;
+text-color: #0f172a;
+
+/line/
+
+[role_ship: 查看待出货] <block_neutral>
+label: 未安排;
+props: APP_SH03;
+desc: 未处理出货的“未安排”标签按交期列出已完工但尚未列入出货单的订单明细。另一标签列出尚未出货的出货单。;
+if (入口) is (从列表) than #purple
+  [role_ship: 点击新建] <block_apply>
+  label: 列表;
+  props: APP_SH01;
+  desc: 打开空白表单，自行选择订单确认书。;
+elseif (从确认书) than #purple
+  [role_ship: 从确认书创建] <block_apply>
+  label: 订单确认书;
+  props: APP_SA04;
+  desc: 打开时已填入该订单确认书所有可出货的明细。;
+elseif (从订单明细) than #purple
+  [role_ship: 从明细创建] <block_apply>
+  label: 订单明细;
+  props: APP_SA05;
+  desc: 在订单明细（或未处理出货的行）点击“创建出货单”。打开时已填入该订单明细。;
+elseif (从工单) than #purple
+  [role_ship: 从工单创建] <block_apply>
+  label: 工单;
+  props: APP_PD02;
+  desc: 填入该工单的订单明细。若同一订单确认书还有其他可出货的明细，会询问是否合并。;
+endif
+[role_ship: 确定明细和批次] <block_apply>
+label: 明细;
+props: APP_SH01,DO;
+desc: 数量按工单完工数，按批次（工单编号）顺序在现有库存范围内自动填入。选择出货据点。仅当客户、送货对象、配送方式、最终用户都相同时，才能加入其他订单确认书。;
+if (类别) is (发货) than #purple
+  [role_ship: 选择结清和单价] <block_apply>
+  label: 数量差异;
+  props: APP_SH01;
+  desc: 选择“本次出货结清订单明细”与请款单价（接单时单价 / 按实际交货数重新查价格表）。默认为不结清、接单时单价。;
+elseif (库存保管) than #purple
+endif
+if (数量) is (超出订单余量) than #red
+  [role_ship: 修改数量] <block_reject>
+  label: 超出;
+  props: APP_SH01;
+  desc: 若工单不允许交货数量差异，则无法保存超出订单余量的数量。若允许，可填到客户的允许范围为止。;
+  [loop]
+elseif (少于余量) than #orange
+  [role_ship: 确认部分出货] <block_wait>
+  label: 部分出货;
+  props: APP_SH01;
+  desc: 弹出“部分出货确认”。若差异超出允许范围，还会提示确定时可能需要审批。剩余部分可之后用其他出货单发出。;
+elseif (正好) than #blue
+endif
+[role_ship: 保存为草稿] <block_apply>
+label: 保存;
+props: APP_SH01,DO;
+desc: 出货单以“草稿”登记。草稿期间可编辑，附加费用也可修改。所列数量即占用订单余量。;
+if (后续) is (放弃) than #red
+  [role_ship: 取消草稿] <block_end>
+  label: 取消;
+  props: APP_SH01;
+  desc: 只有草稿可以取消（出货单被删除）。确定后无法删除。;
+elseif (去确定) than #blue
+endif
+[role_ship: 点击确定] <block_apply>
+label: 确定;
+props: APP_SH01;
+desc: 确认画面预先显示将生成的送货单的收件方及是否记载价格。;
+if (差异判定) is (未经允许) than #red
+  [role_ship: 无法确定] <block_reject>
+  label: 错误;
+  props: APP_SH01;
+  desc: 其他出货单使累计超过订货数，或未经工单允许就想在不足时结清。请修改内容。;
+  [loop]
+elseif (需要审批) than #orange
+  [role_system: 提交审批申请] <block_system>
+  label: 审批申请;
+  desc: 若客户设置要求对该差异审批，则不确定而改为提交审批申请，出货单仍为草稿。审批设置（MS0B）中没有级别时直接确定。;
+  if (审批判断) is (退回) than #red
+    [role_ship: 修改后重新确定] <block_reject>
+    label: 已退回;
+    props: APP_SH01;
+    desc: 附理由退回。在草稿状态下修改后再次点击确定。;
+    [loop]
+  else
+    [role_appr: 批准数量差异] <block_approve>
+    label: 批准;
+    props: APP_CM01;
+    desc: 在未处理列表或出货单的审批卡片上批准。全部级别通过后为已批准，再次点击“确定”即可确定。;
+  endif
+elseif (无需审批) than #blue
+endif
+[role_system: 确定并固定单价] <block_system>
+label: 已确定;
+props: DO;
+desc: 出货单变为“已确定”，不可再编辑。请款单价写入明细，之后修改价格表也不会变动。;
+if (送货单) is (库存保管) than #blue
+elseif (常规配送) than #blue
+  [role_system: 生成 1 张送货单] <block_system>
+  label: 1 张;
+  props: DN;
+  desc: 以“已发行”生成 1 张寄给客户、记载价格的送货单。;
+elseif (直送) than #blue
+  [role_system: 生成 2 张送货单] <block_system>
+  label: 2 张;
+  props: DN;
+  desc: 以“已发行”生成 2 张：不记载价格的寄给最终用户，记载价格的寄给客户。;
+endif
+[role_ship: 打印送货单] <block_apply>
+label: PDF;
+props: APP_SH02,DN;
+desc: PDF 以收件方的语言输出（业务伙伴未设置时为日语）。打开记载价格的直送送货单时会先确认。;
+[role_ship: 点击出货] <block_apply>
+label: 出货;
+props: APP_SH01;
+desc: 点击后先清点库存（不写入任何数据）。;
+if (库存) is (不足·暂缓) than #red
+  [role_ship: 保持已确定等待] <block_wait>
+  label: 暂缓;
+  props: APP_ST03;
+  desc: 在“库存不足”画面点击取消，不发生任何变化。可用各行的“查看库存”确认库存与需求量。;
+  [loop]
+elseif (不足·出货) than #orange
+  [role_ship: 照样出货] <block_reject>
+  label: 不足出货;
+  props: APP_SH01;
+  desc: 出货照常完成，库存变为负数。出现橙色提示，单据行记为“库存不足出库”。通过盘点或手动出入库修正。;
+elseif (足够) than #blue
+endif
+[role_system: 记录出货] <block_system>
+label: 已出货;
+props: DO,MV;
+desc: 出货单变为“已出货”并记录出货日。生成 1 张出入库单，库存随之变动。向接单负责人发送出货通知。;
+if (出货后) is (库存保管) than #blue
+  [role_system: 存入保管库存] <block_system>
+  label: 保管;
+  desc: 作为出货据点的库存增加。订单明细状态不变，也不进入请款。;
+elseif (有余量) than #blue
+  [role_system: 设为部分出货] <block_system>
+  label: 部分出货;
+  props: OL;
+  desc: 产品库存减少。累计未达订货数且未结清的订单明细变为“部分出货”。;
+elseif (完成·结清) than #blue
+  [role_system: 设为已出货] <block_system>
+  label: 已出货;
+  props: OL;
+  desc: 产品库存减少。累计达到订货数（含超出）或选择了“结清”的订单明细变为“已出货”。;
+endif
+[role_cust: 收货] <block_neutral>
+label: 收货;
+desc: 送货单随货送达。直送时将不记载价格的一张交给最终用户。;
+[role_ship: 设为已交货] <block_apply>
+label: 交货;
+props: APP_SH02,DN;
+desc: 送货单变为“已交货”并记录交货日。出货单必须已出货。完成至此的发货部分成为请款对象。;
+if (退货) is (有) than #orange
+  [role_cust: 退回货物] <block_neutral>
+  label: 退货;
+  desc: 已出货的货物由客户退回。;
+  [role_ship: 记录退货] <block_apply>
+  label: 退货;
+  props: APP_SH01,MV;
+  desc: 仅限已出货的发货单。在出货数量以内，退回到出货据点的同一批次（货架未分配）。出货单、订单明细、请款均不变。;
+elseif (无) than #blue
+endif

@@ -25,10 +25,21 @@ const TWINS = [
   "workflow-core.ts",
   "workflow-core.test.ts",
   "inventory.ts",
+  // 採番 — 共有端末も工程完了で入出庫伝票を起こす（番号が要る）。
+  "numbering.ts",
+  // 書類の多態参照（法人コード/番号）— inventory.ts が入出庫伝票の元書類を
+  // 参照へ直すのに使う。
+  "doc-number.ts",
+  "doc-number.test.ts",
+  "doc-ref-core.ts",
+  "doc-ref-core.test.ts",
+  "doc-ref.ts",
   "inventory-availability-core.ts",
   "inventory-availability-core.test.ts",
   "inventory-note-core.ts",
   "inventory-note-core.test.ts",
+  "inventory-owner-core.ts",
+  "inventory-owner-core.test.ts",
   "inspection-core.ts",
   "inspection-core.test.ts",
   "qr-payload.ts",
@@ -43,6 +54,23 @@ const TWINS = [
   "login-attempt-core.test.ts",
   "display-content.ts",
   "display-templates.ts",
+  // 印字番号の整形 — 工程画面にも同じ番号を出す。
+  "marking-number.ts",
+  "marking-number.test.ts",
+  // 仕掛品の加工状態と突合 — 共有端末も工程完了で仕掛品を入庫する。
+  "wip-state-core.ts",
+  "wip-state-core.test.ts",
+  // 打ち切りの位置と検証 — inventory.ts が計上で型を使う（申請は Web だけ）。
+  "wip-abort-core.ts",
+  "wip-abort-core.test.ts",
+  // 仕掛品として在庫に置く分の記録（読み出しと検証）— 工程完了は両方にある。
+  "wip-recording.ts",
+  // 工程納期の遅れ判定 — 共有端末の工程画面も同じ規則で赤くする。
+  "step-due-date-core.ts",
+  "step-due-date-core.test.ts",
+  // 加工プログラムの選び方 — 工程実行画面は Web と共有端末の両方にある。
+  "design-programs-core.ts",
+  "design-programs-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

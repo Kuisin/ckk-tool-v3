@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { StepExecutionView } from "@/components/production/step-execution/StepExecutionView";
 import { appLabelForKey } from "@/lib/app-list";
 import { requireAppRead } from "@/lib/authz-page";
+import { fetchStepPrograms } from "@/lib/design-programs";
+import { fetchStepSeriesMemo } from "@/lib/design-series-memo";
 import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchStepExecution, resolveWorkOrderIdParam } from "../../../data";
@@ -34,13 +36,19 @@ export async function generateMetadata({
  */
 export default async function WorkOrderStepExecutionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; stepId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("work-orders");
   if (denied) return denied;
   const { id, stepId } = await params;
-  const workOrderNumber = await resolveWorkOrderIdParam(id);
+  const workOrderNumber = await resolveWorkOrderIdParam(
+    id,
+    `/steps/${stepId}`,
+    searchParams,
+  );
   if (workOrderNumber == null) notFound();
 
   const data = await fetchStepExecution(
@@ -48,6 +56,16 @@ export default async function WorkOrderStepExecutionPage({
     decodeURIComponent(stepId),
   );
   if (!data) notFound();
+  const [programs, seriesMemo] = await Promise.all([
+    fetchStepPrograms(data.step.id),
+    fetchStepSeriesMemo(data.step.id),
+  ]);
 
-  return <StepExecutionView data={data} />;
+  return (
+    <StepExecutionView
+      data={data}
+      programs={programs}
+      seriesMemo={seriesMemo}
+    />
+  );
 }

@@ -88,6 +88,41 @@ export function isExpired(at: Date | null, now: Date): boolean {
 }
 
 /**
+ * クライアントの設定変更が**アクセスを広げるか**（SY0I の編集で使う）。
+ *
+ * 承認（`api_client.activate`）を経ずに広げられると、有効なクライアントの
+ * 許可 IP を空（= 制限なし）にするだけで承認の意味が無くなる。そこで
+ * 有効なクライアントでは広げる変更を拒否し、いったん無効化 → 変更 →
+ * 承認つきで再有効化、の順を踏ませる。狭める変更は承認なしで通す
+ * （アクセスを減らす操作を承認待ちにしない、という SY0I の約束）。
+ *
+ * 広げる = 次のどれか:
+ *   - 許可 IP が制限ありから制限なし（空）になる
+ *   - 新しい許可 IP のどれかが、元のどの範囲にも含まれない
+ *   - 有効期限が外れる / 後ろへ延びる
+ *
+ * `contains(outer, inner)` は `lib/cidr-core.ts` の `cidrContains` を渡す。
+ */
+export function widensApiClientAccess(
+  before: { allowedCidrs: readonly string[]; expiresAt: Date | null },
+  after: { allowedCidrs: readonly string[]; expiresAt: Date | null },
+  contains: (outer: unknown, inner: unknown) => boolean,
+): boolean {
+  if (before.allowedCidrs.length > 0) {
+    if (after.allowedCidrs.length === 0) return true;
+    const outside = after.allowedCidrs.some(
+      (inner) => !before.allowedCidrs.some((outer) => contains(outer, inner)),
+    );
+    if (outside) return true;
+  }
+  if (before.expiresAt !== null) {
+    if (after.expiresAt === null) return true;
+    if (after.expiresAt.getTime() > before.expiresAt.getTime()) return true;
+  }
+  return false;
+}
+
+/**
  * 送信元 IP が許可されているか。
  *
  * **空配列 = 制限なし**（空を「全部拒否」にすると最初の 1 件目で必ず

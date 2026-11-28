@@ -8,6 +8,13 @@
  * 工程（`work_order_steps`）は**この資源の子**として返す。あの表は
  * `updated_at` も `created_at` も持たないので単独の差分同期に載せられず、
  * 親が動いたときに出し直すのが唯一正しい出し方（`_specs/api.md` §5.2）。
+ *
+ * `productId` / `materialId` の値は **`items.id`**（2026-09-20 の切り替え —
+ * `_specs/api.md` §6.1）。項目名は従来のままで、それぞれ `/api/v1/products` /
+ * `/api/v1/materials` の `id` と同じ id 空間を指す。
+ *
+ * `type` に **`REGRIND`** が増えている（2026-10-18 — `_specs/api.md` §6.2）。
+ * 消した値は無いが、`default` 節の無い switch を書いた読み手は取りこぼす。
  */
 
 import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";
@@ -16,7 +23,7 @@ import { iso, localizedJson } from "@/lib/api-dto";
 import { invalidCursorResponse, parseListQuery, runList } from "@/lib/api-list";
 import { instanceOf } from "@/lib/api-problem";
 import { prisma } from "@/lib/db";
-import { formatDocNumber, formatProductNumber } from "@/lib/doc-number";
+import { DOC_FIELDS_SELECT, docFields } from "../doc-fields";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,14 +55,12 @@ export async function GET(request: Request): Promise<Response> {
         // biome-ignore lint/suspicious/noExplicitAny: 同上
         orderBy: orderBy as any,
         select: {
-          id: true,
+          ...DOC_FIELDS_SELECT,
           workOrderNumber: true,
-          yearMonth: true,
-          seq: true,
-          productId: true,
+          productItemId: true,
           type: true,
           plannedQuantity: true,
-          materialId: true,
+          materialItemId: true,
           storageLocationId: true,
           status: true,
           approvalStatus: true,
@@ -66,7 +71,7 @@ export async function GET(request: Request): Promise<Response> {
           notes: true,
           createdAt: true,
           updatedAt: true,
-          product: { select: { name: true, yearMonth: true, seq: true } },
+          productItem: { select: { name: true, code: true } },
           orderLineLinks: {
             select: { orderLineId: true, quantity: true },
             orderBy: { sortOrder: "asc" },
@@ -100,21 +105,20 @@ export async function GET(request: Request): Promise<Response> {
     tiebreak: "id",
     toCursor: (r) => ({ kind: "id", id: r.id, t: r.updatedAt.toISOString() }),
     toDto: (r) => ({
-      id: r.id,
-      /** ロット番号 = 業務キー（QR `CKK:WO:<int>` と同じ値）。 */
+      // id / number（表示用の書類番号 WOR-FFFF-NNNNN）/ companyCode /
+      // fiscalYear / docNumber / legacyNumber
+      ...docFields(r),
+      /** ロット番号 = 業務キー（QR `CKK:WO:<int>` と同じ値。法人をまたいで一意）。 */
       lotNumber: r.workOrderNumber,
-      /** 表示用の書類番号。 */
-      number: formatDocNumber("WOR", r),
       status: r.status,
       approvalStatus: r.approvalStatus,
       type: r.type,
-      productId: r.productId,
-      productNumber: r.product
-        ? formatProductNumber(r.product.yearMonth, r.product.seq)
-        : null,
-      productName: localizedJson(r.product?.name),
+      productId: r.productItemId,
+      /** 製品コード PRD-YYYYMM-NNNN（採番前のレガシー品目は null）。 */
+      productNumber: r.productItem?.code ?? null,
+      productName: localizedJson(r.productItem?.name),
       plannedQuantity: r.plannedQuantity,
-      materialId: r.materialId,
+      materialId: r.materialItemId,
       storageLocationId: r.storageLocationId,
       orderLines: r.orderLineLinks.map((l) => ({
         orderLineId: l.orderLineId,

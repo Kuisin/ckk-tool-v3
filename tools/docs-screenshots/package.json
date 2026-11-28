@@ -11,7 +11,12 @@
     "docs:shots:one": "tsx scripts/orchestrate.ts --only",
     "docs:verify": "tsx scripts/orchestrate.ts --verify",
     "docs:lint": "tsx scripts/lint-screenshots.ts",
-    "docs:placeholders": "tsx scripts/placeholders.ts"
+    "docs:placeholders": "tsx scripts/placeholders.ts",
+    "e2e:pages": "tsx scripts/e2e-pages.ts",
+    "walk:check": "tsx scripts/walkthroughs.ts",
+    "docs:videos": "tsx scripts/walkthroughs.ts --record",
+    "scenarios": "tsx scripts/scenarios.ts",
+    "scenarios:report": "tsx scripts/scenario-report.ts .verify-out/scenarios"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

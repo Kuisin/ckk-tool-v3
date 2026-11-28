@@ -14,10 +14,15 @@
 import { fetchInvoiceForDocument } from "@/app/(dashboard)/billing/invoices/data";
 import { resolveTaxBuckets } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
-import { parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
+import {
+  issuerForCompanyId,
+  ownCompanyLogo,
+  ownCompanyStampImg,
+} from "@/lib/own-companies";
 import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
@@ -26,29 +31,21 @@ import {
   taxRowLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
-import { companyStampImg } from "@/lib/pdf-stamp";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
+import { docKeyFromRequest } from "../../doc-key";
 
 // Reads request query params → always rendered at request time.
 export const dynamic = "force-dynamic";
 
 const yen = (n: number) => n.toLocaleString("ja-JP");
 
-// 発行元（CKK 本社）— delivery-note ルートの issuer ブロックと同一。
-const ISSUER = {
-  name: "シー・ケィ・ケー株式会社", // i18n-ignore
-  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
-  tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
-  invoice_reg: "T1234567890123",
-};
-
 /** Build the response headers for serving the PDF (inline vs attachment). */
 function pdfHeaders(invoiceNumber: string, download: boolean): HeadersInit {
   const disp = download ? "attachment" : "inline";
   return {
     "content-type": "application/pdf",
-    "content-disposition": `${disp}; filename="${invoiceNumber}.pdf"`,
+    "content-disposition": `${disp}; filename="${docNo(invoiceNumber)}.pdf"`,
   };
 }
 
@@ -63,7 +60,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Missing "id" query parameter', { status: 400 });
   }
 
-  const key = parseDocKey(id, "INV");
+  const key = await docKeyFromRequest("invoices", "INV", id);
   const invoice = key ? await fetchInvoiceForDocument(key) : null;
   if (!invoice) {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
@@ -75,6 +72,9 @@ export async function GET(request: Request): Promise<Response> {
   // 行の数も金額も必ず一致する。
   const taxBuckets = resolveTaxBuckets(invoice);
 
+  // DTO の番号フィールドは id の姿（`CKK~…` — 法人まで運ぶ）。保管キーと
+  // QR は id のまま（番号は法人ごとの連番で、番号だけでは別法人の書類と
+  // 取り違える）。紙とファイル名に出すのは番号だけ。
   const storageKey = pdfStorageKey.invoice(invoice.invoiceNumber);
 
   // Serve the stored copy if it exists (SeaweedFS), else generate + store.
@@ -96,10 +96,20 @@ export async function GET(request: Request): Promise<Response> {
   // 宛先メタ: 支店 + ご担当者。
   const metaLines = [pdfAttnLine(lang, invoice.customerBranchName)];
 
+  // 発行元（自社法人 MS0I）— 作成時に焼いたスナップショット。null はこの列が
+  // できる前の請求書で、既定の法人として刷る（従来どおり）。
+  const { issuer, company } = await issuerForCompanyId(
+    invoice.ownCompanyId,
+    lang,
+  );
+  // 見出しのロゴもその法人のもの（他の法人の書類に CKK のマークを刷らない）。
+  const logo = await ownCompanyLogo(company, lang);
+
   const data = {
     lang,
     labels,
-    issuer: ISSUER,
+    issuer,
+    brand_logo: logo.html,
     recipient: {
       name: invoice.customerName,
       meta: metaLines.map(escapeHtml).join("<br>"),
@@ -109,9 +119,9 @@ export async function GET(request: Request): Promise<Response> {
     // 社印。ここに来る時点で isIssued は真だが（69 行目のガード）、
     // companyStampImg 自身にも判定を持たせている（lib/pdf-stamp.ts の
     // コメント参照）ので、ここでも明示的に渡す。
-    stamp: await companyStampImg(isIssued(invoice.status), lang),
+    stamp: await ownCompanyStampImg(company, isIssued(invoice.status), lang),
     doc: {
-      number: invoice.invoiceNumber,
+      number: docNo(invoice.invoiceNumber),
       issued_date: documentFormatters.date(
         invoice.issuedAt ?? invoice.createdAt,
       ),
@@ -123,7 +133,7 @@ export async function GET(request: Request): Promise<Response> {
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),
-      provenance: [it.deliveryOrderNumber, it.deliveryNoteNumber]
+      provenance: [docNo(it.deliveryOrderNumber), docNo(it.deliveryNoteNumber)]
         .filter(Boolean)
         .join(" / "),
     })),
@@ -148,7 +158,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let pdf: ArrayBuffer;
   try {
-    pdf = await renderPdf("invoice.html", data);
+    pdf = await renderPdf("invoice.html", data, { assets: logo.assets });
   } catch (err) {
     console.error("[pdf/invoice]", err);
     return new Response("PDF generation failed", { status: 502 });

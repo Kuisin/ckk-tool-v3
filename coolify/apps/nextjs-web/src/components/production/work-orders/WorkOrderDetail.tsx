@@ -28,6 +28,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAlertTriangle,
   IconCopy,
+  IconPlayerStop,
   IconPrinter,
   IconRuler2,
   IconTruck,
@@ -42,9 +43,16 @@ import {
   acknowledgeFlowChangeAction,
   cancelWorkOrder,
   copyWorkOrder,
+  saveWorkOrderCharges,
   setWorkOrderDesignFile,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
+import {
+  type ChargeItemChoice,
+  type ChargeRowView,
+  ChargesPanel,
+} from "@/components/charges/ChargesPanel";
+import { WipStateLabel } from "@/components/inventory/wip/WipStockList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   type ApprovalTrailView,
@@ -60,6 +68,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MarkingNumber } from "@/components/ui/MarkingNumber";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { NextStepCard } from "@/components/ui/NextStepCard";
@@ -72,10 +81,17 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { docNo } from "@/lib/doc-number";
 import type { MemoView } from "@/lib/document-memos";
-import { workOrderTypeLabel } from "@/lib/enum-labels";
+import { WORK_ORDER_TYPE_COLOR, workOrderTypeLabel } from "@/lib/enum-labels";
+import type {
+  AbortFormView,
+  WorkOrderAbortView,
+} from "@/lib/work-order-aborts";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
+import { WorkOrderAbortCard, WorkOrderAbortModal } from "./WorkOrderAbortCard";
+import { WorkOrderAbortedBadge } from "./WorkOrderAbortedBadge";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
 
 const BASE_PATH = "/production/work-orders";
@@ -90,9 +106,15 @@ export function WorkOrderDetail({
   memos = [],
   flowChange = null,
   flowChangeApproval = null,
+  abort = null,
+  abortApproval = null,
+  abortForm = null,
   rejectedAppliedFlowChange = null,
   designFile = null,
   designPinned = false,
+  charges = [],
+  chargeItems = [],
+  canEditCharges = false,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -108,10 +130,21 @@ export function WorkOrderDetail({
   designFile?: ProductDesignFile | null;
   /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
   designPinned?: boolean;
+  /** 追加料金（送料など）— **予定**。請求される実体は出荷書側の行。 */
+  charges?: ChargeRowView[];
+  /** 料金マスタの選択肢（編集時のみ使う）。 */
+  chargeItems?: ChargeItemChoice[];
+  canEditCharges?: boolean;
   /** 承認依頼中の工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
   flowChangeApproval?: ApprovalActionState | null;
+  /** 打ち切りの申請（保留中 / 適用済み / 適用できなかった）。無ければ null。 */
+  abort?: WorkOrderAbortView | null;
+  /** 保留中の打ち切り申請そのものの承認状態。 */
+  abortApproval?: ApprovalActionState | null;
+  /** 打ち切りフォームの材料（進行中で編集権限がある時だけ）。 */
+  abortForm?: AbortFormView | null;
   /** 事後承認（POST）で差し戻されたが適用済み・未確認の変更（赤アラート）。 */
   rejectedAppliedFlowChange?: {
     id: string;
@@ -129,12 +162,13 @@ export function WorkOrderDetail({
   const [tab, setTab] = useTabParam("overview");
   const [isPending, startTransition] = useTransition();
   const [copyOpen, setCopyOpen] = useState(false);
+  const [abortOpen, setAbortOpen] = useState(false);
   const [copyTargetSoId, setCopyTargetSoId] = useState<string | null>(
     workOrder.orderLines[0]?.orderLineId ?? null,
   );
 
   const wo = workOrder;
-  // 表示番号 YYYYMMDD-XXXXX（保存側は従来どおり通し連番の int）。
+  // 表示は書類番号 WOR-FFFF-NNNNN（リンクと操作は通し連番の int = ロット番号）。
   const woLabel = wo.docNumber;
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
@@ -271,6 +305,12 @@ export function WorkOrderDetail({
 
   const summary = (
     <SummaryGrid>
+      {wo.legacyNumber && (
+        <FieldValue
+          label={tr("common.legacyNumber")}
+          value={<DocNumber>{wo.legacyNumber}</DocNumber>}
+        />
+      )}
       <FieldValue
         label={tr("common.orderLinesAllocated")}
         value={
@@ -315,58 +355,215 @@ export function WorkOrderDetail({
             : "—"
         }
       />
+      {wo.orderLines.length > 0 && (
+        <FieldValue
+          label={tr("common.markingNumber")}
+          value={
+            <Stack gap={6}>
+              {wo.orderLines.map((l) => (
+                <Stack gap={0} key={l.orderLineId}>
+                  {wo.orderLines.length > 1 && (
+                    <DocNumber>{l.number}</DocNumber>
+                  )}
+                  <MarkingNumber
+                    allocatedQuantity={l.allocatedQuantity}
+                    base={l.markingBase}
+                    quantity={l.lineQuantity}
+                    split={l.markingSplit}
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          }
+        />
+      )}
       <FieldValue label={tr("common.createdBy")} value={wo.createdByName} />
       <FieldValue label={tr("common.product")} value={wo.productName} />
       <FieldValue
         label={tr("common.type2")}
-        value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
+        value={
+          <Badge
+            color={WORK_ORDER_TYPE_COLOR[wo.type] ?? "gray"}
+            size="sm"
+            variant="light"
+          >
+            {workOrderTypeLabel(wo.type, locale) ?? wo.type}
+          </Badge>
+        }
       />
       <FieldValue
         label={tr("common.plannedQuantity")}
         value={`${wo.plannedQuantity}`}
       />
-      <FieldValue
-        label={tr("production.workOrders.materialUsed")}
-        value={
-          wo.materialCode ? `${wo.materialCode}（${wo.materialName}）` : null
-        }
-      />
+      {/* 再研磨: 受入 / 返却（再研磨不可）/ 完成 の 3 つ。受入は製品受入の完了で
+          決まり、返却は廃棄欄の合計、完成は終端の良品。自社在庫は動かない。 */}
+      {wo.regrind && (
+        <FieldValue
+          label={tr("production.workOrders.regrindQuantities")}
+          value={
+            <Group gap="xs" wrap="wrap">
+              <Badge color="orange" size="sm" variant="light">
+                {tr("production.workOrders.regrindReceived")}{" "}
+                {wo.regrind.received ??
+                  tr("production.workOrders.regrindNotReceivedYet")}
+              </Badge>
+              <Badge color="red" size="sm" variant="light">
+                {tr("production.workOrders.regrindReturned")}{" "}
+                {wo.regrind.returnedAsIs}
+              </Badge>
+              <Badge color="green" size="sm" variant="light">
+                {tr("production.workOrders.regrindFinished")}{" "}
+                {wo.regrind.finished}
+              </Badge>
+            </Group>
+          }
+        />
+      )}
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("production.workOrders.materialUsed")}
+          value={
+            wo.materialCode ? `${wo.materialCode}（${wo.materialName}）` : null
+          }
+        />
+      )}
+      {/* 開始状態 — 在庫の仕掛品から始めた指示書だけ。どの加工状態の品を投入し、
+          どの工程を飛ばしたかを、工程の並びを読み解かなくても分かるようにする。 */}
+      {wo.startWip && (
+        <FieldValue
+          fullWidth
+          label={tr("production.wipDraw.startState")}
+          value={
+            <Stack data-start-wip gap={6}>
+              <Group gap="xs" wrap="wrap">
+                <Badge color="violet" size="sm" variant="filled">
+                  {tr("production.wipDraw.startState")}
+                </Badge>
+                <WipStateLabel
+                  row={{
+                    isLegacy: false,
+                    stateName: wo.startWip.stateName,
+                    stepNames: wo.startWip.stepNames,
+                  }}
+                />
+              </Group>
+              <Text c="dimmed" fw={400} size="xs">
+                {tr("production.wipDraw.startStateHelp")}
+              </Text>
+              {wo.startWip.skippedStepNames.length > 0 && (
+                <Group gap={4} wrap="wrap">
+                  <Text c="dimmed" fw={400} size="xs">
+                    {tr("production.wipDraw.skippedInThisOrder")}
+                  </Text>
+                  {wo.startWip.skippedStepNames.map((n, i) => (
+                    <Badge
+                      color="gray"
+                      // 同じ工程が 2 回入り得るので位置も鍵に入れる
+                      key={`${i}:${n}`}
+                      size="xs"
+                      variant="light"
+                    >
+                      {n}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+              {wo.startWip.overrideReason && (
+                <Text c="orange" fw={400} size="xs">
+                  {tr("production.wipDraw.overrideReasonLabel", {
+                    reason: wo.startWip.overrideReason,
+                  })}
+                </Text>
+              )}
+              {wo.wipDraws.length > 0 && (
+                <Stack gap={2}>
+                  <Text c="dimmed" fw={400} size="xs">
+                    {tr("production.wipDraw.drawsTitle")}
+                  </Text>
+                  {wo.wipDraws.map((d) => (
+                    <Group
+                      data-wip-draw={d.inventoryId}
+                      gap="xs"
+                      key={d.inventoryId}
+                      wrap="wrap"
+                    >
+                      <Text fw={400} size="sm">
+                        {tr("production.wipDraw.drawLine", {
+                          blank: d.blankLabel,
+                          lot: d.lotNumber != null ? `#${d.lotNumber}` : "—",
+                          quantity: d.quantity,
+                        })}
+                      </Text>
+                      {d.aimedProductName && (
+                        <Text c="dimmed" fw={400} size="xs">
+                          {tr("production.wipDraw.drawAimed", {
+                            product: d.aimedProductName,
+                          })}
+                        </Text>
+                      )}
+                      {d.reservedQuantity > 0 ? (
+                        <Badge color="orange" size="xs" variant="light">
+                          {tr("production.wipDraw.drawReserved", {
+                            count: d.reservedQuantity,
+                          })}
+                        </Badge>
+                      ) : (
+                        (wo.status === "DRAFT" ||
+                          wo.status === "PENDING_APPROVAL") && (
+                          <Badge color="gray" size="xs" variant="light">
+                            {tr("production.wipDraw.drawNotReserved")}
+                          </Badge>
+                        )
+                      )}
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          }
+        />
+      )}
       <FieldValue
         label={tr("common.lotNumber")}
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
-      <FieldValue
-        label={tr("common.storageLocations")}
-        value={wo.storageLocationName}
-      />
-      {/* 工程リストは 準備（共通）+ 製造（製品 × 受注元）の 2 本（§7）。
-          使っている版が最新でなければ印を付ける — 直した工程リストが
-          この指示書に反映されていないことを、開いた人が気づけるように。 */}
-      <FieldValue
-        label={tr("production.workOrders.prepRoute")}
-        value={
-          wo.prepRouteName != null ? (
-            <Group gap={6} wrap="nowrap">
-              <Anchor
-                component={Link}
-                href="/master/process-steps/prep-routes"
-                size="sm"
-              >
-                {wo.prepRouteName} v{wo.prepRouteVersion}
-              </Anchor>
-              {wo.prepRouteLatestVersion != null &&
-                wo.prepRouteVersion != null &&
-                wo.prepRouteLatestVersion > wo.prepRouteVersion && (
-                  <Badge color="orange" size="xs" variant="light">
-                    {tr("production.workOrders.newerVersionExists", {
-                      version: wo.prepRouteLatestVersion,
-                    })}
-                  </Badge>
-                )}
-            </Group>
-          ) : null
-        }
-      />
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("common.storageLocations")}
+          value={wo.storageLocationName}
+        />
+      )}
+      {/* 工程リストは 準備（共通）+ 製造（製品 × 受注元）の 2 本（§7）。再研磨は
+          共通の再研磨工程リスト 1 本。使っている版が最新でなければ印を付ける —
+          直した工程リストがこの指示書に反映されていないことを、開いた人が
+          気づけるように。 */}
+      {wo.type !== "REGRIND" && (
+        <FieldValue
+          label={tr("production.workOrders.prepRoute")}
+          value={
+            wo.prepRouteName != null ? (
+              <Group gap={6} wrap="nowrap">
+                <Anchor
+                  component={Link}
+                  href="/master/process-steps/prep-routes"
+                  size="sm"
+                >
+                  {wo.prepRouteName} v{wo.prepRouteVersion}
+                </Anchor>
+                {wo.prepRouteLatestVersion != null &&
+                  wo.prepRouteVersion != null &&
+                  wo.prepRouteLatestVersion > wo.prepRouteVersion && (
+                    <Badge color="orange" size="xs" variant="light">
+                      {tr("production.workOrders.newerVersionExists", {
+                        version: wo.prepRouteLatestVersion,
+                      })}
+                    </Badge>
+                  )}
+              </Group>
+            ) : null
+          }
+        />
+      )}
       {/* 過不足納品（§8）— 許可されているときだけ出す。既定（不可）は
           従来どおりの状態なので、全ての指示書に「不可」を並べても読む量が
           増えるだけ。 */}
@@ -381,13 +578,21 @@ export function WorkOrderDetail({
         />
       )}
       <FieldValue
-        label={tr("production.workOrders.processRoute")}
+        label={
+          wo.type === "REGRIND"
+            ? tr("production.workOrders.regrindRoute")
+            : tr("production.workOrders.processRoute")
+        }
         value={
           wo.routeName != null ? (
             <Group gap={6} wrap="nowrap">
               <Anchor
                 component={Link}
-                href={`/master/products/${wo.productId}?tab=routes`}
+                href={
+                  wo.routeKind === "REGRIND"
+                    ? "/master/process-steps/regrind-routes"
+                    : `/master/products/${wo.productItemId ?? ""}?tab=routes`
+                }
                 size="sm"
               >
                 {wo.routeName} v{wo.routeVersion}
@@ -449,6 +654,19 @@ export function WorkOrderDetail({
                 icon: <IconPrinter size={14} />,
                 href: `${BASE_PATH}/print?ids=${wo.workOrderNumber}`,
               },
+              ...(abortForm && !abortForm.block
+                ? [
+                    {
+                      // 打ち切り — 進行中の指示書を止め、流れの途中の品を
+                      // 仕掛品として在庫へ戻す（承認設定に段があれば承認を通る）。
+                      label: tr("production.workOrderAbort.menu"),
+                      icon: <IconPlayerStop size={14} />,
+                      color: "red",
+                      divider: true,
+                      onClick: () => setAbortOpen(true),
+                    },
+                  ]
+                : []),
               ...(canCancel
                 ? [
                     {
@@ -482,6 +700,7 @@ export function WorkOrderDetail({
               woLabel,
             ]
       }
+      company={wo.companyCode}
       createdAt={fmt.dateTime(wo.createdAt)}
       status={
         <>
@@ -491,6 +710,17 @@ export function WorkOrderDetail({
               entity="WorkOrderApproval"
               status={wo.approvalStatus}
             />
+          )}
+          {abort?.status === "APPLIED" && <WorkOrderAbortedBadge />}
+          {abort?.status === "PENDING" && (
+            <Badge color="yellow" size="sm" variant="light">
+              {tr("production.workOrderAbort.pendingBadge")}
+            </Badge>
+          )}
+          {wo.startWip && (
+            <Badge color="violet" size="sm" variant="light">
+              {tr("production.wipDraw.startState")}
+            </Badge>
           )}
         </>
       }
@@ -568,6 +798,16 @@ export function WorkOrderDetail({
           </Stack>
         </Alert>
       )}
+      {/* 打ち切り（承認依頼中 / 打ち切り済み / 適用できなかった） */}
+      <WorkOrderAbortCard abort={abort} approval={abortApproval} />
+      {abortForm && !abortForm.block && abortOpen && (
+        <WorkOrderAbortModal
+          form={abortForm}
+          onClose={() => setAbortOpen(false)}
+          opened={abortOpen}
+          workOrderNumber={wo.workOrderNumber}
+        />
+      )}
       {/* 承認依頼中の工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
       {flowChange && flowChangeApproval && (
         <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
@@ -618,6 +858,21 @@ export function WorkOrderDetail({
               workOrderNumber={wo.workOrderNumber}
               workOrderStatus={wo.status}
             />
+            {/* 追加料金（送料など）。ここは**予定**で、出荷書を作るときに
+                複写される — 請求されるのは出荷書側の行。承認の画面
+                （variant="approval"）では読むだけにする。 */}
+            {!isApproval && (
+              <ChargesPanel
+                canEdit={canEditCharges}
+                description={tr("charges.workOrderHelp")}
+                items={chargeItems}
+                onSave={(rows) =>
+                  saveWorkOrderCharges(wo.workOrderNumber, rows)
+                }
+                rows={charges}
+                title={tr("charges.title")}
+              />
+            )}
             {wo.notes && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">
@@ -752,7 +1007,7 @@ export function WorkOrderDetail({
                   {wo.copies.map((c) => (
                     <Anchor
                       component={Link}
-                      href={`${BASE_PATH}/${c.docNumber}`}
+                      href={`${BASE_PATH}/${c.workOrderNumber}`}
                       key={c.workOrderNumber}
                       size="sm"
                     >
@@ -775,7 +1030,7 @@ export function WorkOrderDetail({
                 </Text>
                 <Anchor
                   component={Link}
-                  href={`${BASE_PATH}/${wo.sourceWorkOrderDocNumber ?? wo.sourceWorkOrderNumber}`}
+                  href={`${BASE_PATH}/${wo.sourceWorkOrderNumber}`}
                   size="sm"
                 >
                   <DocNumber c="blue">
@@ -831,7 +1086,7 @@ export function WorkOrderDetail({
               wo.orderLines.length > 0
                 ? {
                     value: wo.orderLines[0].orderLineId,
-                    label: `${wo.orderLines[0].number} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
+                    label: `${docNo(wo.orderLines[0].number)} ${wo.productName}（${wo.orderLines[0].lineQuantity}）`,
                   }
                 : null
             }

@@ -3,15 +3,19 @@
   "pages": [
     "business-partner",
     "product",
+    "tax-category",
     "material-type",
     "material",
     "process-step",
     "inspection-template",
     "defect-type",
     "approval-setting",
+    "own-company",
     "plant",
     "material-numbering",
     "work-location",
-    "storage-location"
+    "storage-location",
+    "charge-item",
+    "regrind-item"
   ]
 }

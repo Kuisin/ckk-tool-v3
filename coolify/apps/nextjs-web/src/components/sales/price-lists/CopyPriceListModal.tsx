@@ -20,6 +20,7 @@ import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { notifyPriceEntryApproval } from "./approval-notice";
 import { type PriceListEntry, requiresEndDate } from "./model";
 
 export function CopyPriceListModal({
@@ -37,14 +38,15 @@ export function CopyPriceListModal({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(null);
-  const [productId, setProductId] = useState<string | null>(null);
+  // コピー先の製品 — 値は品目 id（items.id。productOptions も品目）。
+  const [itemId, setItemId] = useState<string | null>(null);
   const [validFrom, setValidFrom] = useState<string | null>(null);
   const [validUntil, setValidUntil] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setCustomerId(null);
-    setProductId(null);
+    setItemId(null);
     setValidFrom(null);
     setValidUntil(null);
     setError(null);
@@ -69,10 +71,7 @@ export function CopyPriceListModal({
       onSubmit={(e) => {
         e.preventDefault();
         if (!source) return;
-        if (
-          !(customerId && productId && validFrom) ||
-          (needsEnd && !validUntil)
-        ) {
+        if (!(customerId && itemId && validFrom) || (needsEnd && !validUntil)) {
           setError(
             needsEnd
               ? tr("sales.priceLists.enterTheDestinationCustomerProductAnd")
@@ -85,7 +84,7 @@ export function CopyPriceListModal({
             sourceEntryNumber: source.entryId,
             targetIdentity: {
               customerBpId: customerId,
-              productId,
+              itemId,
             },
             validFrom,
             validUntil,
@@ -96,6 +95,7 @@ export function CopyPriceListModal({
               message: tr("sales.priceLists.thePriceListWasCopiedTo"),
               color: "green",
             });
+            notifyPriceEntryApproval(result.data, tr);
             handleClose();
             router.push(`/sales/price-lists/${result.data.entryId}`);
           } else {
@@ -138,15 +138,15 @@ export function CopyPriceListModal({
       <Select
         data={productOptions}
         error={
-          error && !productId
+          error && !itemId
             ? tr("sales.priceLists.selectAProductError")
             : undefined
         }
         label={tr("sales.priceLists.copyToProduct")}
-        onChange={setProductId}
+        onChange={setItemId}
         placeholder={tr("sales.priceLists.selectAProduct")}
         searchable
-        value={productId}
+        value={itemId}
         withAsterisk
       />
       <DatePickerInput

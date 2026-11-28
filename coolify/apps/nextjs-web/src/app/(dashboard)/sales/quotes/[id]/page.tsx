@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
+import { quoteDisplayStatus } from "@/components/sales/quotes/model";
 import { QuoteDetail } from "@/components/sales/quotes/QuoteDetail";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
+import { docNo } from "@/lib/doc-number";
+import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { loadPortalShare } from "@/lib/portal-share";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequestsForQuote } from "../../design-requests/data";
 import { fetchOrderAcceptancesForQuote } from "../../order-acceptances/data";
@@ -25,22 +28,30 @@ export async function generateMetadata({
   return {
     title: formatDocPageTitle(
       appLabelForKey("quotes", "見積書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
-      decodeURIComponent(id),
+      docNo(decodeURIComponent(id)),
     ),
   };
 }
 
-/** 見積書 詳細 (SA23). URL id = 導出文書番号 QOT-YYYYMM-NNNNN. */
+/** 見積書 詳細 (SA23). URL id = 法人コード付きの番号（CKK~QOT-2026-00001）。 */
 export default async function SalesQuotesDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const denied = await requireAppRead("quotes");
   if (denied) return denied;
   const { id } = await params;
-  const key = parseDocKey(id, "QOT");
-  if (!key) notFound();
+  const key = await docKeyFromParam(
+    "quotes",
+    "QOT",
+    id,
+    "/sales/quotes",
+    "",
+    searchParams,
+  );
 
   const [
     quote,
@@ -52,14 +63,20 @@ export default async function SalesQuotesDetailPage({
   ] = await Promise.all([
     fetchQuote(key),
     fetchEntriesForQuote(key),
-    fetchAuditEntries("quotes", formatQuoteNumber(key)),
-    listMemos("quotes", formatQuoteNumber(key)),
+    fetchAuditEntries("quotes", key.docRef),
+    listMemos("quotes", key.docRef),
     // §10 設計依頼は見積と並行する側枝 — 関連タブに逆リンクを出す。
     fetchDesignRequestsForQuote(key),
     // 手続き状況の「次の書類へ」— この見積から起きた注文請書。
     fetchOrderAcceptancesForQuote(key),
   ]);
   if (!quote) notFound();
+  // 取引先ポータルの書類リンク（機能・権限・状態が揃ったときだけ出す）。
+  const portalShare = await loadPortalShare(
+    "quotes",
+    key.docRef,
+    quoteDisplayStatus(quote),
+  );
 
   // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
   const pdfMeta = isIssued(quote.status)
@@ -73,6 +90,7 @@ export default async function SalesQuotesDetailPage({
       designRequests={designRequests}
       memos={memos}
       pdfMeta={pdfMeta}
+      portalShare={portalShare}
       quote={quote}
       relatedEntries={relatedEntries}
     />

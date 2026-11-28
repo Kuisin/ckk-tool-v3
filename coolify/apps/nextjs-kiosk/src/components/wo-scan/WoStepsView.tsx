@@ -42,6 +42,8 @@ type Props = {
   workOrderNumber: number;
   /** null = 指示書が存在しない（「見つかりません」画面を出す）。 */
   overview: WorkOrderOverview | null;
+  /** 指示書一覧（/wo-list）から来た — 戻り先を一覧にする。 */
+  fromList?: boolean;
 };
 
 /** WORK_ORDER_STATUS → バッジ色（design.md §9 と同じ対応）。 */
@@ -54,9 +56,15 @@ const WO_STATUS_COLOR: Record<string, string> = {
   CANCELLED: "red",
 };
 
-export function WoStepsView({ workOrderNumber, overview }: Props) {
+export function WoStepsView({
+  workOrderNumber,
+  overview,
+  fromList = false,
+}: Props) {
   const router = useRouter();
   const { m } = useI18n();
+  const backHref = fromList ? "/wo-list" : "/wo-scan";
+  const backLabel = fromList ? m.woList.backToList : m.woScan.rescan;
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = () => {
@@ -90,10 +98,10 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
           <Group gap="sm" wrap="nowrap">
             <Button
               leftSection={<IconArrowLeft size={20} />}
-              onClick={() => router.push("/wo-scan")}
+              onClick={() => router.push(backHref)}
               variant="default"
             >
-              {m.woScan.rescan}
+              {backLabel}
             </Button>
             <Title order={3}>
               {fillMessage(m.woScan.workOrder, { n: workOrderNumber })}
@@ -104,7 +112,14 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                 size="lg"
                 variant="light"
               >
-                {statusLabel(overview.status)}
+                {overview.abort === "ABORTED"
+                  ? m.woScan.aborted
+                  : statusLabel(overview.status)}
+              </Badge>
+            )}
+            {overview?.abort === "PENDING" && (
+              <Badge color="yellow" size="lg" variant="light">
+                {m.woScan.abortPending}
               </Badge>
             )}
           </Group>
@@ -129,9 +144,7 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
               <Text c="dimmed">
                 {fillMessage(m.woScan.notFound, { n: workOrderNumber })}
               </Text>
-              <Button onClick={() => router.push("/wo-scan")}>
-                {m.woScan.rescan}
-              </Button>
+              <Button onClick={() => router.push(backHref)}>{backLabel}</Button>
             </Stack>
           </Center>
         ) : (
@@ -155,6 +168,56 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                     </Text>
                   )}
                 </Group>
+                {overview.markings.map((mk) => (
+                  <Text ff="monospace" key={mk.perLine} size="sm">
+                    {fillMessage(
+                      mk.split > 0 ? m.woScan.markingSplit : m.woScan.marking,
+                      mk,
+                    )}
+                  </Text>
+                ))}
+                {/* 開始状態 — 在庫の仕掛品から始めた指示書。紙の工程の並びと
+                    画面の工程が違う理由（済んでいる工程は載っていない）を示す。 */}
+                {overview.startWip && (
+                  <Stack data-start-wip gap={4} mt={2}>
+                    <Group gap="xs" wrap="wrap">
+                      <Badge color="violet" size="lg" variant="filled">
+                        {m.woScan.startState}
+                      </Badge>
+                      {overview.startWip.stateName && (
+                        <Text fw={600} size="sm">
+                          {overview.startWip.stateName}
+                        </Text>
+                      )}
+                      {overview.startWip.stepNames.length === 0 ? (
+                        <Badge color="gray" size="lg" variant="light">
+                          {m.woScan.startStateUnprocessed}
+                        </Badge>
+                      ) : (
+                        overview.startWip.stepNames.map((n, i) => (
+                          <Badge
+                            color="violet"
+                            // 同じ工程が 2 回入り得るので位置も鍵に入れる
+                            key={`${i}:${n}`}
+                            size="lg"
+                            variant="light"
+                          >
+                            {n}
+                          </Badge>
+                        ))
+                      )}
+                    </Group>
+                    <Text c="dimmed" size="sm">
+                      {overview.startWip.skippedStepNames.length > 0
+                        ? fillMessage(m.woScan.startStateSkipped, {
+                            names: overview.startWip.skippedStepNames.join(
+                              ` ${m.common.separator} `,
+                            ),
+                          })
+                        : m.woScan.startStateNoSkip}
+                    </Text>
+                  </Stack>
+                )}
                 {countable.length > 0 && (
                   <Group align="center" gap="sm" mt={2} wrap="nowrap">
                     <Progress
@@ -179,6 +242,11 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                 {m.woScan.notExecutable}
               </Alert>
             )}
+            {overview.abort === "PENDING" && (
+              <Alert color="yellow" icon={<IconAlertTriangle size={20} />}>
+                {m.woScan.abortPendingNote}
+              </Alert>
+            )}
 
             <Title c="dimmed" order={5}>
               {m.woScan.stepsTitle}
@@ -191,6 +259,7 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                 {overview.steps.map((item, i) => (
                   <WoStepCard
                     executable={executable}
+                    fromList={fromList}
                     index={i + 1}
                     item={item}
                     key={item.step.stepId}
@@ -209,8 +278,11 @@ function WoStepCard({
   item,
   index,
   executable,
+  fromList,
 }: {
   item: WorkOrderStepItem;
+  /** 指示書一覧から来ているか — 工程から戻ったあとも一覧へ戻れるよう持ち回る。 */
+  fromList: boolean;
   /** 工程順の表示番号（1..N — 紙の指示書との突き合わせ用）。 */
   index: number;
   /** 指示書が承認済み/進行中か（false のとき工程は開けない）。 */
@@ -230,7 +302,12 @@ function WoStepCard({
   return (
     <UnstyledButton
       disabled={!openable}
-      onClick={() => openable && router.push(`/steps/${step.stepId}?from=wo`)}
+      onClick={() =>
+        openable &&
+        router.push(
+          `/steps/${step.stepId}?from=wo${fromList ? "&via=list" : ""}`,
+        )
+      }
       style={{ opacity: openable ? 1 : 0.6 }}
     >
       <Paper p="md" radius="md" withBorder>
@@ -258,6 +335,17 @@ function WoStepCard({
                 : ""}
             </Text>
             <Group gap="sm" mt={2} wrap="wrap">
+              {step.dueDate != null && (
+                <Text
+                  c={step.dueOverdue ? "red" : "dimmed"}
+                  fw={step.dueOverdue ? 700 : undefined}
+                  size="sm"
+                >
+                  {fillMessage(m.steps.card.dueDate, {
+                    d: step.dueDate.replaceAll("-", "/"),
+                  })}
+                </Text>
+              )}
               {step.inputQuantity != null ? (
                 <Text c="dimmed" size="sm">
                   {fillMessage(m.steps.card.inputRecorded, {

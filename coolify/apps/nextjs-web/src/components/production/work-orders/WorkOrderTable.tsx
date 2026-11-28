@@ -19,14 +19,21 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
+import { matchesDocCompany } from "@/lib/doc-company-view-core";
+import {
+  WORK_ORDER_TYPE_COLOR,
+  workOrderTypeLabel,
+  workOrderTypeOptions,
+} from "@/lib/enum-labels";
 import { statusOptions } from "@/lib/status-map";
 import type { WorkOrderRow } from "./model";
+import { WorkOrderAbortedBadge } from "./WorkOrderAbortedBadge";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/production/approvals";
@@ -35,7 +42,7 @@ function TypeBadge({ type }: { type: string }) {
   const locale = useLocale();
   return (
     <Badge
-      color={type === "MANUFACTURE" ? "violet" : "teal"}
+      color={WORK_ORDER_TYPE_COLOR[type] ?? "gray"}
       size="sm"
       variant="light"
     >
@@ -73,8 +80,10 @@ export function WorkOrderTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
+      matchesDocCompany(r.companyCode, search) ||
       String(r.workOrderNumber).includes(search) ||
       r.docNumber.includes(search) ||
+      (r.legacyNumber ?? "").includes(search) ||
       (r.orderLineNumber ?? "").includes(search) ||
       r.productName.includes(search);
     const matchesType = !type || r.type === type;
@@ -91,9 +100,11 @@ export function WorkOrderTable({
       width: 150,
       sortValue: (r) => r.workOrderNumber,
       render: (r) => (
-        <Text className="tabular-nums" ff="mono" size="sm">
-          {r.docNumber}
-        </Text>
+        <WithDocCompany company={r.companyCode}>
+          <Text className="tabular-nums" ff="mono" size="sm">
+            {r.docNumber}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -169,9 +180,14 @@ export function WorkOrderTable({
           {
             key: "status",
             header: tr("common.status"),
-            width: 110,
+            width: 190,
             sortValue: (r) => r.status,
-            render: (r) => <StatusBadge entity="WorkOrder" status={r.status} />,
+            render: (r) => (
+              <Group gap={4} wrap="nowrap">
+                <StatusBadge entity="WorkOrder" status={r.status} />
+                {r.aborted && <WorkOrderAbortedBadge />}
+              </Group>
+            ),
           } satisfies Column<WorkOrderRow>,
           {
             key: "updatedAt",
@@ -265,13 +281,15 @@ export function WorkOrderTable({
             : tr("production.workOrders.thereAreNoWorkOrders")
         }
         getRowId={(r) => String(r.workOrderNumber)}
-        onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}
+        onRowClick={(r) => router.push(`${basePath}/${r.workOrderNumber}`)}
         renderCard={(r) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {r.docNumber} · {r.orderLineNumber ?? tr("common.forStock")}
-              </Text>
+              <WithDocCompany company={r.companyCode}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {r.docNumber} · {r.orderLineNumber ?? tr("common.forStock")}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {r.productName}
               </Text>
@@ -296,6 +314,7 @@ export function WorkOrderTable({
               ) : (
                 <>
                   <StatusBadge entity="WorkOrder" status={r.status} />
+                  {r.aborted && <WorkOrderAbortedBadge />}
                   {r.approvalStatus !== "NONE" && (
                     <StatusBadge
                       entity="WorkOrderApproval"

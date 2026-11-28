@@ -13,11 +13,15 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
+import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import {
   deliveryOrderTypeLabel,
   deliveryOrderTypeOptions,
@@ -58,8 +62,12 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
   const filtered = rows.filter((o) => {
     const matchesSearch =
       !search ||
-      o.deliveryOrderNumber.includes(search) ||
-      o.orderLineNumbers.some((n) => n.includes(search)) ||
+      matchesDocCompany(docCompanyCode(o.deliveryOrderNumber), search) ||
+      // 番号だけで照合する（法人コードは見せていないので、探す対象にしない）。
+      // 旧番号（DOR-YYYYMM-NNNNN）でも探せる。
+      docNo(o.deliveryOrderNumber).includes(search) ||
+      (o.legacyNumber ?? "").includes(search) ||
+      o.orderLineNumbers.some((n) => docNo(n).includes(search)) ||
       o.customerName.includes(search);
     const matchesType = !type || o.type === type;
     const matchesStatus = !status || o.status === status;
@@ -71,10 +79,13 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
       key: "deliveryOrderNumber",
       header: tr("common.deliveryOrderNumber"),
       sortable: true,
+      sortValue: (o) => docSortValue(o.deliveryOrderNumber),
       render: (o) => (
-        <Text ff="mono" size="sm">
-          {o.deliveryOrderNumber}
-        </Text>
+        <WithDocCompany docId={o.deliveryOrderNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(o.deliveryOrderNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -85,7 +96,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
         <>
           <Text size="sm">{o.customerName}</Text>
           <Text c="dimmed" ff="mono" size="xs">
-            {o.orderLineNumbers.join(", ") || "—"}
+            {o.orderLineNumbers.map((n) => docNo(n)).join(", ") || "—"}
           </Text>
         </>
       ),
@@ -185,14 +196,16 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
         renderCard={(o) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {o.deliveryOrderNumber}
-              </Text>
+              <WithDocCompany docId={o.deliveryOrderNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(o.deliveryOrderNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {o.customerName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {o.orderLineNumbers.join(", ") || "—"}
+                {o.orderLineNumbers.map((n) => docNo(n)).join(", ") || "—"}
               </Text>
               <Group gap="md" mt={2}>
                 <DeliveryOrderTypeBadge type={o.type} />

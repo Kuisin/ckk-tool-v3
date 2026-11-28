@@ -8,22 +8,151 @@
  * - onDeliveryOrderShipped: DISPATCH は出庫 + 予約 RELEASE。STOCK_STORAGE は
  *   保管拠点へ入庫（請求フロー外）。
  * - reserveProductStock: §4 二段照合 → 引当予約（不足分は指示書分割の材料）。
+ *
+ * **すべての取引行は入出庫伝票（inventory_movements）に属する。** 伝票は在庫の
+ * 増減と同じトランザクションで作られる — applyTransaction が伝票 id を必須で
+ * 受け取るので、伝票の無い計上は型で書けない。伝票番号（MOV-FFFF-NNNNN）は
+ * 他の書類と同じく **DB が INSERT のときに払い出す**（番号設計 PR-C。トリガー
+ * app.assign_document_number）— アプリは採番しないし、番号を渡しもしない。
  */
 
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import { allocateFromBuckets } from "./inventory-availability-core";
-import { encodeInventoryNote } from "./inventory-note-core";
+import type { DocKey } from "./doc-number";
+import { requireDocRef } from "./doc-ref";
+import { docRefNumber } from "./doc-ref-core";
 import {
-  computeBranchSemiFinishedQuantity,
+  allocateFromBuckets,
+  splitScrapShare,
+} from "./inventory-availability-core";
+import { encodeInventoryNote } from "./inventory-note-core";
+import { ownerBucketFor } from "./inventory-owner-core";
+import type { AbortWipPosting } from "./wip-abort-core";
+import {
+  mainlinePartChangingStepIds,
+  orderSemiFinishedForConsumption,
+  parseWipPathStepIds,
+  planWipDrawConsumption,
+  planWipPostings,
+  type WipBlankSize,
+  type WipPostingStep,
+  wipBlankFor,
+  wipSignature,
+} from "./wip-state-core";
+import {
   computeFinishedQuantity,
+  SEMI_FINISHED_ISSUE_STEP_CODE,
   STEP_LINK_STATE_SELECT,
   STEP_STATE_SELECT,
   toStepState,
 } from "./workflow-core";
 
 type Tx = PrismaNS.TransactionClient;
+
+/** 入出庫伝票の事由。DB の app."INVENTORY_MOVEMENT_CAUSE" と同じ集合。 */
+export type MovementCause =
+  | "WORK_ORDER_COMPLETION"
+  /// 指示書の打ち切り（流れの途中の品を仕掛品として入庫 + 材料消費）。
+  | "WORK_ORDER_ABORT"
+  | "DELIVERY_SHIPMENT"
+  | "MATERIAL_RECEIPT"
+  | "STOCK_TRANSFER"
+  | "STOCK_RESERVATION"
+  | "RESERVATION_RELEASE"
+  | "ADJUSTMENT"
+  /// 手動入出庫（ST06）。業務としてどの型かは movementTypeId が持つ。
+  | "MANUAL"
+  /// 外注へ出した / 外注から戻った（預け在庫の増減）。
+  | "OUTSOURCE_ISSUE"
+  | "OUTSOURCE_RETURN"
+  /// 出荷後の返品（在庫が戻る）。
+  | "SALES_RETURN"
+  /// 再研磨のために顧客の工具を受け入れた（預り品バケットへ IN）。
+  | "REGRIND_RECEIPT"
+  /// 仕掛品の「分類する」— 同じ物の品目・加工状態を付け直す（棚の物は動かない）。
+  | "WIP_RECLASSIFY"
+  | "OTHER";
+
+export interface MovementInit {
+  cause: MovementCause;
+  /** 元書類のテーブル名（audit_logs と同じ多態規約）。 */
+  sourceType?: string | null;
+  /**
+   * 元書類の業務キー。番号を持つ書類は id（`CKK~PO-2026-00001`）か参照
+   * （`CKK/PO-…` = 行の docRef）で渡す — 番号だけでも引けるが、同じ番号が
+   * 2 つの法人にあると決まらない。保存は必ず参照（requireDocRef）。
+   */
+  sourceId?: string | null;
+  plantId?: number | null;
+  /**
+   * 手動入出庫（ST06）で選んだ移動タイプ。自動生成の伝票では省く。
+   * **cause と役割が違う** — cause は「どの処理が起こしたか」、移動タイプは
+   * 業務としてどの型か（利用者が増やせる番号）。
+   */
+  movementTypeId?: number | null;
+  notes?: string;
+}
+
+/**
+ * 伝票を 1 枚起こす。**呼び出し側の tx の中で**作ること — 在庫だけ動いて伝票が
+ * 無い（またはその逆）状態を作らないため。
+ */
+export async function createMovement(
+  tx: Tx,
+  init: MovementInit,
+): Promise<string> {
+  const actor = await getCurrentActorId();
+  // 発行元の自社法人 = 拠点の法人。拠点が無い（法人に属さない）伝票は列を
+  // 渡さず DB の既定値（既定の法人）に任せる — nextjs-web
+  // lib/doc-company-core.ts companyForPlantDoc と同じ規則（twin なので
+  // import できず、ここに書き下してある）。作成後は変えない（DB トリガー）。
+  const plant =
+    init.plantId != null
+      ? await tx.plant.findUnique({
+          where: { id: init.plantId },
+          select: { ownCompanyId: true },
+        })
+      : null;
+  const row = await tx.inventoryMovement.create({
+    data: {
+      ...(plant?.ownCompanyId != null
+        ? { ownCompanyId: plant.ownCompanyId }
+        : {}),
+      cause: init.cause,
+      sourceType: init.sourceType ?? null,
+      // 番号を持つ書類は法人コード付きの参照で指す（lib/doc-ref-core.ts）—
+      // 番号だけを保存しない。ロット番号や uuid で指す元書類はそのまま。
+      sourceId:
+        init.sourceType && init.sourceId
+          ? await requireDocRef(init.sourceType, init.sourceId, tx)
+          : (init.sourceId ?? null),
+      plantId: init.plantId ?? null,
+      movementTypeId: init.movementTypeId ?? null,
+      notes: init.notes,
+      createdBy: actor,
+    },
+    select: { id: true },
+  });
+  return row.id;
+}
+
+/** 最初に必要になったときだけ伝票を起こす遅延オープナー。 */
+export type MovementOpener = () => Promise<string>;
+
+/**
+ * 伝票の遅延生成。1 件も計上しなかった出来事（良品ゼロの完了、解放すべき予約が
+ * 無いキャンセル）で**空の伝票を残さない**ため、最初の applyTransaction まで
+ * INSERT を遅らせる。番号は INSERT のときに DB が払い出すので、起こさなかった
+ * 伝票のぶん番号が欠けることもない（tx が巻き戻れば番号も戻る）。
+ */
+export function movementOpener(tx: Tx, init: MovementInit): MovementOpener {
+  let id: string | null = null;
+  return async () => {
+    if (id == null) id = await createMovement(tx, init);
+    return id;
+  };
+}
 
 export interface ApplyTransactionInput {
   inventoryType: "PRODUCT" | "MATERIAL";
@@ -33,19 +162,33 @@ export interface ApplyTransactionInput {
   referenceType?: string;
   referenceId?: string;
   notes?: string;
+  /**
+   * 台帳が足りなくても**マイナスのまま**計上する（既定 false）。
+   *
+   * 渡すのは出荷だけ。物はもう出て行っているので、台帳が止めても現実は
+   * 止まらない — 止めると「出荷したのに記録が無い」という、あとから誰にも
+   * 見えない形の食い違いになる。マイナスは在庫一覧にも棚卸にも**見える形**
+   * で残り、数え直せば直る。
+   */
+  allowNegative?: boolean;
 }
 
 /**
  * 在庫取引の適用: 台帳行 + キャッシュ数量/予約数量の更新を同一 tx で行う。
  * IN/OUT → quantity、RESERVE/RELEASE → reserved_quantity、ADJUST → quantity 直加算。
+ *
+ * `movementId` は必須 — 伝票に属さない計上を作れないようにするための型の門。
+ * DB 側は移行完了後に movement_id を NOT NULL にして同じことを二重に守る。
  */
 export async function applyTransaction(
   tx: Tx,
+  movementId: string,
   input: ApplyTransactionInput,
 ): Promise<void> {
   const actor = await getCurrentActorId();
   await tx.inventoryTransaction.create({
     data: {
+      movementId,
       inventoryType: input.inventoryType,
       inventoryId: input.inventoryId,
       transactionType: input.transactionType,
@@ -81,19 +224,21 @@ export async function applyTransaction(
       : {}),
   };
   const guard = {
-    ...(deltaQty < 0 ? { quantity: { gte: -deltaQty } } : {}),
+    ...(deltaQty < 0 && !input.allowNegative
+      ? { quantity: { gte: -deltaQty } }
+      : {}),
     ...(deltaReserved < 0 ? { reservedQuantity: { gte: -deltaReserved } } : {}),
   };
-  const updated =
-    input.inventoryType === "PRODUCT"
-      ? await tx.productInventory.updateMany({
-          where: { id: input.inventoryId, ...guard },
-          data,
-        })
-      : await tx.materialInventory.updateMany({
-          where: { id: input.inventoryId, ...guard },
-          data,
-        });
+  // 在庫は 1 表（app.item_inventory）。**inventoryType はもう書き込み先を選ばない**
+  // — 台帳の区分として行に残るだけで、製品・素材で表が分かれていた頃の名残り。
+  //
+  // custody-scope: / owner-scope: id 1 件への加減算。どのバケットかは呼び出し側が
+  // 決めている（預けバケット・預り品バケットへの計上もここを通る）。
+  // wip-scope: 同上 — 仕掛品のバケットへの計上もここを通る。
+  const updated = await tx.itemInventory.updateMany({
+    where: { id: input.inventoryId, ...guard },
+    data,
+  });
   if (updated.count !== 1) {
     // 呼び出し側（onDeliveryOrderShippedTx の catch）が message を
     // decodeInventoryNote() で判別して表示用に翻訳する — 生の日本語を
@@ -108,94 +253,133 @@ export async function applyTransaction(
 }
 
 /**
- * 製品在庫行の取得 or 作成（productId×plantId×lot×半製品フラグ）。
- * 保管場所×棚は「未割当」（null）バケット固定 — システム入庫は必ず未割当へ
- * 入り、場所への配置は在庫移動（PD04 在庫管理）で行う。
+ * 在庫の失敗メッセージに載せる品目の名乗り。
+ *
+ * **コードであって内部 id ではない。** 品目 id は密な連番なので、画面に出した
+ * ところで受け取った人には何のことか分からず、しかも別の品目の id と区別が
+ * つかない。コード（PRD-… / 素材コード）なら検索できる。コードが空の品目は
+ * 無いはずだが、念のため id へ落とす。
  */
-async function ensureProductInventory(
+async function itemLabel(tx: Tx, itemId: number): Promise<string> {
+  const row = await tx.item.findUnique({
+    where: { id: itemId },
+    select: { code: true },
+  });
+  return row?.code ?? String(itemId);
+}
+
+/**
+ * 在庫バケットの取得 or 作成（品目 × 拠点 × 保管場所 × 棚 × ロット × 半製品）。
+ *
+ * **保管場所・棚の既定は「未割当」（null）** — 指示書完了・入荷のような
+ * システム入庫は必ず未割当へ入り、場所への配置は在庫移動（ST01）で行う、
+ * という元からの約束。引数を省けば従来どおり。
+ *
+ * ただし**人が場所を指定して動かす経路（手動入出庫 ST06）は渡してくる**。
+ * そこで落とすと、利用者が選んだ棚が黙って無視されて未割当に積まれる
+ * （画面は成功と言い、在庫は違う場所に出る）ので、受け取れるようにしてある。
+ *
+ * 製品用・素材用に分かれていた 2 本（と、その間を埋めていた継ぎ目
+ * ensureItemBucket）を 1 本にした。**品目種別で分岐しない**のが統合の意味。
+ *
+ * 単位は行に持つ。既存バケットと違う単位で足そうとしたら**足さずに失敗する** —
+ * 「本」の台帳に「kg」を足すと数量の意味が消える。message は構造化ノート
+ * （unitMismatch）で、呼び出し側が自分の言語に翻訳する。
+ */
+export async function ensureItemInventory(
   tx: Tx,
   data: {
-    productId: number;
+    itemId: number;
     plantId: number | null;
-    lotNumber: number | null;
-    isSemiFinished: boolean;
+    /** 単位。省略時は品目マスタの単位。 */
+    unit?: string;
+    /** ロット = 指示書番号（素材は null）。 */
+    lotNumber?: number | null;
     sourceStepId?: string | null;
+    /** 省略 = 未割当。手動入出庫だけが指定する。 */
+    storageLocationId?: number | null;
+    shelfId?: number | null;
+    /**
+     * 預け先（外注先が持っている分）。省略 = 自社の在庫。
+     * **入れたバケットは自社在庫ではない** — 手持ち・引当・出荷・棚卸から
+     * 外れる（読み出し側が `custodyBpId: null` で絞る）。
+     */
+    custodyBpId?: string | null;
+    /**
+     * 所有者（顧客の預り品 — 再研磨で預かった工具）。省略 = 自社の物。
+     * custody と直交する: 預り品を外注へ出せば両方が入る。
+     * **入れたバケットは自社在庫ではない**（読み出し側が `ownerBpId: null` で絞る）。
+     */
+    ownerBpId?: string | null;
+    /**
+     * 仕掛品の鍵（加工状態・目標製品・仕上がり寸法）。省略 = null。
+     * **鍵の一部なので、省略した呼び出しが仕掛品の行に当たることは無い**
+     * （値の入った行を null で探しても一致しない）。
+     *
+     * **加工状態を持つ = 半製品（仕掛品）。** それ以外の印は無い（旧
+     * is_semi_finished は DB のトリガーが加工状態から埋めるだけの廃止予定の列）。
+     */
+    wipStateId?: number | null;
+    aimedItemId?: number | null;
+    finishedDiameterMm?: PrismaNS.Decimal | number | string | null;
+    finishedLengthMm?: PrismaNS.Decimal | number | string | null;
   },
 ): Promise<string> {
   const bucket = {
-    productId: data.productId,
+    itemId: data.itemId,
     plantId: data.plantId,
-    lotNumber: data.lotNumber,
-    isSemiFinished: data.isSemiFinished,
-    storageLocationId: null,
-    shelfId: null,
+    lotNumber: data.lotNumber ?? null,
+    storageLocationId: data.storageLocationId ?? null,
+    shelfId: data.shelfId ?? null,
+    custodyBpId: data.custodyBpId ?? null,
+    ownerBpId: data.ownerBpId ?? null,
+    wipStateId: data.wipStateId ?? null,
+    aimedItemId: data.aimedItemId ?? null,
+    finishedDiameterMm: data.finishedDiameterMm ?? null,
+    finishedLengthMm: data.finishedLengthMm ?? null,
   };
-  const existing = await tx.productInventory.findFirst({
+
+  const unit =
+    data.unit ??
+    (
+      await tx.item.findUniqueOrThrow({
+        where: { id: data.itemId },
+        select: { unit: true },
+      })
+    ).unit;
+
+  const assertUnit = (row: { id: string; unit: string }): string => {
+    if (row.unit !== unit) {
+      throw new Error(
+        encodeInventoryNote("unitMismatch", {
+          expected: row.unit,
+          actual: unit,
+        }),
+      );
+    }
+    return row.id;
+  };
+
+  // custody-scope: / owner-scope: `bucket` に custodyBpId と ownerBpId が
+  // 入っている（省略時は null = 自社）。鍵そのものなので、ここで別に絞る余地は無い。
+  // wip-scope: 同じく `bucket` に加工状態（省略時は null = 仕掛品ではない）が
+  // 入っている。
+  const existing = await tx.itemInventory.findFirst({
     where: bucket,
-    select: { id: true },
+    select: { id: true, unit: true },
   });
-  if (existing) return existing.id;
+  if (existing) return assertUnit(existing);
   try {
-    const row = await tx.productInventory.create({
-      data: { ...data },
+    const row = await tx.itemInventory.create({
+      data: { ...bucket, unit, sourceStepId: data.sourceStepId ?? null },
       select: { id: true },
     });
     return row.id;
   } catch (e) {
     // 同時 ensure の一意制約競合（NULLS NOT DISTINCT index）→ 再取得
     if ((e as { code?: string }).code === "P2002") {
-      const again = await tx.productInventory.findFirst({
-        where: bucket,
-        select: { id: true },
-      });
-      if (again) return again.id;
-    }
-    throw e;
-  }
-}
-
-/**
- * 素材在庫行の取得 or 作成（保管場所×棚は未割当バケット固定 — 同上）。
- *
- * 既存バケットの単位と入庫の単位が違うときは**足さずに失敗する** — 「本」の
- * 台帳に「kg」を足すと数量の意味が消える。message は構造化ノート
- * （unitMismatch）で、呼び出し側が自分の言語に翻訳する。
- */
-export async function ensureMaterialInventory(
-  tx: Tx,
-  data: { materialId: number; plantId: number | null; unit: string },
-): Promise<string> {
-  const bucket = {
-    materialId: data.materialId,
-    plantId: data.plantId,
-    storageLocationId: null,
-    shelfId: null,
-  };
-  const assertUnit = (row: { id: string; unit: string }): string => {
-    if (row.unit !== data.unit) {
-      throw new Error(
-        encodeInventoryNote("unitMismatch", {
-          expected: row.unit,
-          actual: data.unit,
-        }),
-      );
-    }
-    return row.id;
-  };
-  const existing = await tx.materialInventory.findFirst({
-    where: bucket,
-    select: { id: true, unit: true },
-  });
-  if (existing) return assertUnit(existing);
-  try {
-    const row = await tx.materialInventory.create({
-      data: { ...data },
-      select: { id: true },
-    });
-    return row.id;
-  } catch (e) {
-    if ((e as { code?: string }).code === "P2002") {
-      const again = await tx.materialInventory.findFirst({
+      // custody-scope: / owner-scope: / wip-scope: 同上（同じ鍵での引き直し）。
+      const again = await tx.itemInventory.findFirst({
         where: bucket,
         select: { id: true, unit: true },
       });
@@ -203,6 +387,1003 @@ export async function ensureMaterialInventory(
     }
     throw e;
   }
+}
+
+/** 返ってきた 1 行（出荷明細の品目・ロットに対応する）。 */
+export interface DeliveryReturnLine {
+  itemId: number;
+  lotNumber: number | null;
+  quantity: number;
+  /** 再研磨の明細なら顧客（預り品バケットへ戻す）。null = 自社在庫へ戻す。 */
+  ownerBpId?: string | null;
+}
+
+/**
+ * 出荷後の返品を在庫に戻す（逆仕訳の伝票 1 枚）。
+ *
+ * **出荷書は動かさない。** 出したという事実は返品では消えない — 状態を
+ * DRAFT へ戻すような「無かったこと」にする作りにすると、納品書も請求も
+ * 巻き戻す話になり、伝票の意味が変わる。ここは在庫だけを戻す。
+ *
+ * 戻す先は**出荷元の拠点の、同じロット**。保管場所は未割当（システム入庫の
+ * 既定）— 返品の品をどの棚へ置くかは人が決めることなので、在庫移動で運ぶ。
+ */
+export async function onDeliveryOrderReturnedTx(
+  tx: Tx,
+  key: DocKey,
+  args: { lines: readonly DeliveryReturnLine[]; plantId: number | null },
+): Promise<void> {
+  // 備考に出すのは番号（人が読む姿）。在庫取引の reference_id と伝票の元書類は
+  // 法人コード付きの参照で残す（番号だけにしない）。
+  const ref = docRefNumber(key.docRef);
+  const refId = await requireDocRef("delivery_orders", key.docRef, tx);
+  const openMovement = movementOpener(tx, {
+    cause: "SALES_RETURN",
+    sourceType: "delivery_orders",
+    sourceId: refId,
+    plantId: args.plantId,
+  });
+  for (const line of args.lines) {
+    if (line.quantity <= 0) continue;
+    const inventoryId = await ensureItemInventory(tx, {
+      itemId: line.itemId,
+      plantId: args.plantId,
+      lotNumber: line.lotNumber,
+      ownerBpId: line.ownerBpId ?? null,
+    });
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId,
+      transactionType: "IN",
+      quantity: line.quantity,
+      referenceType: "delivery_order",
+      referenceId: refId,
+      notes: encodeInventoryNote("salesReturned", { ref }),
+    });
+  }
+}
+
+// ─── 外注の預け在庫 ─────────────────────────────────────────────────────────
+//
+// 「いまこの外注先が何本持っているか」に答えるための台帳。**自社在庫の別の
+// 置き場ではない** — 仕掛品はそもそも台帳に無いので、外注へ出すときに
+// 自社在庫から引ける行が存在しない。引き算の相手がいないのに移動として
+// 書くと、出したことのない在庫を出したことにしてしまう。
+//
+// なので預けバケット（custody_bp_id 付き）への IN / OUT だけで閉じる。
+// 自社在庫の集計からは読み出し側が外す（`custodyBpId: null`）。
+
+/**
+ * 外注の預けバケット。ロット = 指示書番号。
+ *
+ * **拠点は「出した拠点」を入れる。** 物は社外にあるので拠点を持たせない案も
+ * あったが、持たせないと拠点スコープの利用者（`plantWhere`）からこの行が
+ * 丸ごと消え、自分の拠点が出した預け在庫を誰も見られなくなる。自社在庫と
+ * 混ざらないのは custody_bp_id が別バケットにするからで、拠点とは関係ない。
+ */
+async function custodyBucket(
+  tx: Tx,
+  args: {
+    itemId: number;
+    supplierBpId: string;
+    lotNumber: number;
+    plantId: number | null;
+    ownerBpId?: string | null;
+  },
+): Promise<string> {
+  return ensureItemInventory(tx, {
+    itemId: args.itemId,
+    plantId: args.plantId,
+    lotNumber: args.lotNumber,
+    custodyBpId: args.supplierBpId,
+    ownerBpId: args.ownerBpId ?? null,
+  });
+}
+
+export interface OutsourceMoveArgs {
+  workOrderId: string;
+  workOrderNumber: number;
+  itemId: number;
+  supplierBpId: string;
+  /** 出した（戻った）本数。 */
+  quantity: number;
+  /** 出した拠点（伝票の拠点。バケットは社外なので持たない）。 */
+  plantId?: number | null;
+  /**
+   * 所有者（再研磨で預かった顧客の工具を外注へ出すとき）。null = 自社の仕掛品。
+   *
+   * 自社の仕掛品は台帳に無いので預けバケットへの片側 IN/OUT で閉じるが、
+   * 預り品は受入時に所有者バケットへ載っているので、**移動**として書く
+   * （所有者バケット ⇄ 所有者 + 預け先バケット）。片側にすると預かった本数が
+   * 外注へ出した瞬間に 2 倍に見える。
+   */
+  ownerBpId?: string | null;
+}
+
+/**
+ * 預り品（所有者付き）の手元バケットの残を返す。`take` は残で頭打ち
+ * （移動なので、無い物は動かせない — 多めに入力されたら警告に留める）。
+ *
+ * **拠点で絞らない。** 預り品を載せた拠点（製品受入 工程の拠点）と、外注へ
+ * 出す工程が名乗る拠点は一致しない — 外注工程は拠点を持たない（workflow.ts）
+ * ので、拠点一致で引くと残 0 の空バケットを作って「手元に無い」と判断し、
+ * 外注出しが一度も台帳に載らなかった。同じ所有者・同じロットの手元バケットは
+ * 実質 1 つなので、残のある行を取る（複数あれば呼び出し側の拠点 → 残の多い順）。
+ * 無ければ従来どおり呼び出し側の拠点に空バケットを作る（残 0 を返す）。
+ */
+async function ownerBucketHeld(
+  tx: Tx,
+  args: {
+    itemId: number;
+    lotNumber: number;
+    plantId: number | null;
+    ownerBpId: string;
+  },
+): Promise<{ id: string; held: number }> {
+  // wip-scope: 預り品（ownerBpId あり）は仕掛品になれない（DB の CHECK
+  // item_inventory_wip_not_owned）。
+  const owned = await tx.itemInventory.findMany({
+    where: {
+      itemId: args.itemId,
+      lotNumber: args.lotNumber,
+      ownerBpId: args.ownerBpId,
+      custodyBpId: null,
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true, plantId: true },
+    orderBy: { quantity: "desc" },
+  });
+  const pick =
+    owned.find((b) => b.plantId === args.plantId) ?? owned[0] ?? null;
+  if (pick) return { id: pick.id, held: Number(pick.quantity) };
+  const id = await ensureItemInventory(tx, {
+    itemId: args.itemId,
+    plantId: args.plantId,
+    lotNumber: args.lotNumber,
+    ownerBpId: args.ownerBpId,
+  });
+  return { id, held: 0 };
+}
+
+/**
+ * 外注へ出した分を預け在庫に載せる。伝票 id を返す（計上しなければ null）。
+ *
+ * 呼び出し側はこの id を工程に控えること — **日付の有無では判断できない**。
+ * 依頼日は後から直せるので、直すたびに預け在庫が増えてしまう。
+ */
+export async function onOutsourceIssueTx(
+  tx: Tx,
+  args: OutsourceMoveArgs,
+): Promise<string | null> {
+  if (args.quantity <= 0) return null;
+  const openMovement = movementOpener(tx, {
+    cause: "OUTSOURCE_ISSUE",
+    sourceType: "work_orders",
+    sourceId: String(args.workOrderNumber),
+    plantId: args.plantId ?? null,
+  });
+  let quantity = args.quantity;
+  let movementId: string | null = null;
+  if (args.ownerBpId) {
+    // 預り品: 手元の所有者バケットから引いてから預けバケットへ載せる（移動）。
+    const owned = await ownerBucketHeld(tx, {
+      itemId: args.itemId,
+      lotNumber: args.workOrderNumber,
+      plantId: args.plantId ?? null,
+      ownerBpId: args.ownerBpId,
+    });
+    quantity = Math.min(owned.held, args.quantity);
+    if (quantity <= 0) return null;
+    if (quantity < args.quantity) {
+      console.warn(
+        // i18n-ignore — サーバーログのみ（画面には出ない）
+        `[inventory] 外注出しが預り品の手元数を超えている（${args.quantity} > ${owned.held}）: WO #${args.workOrderNumber}`,
+      );
+    }
+    movementId = await openMovement();
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: owned.id,
+      transactionType: "OUT",
+      quantity,
+      referenceType: "work_order",
+      referenceId: args.workOrderId,
+      notes: encodeInventoryNote("outsourceIssued", {
+        workOrderNumber: args.workOrderNumber,
+      }),
+    });
+  }
+  movementId ??= await openMovement();
+  await applyTransaction(tx, movementId, {
+    inventoryType: "PRODUCT",
+    inventoryId: await custodyBucket(tx, {
+      itemId: args.itemId,
+      supplierBpId: args.supplierBpId,
+      lotNumber: args.workOrderNumber,
+      plantId: args.plantId ?? null,
+      ownerBpId: args.ownerBpId ?? null,
+    }),
+    transactionType: "IN",
+    quantity,
+    referenceType: "work_order",
+    referenceId: args.workOrderId,
+    notes: encodeInventoryNote("outsourceIssued", {
+      workOrderNumber: args.workOrderNumber,
+    }),
+  });
+  return movementId;
+}
+
+/**
+ * 外注から戻った分を預け在庫から落とす。伝票 id を返す。
+ *
+ * 預けた数より多くは戻せない（台帳が負になる）。多く入力されたら**あるだけ**
+ * 落として警告に留める — 戻ってきた物を「受け取れない」と言うほうが嘘になる。
+ */
+export async function onOutsourceReturnTx(
+  tx: Tx,
+  args: OutsourceMoveArgs,
+): Promise<string | null> {
+  if (args.quantity <= 0) return null;
+  const bucketId = await custodyBucket(tx, {
+    itemId: args.itemId,
+    supplierBpId: args.supplierBpId,
+    lotNumber: args.workOrderNumber,
+    plantId: args.plantId ?? null,
+    ownerBpId: args.ownerBpId ?? null,
+  });
+  const held = Number(
+    (
+      await tx.itemInventory.findUnique({
+        where: { id: bucketId },
+        select: { quantity: true },
+      })
+    )?.quantity ?? 0,
+  );
+  const take = Math.min(held, args.quantity);
+  if (take <= 0) return null;
+  if (take < args.quantity) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 外注戻りが預け数を超えている（${args.quantity} > ${held}）: WO #${args.workOrderNumber}`,
+    );
+  }
+  const openMovement = movementOpener(tx, {
+    cause: "OUTSOURCE_RETURN",
+    sourceType: "work_orders",
+    sourceId: String(args.workOrderNumber),
+    plantId: args.plantId ?? null,
+  });
+  const movementId = await openMovement();
+  await applyTransaction(tx, movementId, {
+    inventoryType: "PRODUCT",
+    inventoryId: bucketId,
+    transactionType: "OUT",
+    quantity: take,
+    referenceType: "work_order",
+    referenceId: args.workOrderId,
+    notes: encodeInventoryNote("outsourceReturned", {
+      workOrderNumber: args.workOrderNumber,
+    }),
+  });
+  if (args.ownerBpId) {
+    // 預り品: 戻った分は手元の所有者バケットへ載せ直す（移動の片割れ）。
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: await ensureItemInventory(tx, {
+        itemId: args.itemId,
+        plantId: args.plantId ?? null,
+        lotNumber: args.workOrderNumber,
+        ownerBpId: args.ownerBpId,
+      }),
+      transactionType: "IN",
+      quantity: take,
+      referenceType: "work_order",
+      referenceId: args.workOrderId,
+      notes: encodeInventoryNote("outsourceReturned", {
+        workOrderNumber: args.workOrderNumber,
+      }),
+    });
+  }
+  return movementId;
+}
+
+// ─── 再研磨（顧客の工具を預かって研ぎ直す） ───────────────────────────────────
+//
+// 作るものは無い。顧客の物を受け入れ、手を入れて、返す。台帳は
+//   受入（製品受入 工程の完了） … 所有者バケットへ IN（事由 REGRIND_RECEIPT）
+//   完了（全工程完了）           … 返却本数（研磨できなかった分）を所有者バケットから OUT
+//   出荷（出荷書）               … 所有者バケットから OUT（planDispatchLines）
+// で閉じ、全量出荷で所有者バケットは 0 になる。自社在庫は一度も動かない。
+//
+// 所有者は列に持たず**割当明細の顧客から導く**（work_order_order_lines →
+// order_lines → order_acceptances.customer_bp_id）。列に複写すると割当と乖離する。
+// 再研磨指示書は明細 1 件・顧客 1 人が不変条件（lib/work-order-alloc-core.ts）。
+
+/**
+ * 再研磨指示書の所有者 = 割当明細の顧客。割当が無い / 顧客が 2 人なら throw —
+ * 黙って自社にすると顧客の工具が自社在庫に化ける。
+ */
+export async function regrindOwnerBpIdTx(
+  tx: Tx,
+  workOrderId: string,
+): Promise<string> {
+  const links = await tx.workOrderOrderLine.findMany({
+    where: { workOrderId },
+    select: {
+      orderLine: {
+        select: { acceptance: { select: { customerBpId: true } } },
+      },
+    },
+  });
+  const owners = new Set(
+    links.map((l) => l.orderLine.acceptance.customerBpId).filter(Boolean),
+  );
+  if (owners.size !== 1) {
+    throw new Error(encodeInventoryNote("regrindOwnerUnresolved"));
+  }
+  return [...owners][0] as string;
+}
+
+/**
+ * 製品受入（再研磨）の完了: 受入本数を顧客の預り品として載せる。伝票 id を返す
+ * （計上しなければ null）。
+ *
+ * 呼び出し側は返った id を工程の `regrindReceiptMovementId` に控えること —
+ * それが「もう計上した」の唯一の印（outsource_*_movement_id と同じ規約）。
+ * 二度目以降の呼び出しは印を見て何もしない。
+ */
+export async function onRegrindReceiptTx(
+  tx: Tx,
+  args: {
+    stepId: string;
+    workOrderId: string;
+    workOrderNumber: number;
+    itemId: number;
+    plantId: number | null;
+    /** 受入本数（= 製品受入 工程の受入数）。 */
+    quantity: number;
+    /** 箱番号（工程の lot_text。任意）。 */
+    box?: string | null;
+  },
+): Promise<string | null> {
+  if (args.quantity <= 0) return null;
+  const already = await tx.workOrderStep.findUnique({
+    where: { id: args.stepId },
+    select: { regrindReceiptMovementId: true },
+  });
+  if (already?.regrindReceiptMovementId) return null;
+  const ownerBpId = await regrindOwnerBpIdTx(tx, args.workOrderId);
+  const openMovement = movementOpener(tx, {
+    cause: "REGRIND_RECEIPT",
+    sourceType: "work_orders",
+    sourceId: String(args.workOrderNumber),
+    plantId: args.plantId,
+  });
+  const movementId = await openMovement();
+  await applyTransaction(tx, movementId, {
+    inventoryType: "PRODUCT",
+    inventoryId: await ensureItemInventory(tx, {
+      itemId: args.itemId,
+      plantId: args.plantId,
+      lotNumber: args.workOrderNumber,
+      ownerBpId,
+    }),
+    transactionType: "IN",
+    quantity: args.quantity,
+    referenceType: "work_order",
+    referenceId: args.workOrderId,
+    notes: encodeInventoryNote("regrindReceived", {
+      workOrderNumber: args.workOrderNumber,
+      box: args.box?.trim() || "-",
+    }),
+  });
+  await tx.workOrderStep.update({
+    where: { id: args.stepId },
+    data: { regrindReceiptMovementId: movementId },
+  });
+  return movementId;
+}
+
+/**
+ * 再研磨指示書の完了: 自社在庫は動かさない。
+ *  (1) 外注へ出したまま戻っていない預り品を所有者バケットへ戻す
+ *  (2) 返却本数（研磨できずそのまま返す分 = 廃棄欄の合計）を所有者バケットから落とす
+ * 完成品の入庫・半製品の入庫・素材消費・引当確定は**しない**（作った物は無い）。
+ */
+async function completeRegrindTx(
+  tx: Tx,
+  openMovement: MovementOpener,
+  wo: { id: string; workOrderNumber: number; productItemId: number },
+  returnedAsIs: number,
+): Promise<void> {
+  const ownerBpId = await regrindOwnerBpIdTx(tx, wo.id);
+  // owner-scope: この所有者・このロットの預けバケットだけ（custody 付き）。
+  // wip-scope: 預り品は仕掛品になれない（CHECK item_inventory_wip_not_owned）。
+  const openCustody = await tx.itemInventory.findMany({
+    where: {
+      itemId: wo.productItemId,
+      lotNumber: wo.workOrderNumber,
+      ownerBpId,
+      custodyBpId: { not: null },
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true, plantId: true },
+  });
+  for (const bucket of openCustody) {
+    const movementId = await openMovement();
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: bucket.id,
+      transactionType: "OUT",
+      quantity: Number(bucket.quantity),
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("outsourceReturnedOnCompletion", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    await applyTransaction(tx, movementId, {
+      inventoryType: "PRODUCT",
+      inventoryId: await ensureItemInventory(tx, {
+        itemId: wo.productItemId,
+        plantId: bucket.plantId,
+        lotNumber: wo.workOrderNumber,
+        ownerBpId,
+      }),
+      transactionType: "IN",
+      quantity: Number(bucket.quantity),
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("outsourceReturnedOnCompletion", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+  }
+  if (openCustody.length > 0) {
+    await tx.workOrderStep.updateMany({
+      where: {
+        workOrderId: wo.id,
+        outsourceIssueMovementId: { not: null },
+        outsourceReturnMovementId: null,
+      },
+      data: { outsourceReturnMovementId: await openMovement() },
+    });
+  }
+  if (returnedAsIs <= 0) return;
+  // owner-scope: 手元の所有者バケット（custody 無し）だけ。
+  // wip-scope: 預り品は仕掛品になれない（CHECK item_inventory_wip_not_owned）。
+  const owned = await tx.itemInventory.findMany({
+    where: {
+      itemId: wo.productItemId,
+      lotNumber: wo.workOrderNumber,
+      ownerBpId,
+      custodyBpId: null,
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true },
+    orderBy: { quantity: "desc" },
+  });
+  let left = returnedAsIs;
+  for (const bucket of owned) {
+    if (left <= 0) break;
+    const take = Math.min(left, Number(bucket.quantity));
+    if (take <= 0) continue;
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId: bucket.id,
+      transactionType: "OUT",
+      quantity: take,
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("regrindReturnedAsIs", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    left -= take;
+  }
+  if (left > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 返却本数が預り品の手元数を超えている（残 ${left}）: WO #${wo.workOrderNumber}`,
+    );
+  }
+}
+
+/**
+ * 半製品出しの `lot_text` から、狙いのロット番号を読む。
+ *
+ * 自由記入の欄（工程マスタの既定は入力欄を出さない）なので、**当たれば
+ * 優先する程度**にしか使わない。読めなければ null を返して古いロットから
+ * 食べる — ここで失敗させると、書き方の揺れで完了できない指示書ができる。
+ */
+function parseLotHint(lotText: string | null | undefined): number | null {
+  if (!lotText) return null;
+  const m = lotText.match(/\d+/);
+  if (!m) return null;
+  const n = Number.parseInt(m[0], 10);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * 指示書の仕掛ブランク（材種 × 径 × 長）と、その行を数える単位。
+ * 決まらなければ null — 計上は製品の行のまま「未分類」の状態へ落ちる
+ * （wipUnclassifiedStateIdTx）。規則は wip-state-core wipBlankFor。
+ */
+export async function workOrderWipBlankTx(
+  tx: Tx | typeof prisma,
+  wo: { productItemId: number; materialItemId: number | null },
+): Promise<{ size: WipBlankSize; unit: string } | null> {
+  const product = await tx.item.findUnique({
+    where: { id: wo.productItemId },
+    select: {
+      unit: true,
+      requiresMaterialTypeId: true,
+      requiresDiameterMm: true,
+      requiresLengthMm: true,
+    },
+  });
+  if (!product) return null;
+  const material =
+    wo.materialItemId == null
+      ? null
+      : await tx.item.findUnique({
+          where: { id: wo.materialItemId },
+          select: { materialTypeId: true, diameterMm: true },
+        });
+  const num = (v: unknown): number | null => (v == null ? null : Number(v));
+  const size = wipBlankFor({
+    material: material
+      ? {
+          materialTypeId: material.materialTypeId,
+          diameterMm: num(material.diameterMm),
+        }
+      : null,
+    product: {
+      requiresMaterialTypeId: product.requiresMaterialTypeId,
+      requiresDiameterMm: num(product.requiresDiameterMm),
+      requiresLengthMm: num(product.requiresLengthMm),
+    },
+  });
+  return size ? { size, unit: product.unit } : null;
+}
+
+/**
+ * 仕掛ブランク品目（無ければ作る）。作り方は DB の app.wip_blank_item_id が
+ * 唯一の定義（移行と同じ関数 — コードと名前の付け方が割れない）。
+ */
+export async function wipBlankItemIdTx(
+  tx: Tx,
+  size: WipBlankSize,
+): Promise<number> {
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_blank_item_id(${size.materialTypeId}::int,
+                                 ${size.diameterMm}::numeric,
+                                 ${size.lengthMm}::numeric) AS id`;
+  return row.id;
+}
+
+/**
+ * 「未分類」の加工状態（is_legacy の 1 行）— DB の app.wip_unclassified_state_id が
+ * 唯一の定義。ブランクが決まらない指示書（製品に要求素材・寸法が無い等）の
+ * 半製品は、製品の行のままここを指して入る。数は失わず、突合（matchWip）は
+ * is_legacy の行を人の判断に回す。
+ */
+export async function wipUnclassifiedStateIdTx(tx: Tx): Promise<number> {
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_unclassified_state_id() AS id`;
+  return row.id;
+}
+
+/** 加工状態（署名で寄せる。無ければ作る）— DB の app.wip_state_id が唯一の定義。 */
+export async function wipStateIdTx(
+  tx: Tx,
+  stepIds: readonly number[],
+): Promise<number> {
+  // 配列をそのまま渡さず署名（"10,20"）で渡す — 空の配列の型をドライバに
+  // 推測させない。string_to_array('', ',') は空の配列。
+  const [row] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT app.wip_state_id(string_to_array(${wipSignature(stepIds)}, ',')::int[]) AS id`;
+  return row.id;
+}
+
+/**
+ * 半製品在庫からの投入分を落とす（完了時）。
+ *
+ * 取り方は **狙いのロット優先 → 古いロットから**（ロット番号 = 指示書番号なので
+ * 昇順が先入れ先出しになる）。拠点が分かっていればその拠点のバケットだけ —
+ * 別拠点の半製品を黙って食べると、そちらの棚卸が合わなくなる。
+ *
+ * 出した数は「完成して戻る分（付け替え）」と「廃棄」に割って 2 行で記録する
+ * （splitScrapShare）。合計は同じだが、割らないと廃棄が台帳に現れない。
+ *
+ * 台帳が足りないときは**あるだけ落として完了は止めない** — 素材消費と同じ方針。
+ * 止めると、現場では終わっている指示書が画面の上だけ終われなくなる。
+ *
+ * **どの仕掛品から落とすか**（wip-state-core orderSemiFinishedForConsumption）:
+ * 狙いのロット → この指示書のブランクに載っていて加工状態が工程の先頭部分に
+ * なっているもの（続きから作れる）→ 同じ目標製品の残り（未分類・状態が
+ * 合わないもの — 第 2 段までの「同じ製品の半製品」の振る舞いを保つ）。
+ *
+ * **投入する仕掛品を選んでいない指示書だけ**がここを通る（半製品出しを手で
+ * 組んだ指示書・旧アプリが作った指示書）。選んである指示書は consumeWipDraws が
+ * 選んだバケットから落とす — 別の製品を目標にした仕掛品を引けるのはそちらだけ。
+ */
+async function consumeSemiFinishedStock(
+  tx: Tx,
+  openMovement: MovementOpener,
+  args: {
+    workOrderId: string;
+    workOrderNumber: number;
+    itemId: number;
+    plantId: number | null;
+    quantity: number;
+    scrap: number;
+    lotHint: number | null;
+    /** この指示書のブランク（決まらなければ null）。 */
+    blank: WipBlankSize | null;
+    /** この指示書の本流の、形を変える工程（カタログ id）の並び。 */
+    routeStepIds: readonly number[];
+  },
+): Promise<void> {
+  const buckets = await tx.itemInventory.findMany({
+    where: {
+      // 半製品は仕掛ブランクの行にある（製品は目標製品 aimedItemId）。
+      // 推定できなかった「未分類」の行は item_id も製品のまま。
+      OR: [{ itemId: args.itemId }, { aimedItemId: args.itemId }],
+      // wip-scope: 仕掛品だけを読む（加工状態を持つ行 = 半製品）。
+      wipStateId: { not: null },
+      quantity: { gt: 0 },
+      // 自社の棚にある半製品だけ。外注が預かっている分・顧客の預り品は投入できない。
+      custodyBpId: null,
+      ownerBpId: null,
+      ...(args.plantId != null ? { plantId: args.plantId } : {}),
+    },
+    select: {
+      id: true,
+      itemId: true,
+      lotNumber: true,
+      quantity: true,
+      wipState: { select: { stepIds: true, isLegacy: true } },
+    },
+    orderBy: [{ lotNumber: "asc" }, { updatedAt: "asc" }],
+  });
+  // ブランクは**探すだけ**（作らない）— 無ければ「続きから作れる」ものも無い。
+  const blankItem = args.blank
+    ? await tx.item.findFirst({
+        where: {
+          itemType: "BLANK",
+          materialTypeId: args.blank.materialTypeId,
+          diameterMm: args.blank.diameterMm,
+          lengthMm: args.blank.lengthMm,
+        },
+        select: { id: true },
+      })
+    : null;
+  const ordered = orderSemiFinishedForConsumption(
+    buckets.map((b) => ({
+      ...b,
+      stepIds: !b.wipState || b.wipState.isLegacy ? null : b.wipState.stepIds,
+    })),
+    {
+      blankItemId: blankItem?.id ?? null,
+      routeStepIds: args.routeStepIds,
+      lotHint: args.lotHint,
+    },
+  );
+
+  let left = args.quantity;
+  let reassignLeft = Math.max(0, args.quantity - args.scrap);
+  for (const bucket of ordered) {
+    if (left <= 0) break;
+    const take = Math.min(left, Number(bucket.quantity));
+    if (take <= 0) continue;
+    const share = splitScrapShare(take, reassignLeft);
+    for (const [quantity, key] of [
+      [share.reassign, "semiFinishedConsumed"],
+      [share.scrap, "semiFinishedScrapped"],
+    ] as const) {
+      if (quantity <= 0) continue;
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: bucket.id,
+        transactionType: "OUT",
+        quantity,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote(key, {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    reassignLeft -= share.reassign;
+    left -= take;
+  }
+  if (left > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 半製品の消費を一部スキップ（台帳残不足 残 ${left}）: WO #${args.workOrderNumber}`,
+    );
+  }
+}
+
+/**
+ * 投入に選んだ仕掛品（work_order_wip_draws）を落とす（完了時）。
+ *
+ * `consumeSemiFinishedStock` との違いは**推測しない**こと — 指示書を作るときに
+ * 人が選び、承認のときに予約したバケットだけを相手にする。目標製品がこの
+ * 指示書の製品と違ってよい（別の製品のために作りかけた品を使い回す）。
+ *
+ * どのバケットからいくつ落とすかは wip-state-core planWipDrawConsumption
+ * （予約した数まで → 同じバケットの空き → 残りは不足）。予約は使った数に
+ * 関わらず全部ほどく。台帳が足りなくても完了は止めない（素材の消費と同じ）。
+ */
+async function consumeWipDraws(
+  tx: Tx,
+  openMovement: MovementOpener,
+  args: {
+    workOrderId: string;
+    workOrderNumber: number;
+    draws: readonly { inventoryId: string; quantity: number }[];
+    /** 半製品出しの受入数（実際に出した数）。 */
+    quantity: number;
+    scrap: number;
+  },
+): Promise<void> {
+  const ids = args.draws.map((d) => d.inventoryId);
+  // wip-scope: 選んだバケット（id 指定）だけを読む。
+  // custody-scope: / owner-scope: 同上 — 選べるのは自社の棚の仕掛品だけ
+  // （選ぶ時点で絞ってある）。
+  const [buckets, reservations] = await Promise.all([
+    tx.itemInventory.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, quantity: true, reservedQuantity: true },
+    }),
+    tx.inventoryReservation.findMany({
+      where: {
+        workOrderId: args.workOrderId,
+        inventoryType: "PRODUCT",
+        inventoryId: { in: ids },
+        status: "RESERVED",
+      },
+    }),
+  ]);
+  const bucketOf = new Map(buckets.map((b) => [b.id, b]));
+  const reservedOf = new Map<string, number>();
+  for (const r of reservations) {
+    reservedOf.set(
+      r.inventoryId,
+      (reservedOf.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  const plan = planWipDrawConsumption(
+    args.draws.map((d) => {
+      const b = bucketOf.get(d.inventoryId);
+      return {
+        inventoryId: d.inventoryId,
+        reserved: reservedOf.get(d.inventoryId) ?? 0,
+        onHand: Number(b?.quantity ?? 0),
+        reservedTotal: Number(b?.reservedQuantity ?? 0),
+      };
+    }),
+    args.quantity,
+  );
+
+  let reassignLeft = Math.max(0, args.quantity - args.scrap);
+  for (const line of plan.lines) {
+    if (line.release > 0) {
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: line.inventoryId,
+        transactionType: "RELEASE",
+        quantity: line.release,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote("wipDrawReservationReleased", {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    if (line.out <= 0) continue;
+    const share = splitScrapShare(line.out, reassignLeft);
+    for (const [quantity, key] of [
+      [share.reassign, "wipDrawConsumed"],
+      [share.scrap, "wipDrawScrapped"],
+    ] as const) {
+      if (quantity <= 0) continue;
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: line.inventoryId,
+        transactionType: "OUT",
+        quantity,
+        referenceType: "work_order",
+        referenceId: args.workOrderId,
+        notes: encodeInventoryNote(key, {
+          workOrderNumber: args.workOrderNumber,
+        }),
+      });
+    }
+    reassignLeft -= share.reassign;
+  }
+  if (reservations.length > 0) {
+    await tx.inventoryReservation.updateMany({
+      where: { id: { in: reservations.map((r) => r.id) } },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+  }
+  if (plan.shortage > 0) {
+    console.warn(
+      // i18n-ignore — サーバーログのみ（画面には出ない）
+      `[inventory] 仕掛品の消費を一部スキップ（台帳残不足 残 ${plan.shortage}）: WO #${args.workOrderNumber}`,
+    );
+  }
+}
+
+/**
+ * 投入に選んだ仕掛品のうち、いま空き（手持ち − 引当）が足りないもの。
+ * 読むだけ（行を押さえない）— 承認依頼・承認の前に「選び直してください」と
+ * 言うための確認で、最後の砦は reserveWipDrawsTx の FOR UPDATE。
+ * この指示書がもう予約している分は足りているものとして数える。
+ */
+export async function wipDrawShortages(
+  tx: Tx | typeof prisma,
+  workOrderId: string,
+): Promise<{ inventoryId: string; requested: number; available: number }[]> {
+  const draws = await tx.workOrderWipDraw.findMany({
+    where: { workOrderId },
+    select: {
+      inventoryId: true,
+      quantity: true,
+      // wip-scope: 選んだバケット（draw の相手）だけを読む。
+      // custody-scope: / owner-scope: 同上。
+      inventory: { select: { quantity: true, reservedQuantity: true } },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (draws.length === 0) return [];
+  const existing = await tx.inventoryReservation.findMany({
+    where: {
+      workOrderId,
+      inventoryType: "PRODUCT",
+      inventoryId: { in: draws.map((d) => d.inventoryId) },
+      status: "RESERVED",
+    },
+    select: { inventoryId: true, quantity: true },
+  });
+  const already = new Map<string, number>();
+  for (const r of existing) {
+    already.set(
+      r.inventoryId,
+      (already.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  return draws.flatMap((d) => {
+    const need = Math.max(0, d.quantity - (already.get(d.inventoryId) ?? 0));
+    const free = Math.max(
+      0,
+      Number(d.inventory.quantity) - Number(d.inventory.reservedQuantity),
+    );
+    return need > free
+      ? [{ inventoryId: d.inventoryId, requested: need, available: free }]
+      : [];
+  });
+}
+
+/** 承認のとき、選んだ仕掛品がもう足りない（他の指示書が先に引き当てた等）。 */
+export class WipDrawShortageError extends Error {
+  constructor(
+    readonly shortages: readonly {
+      inventoryId: string;
+      requested: number;
+      available: number;
+    }[],
+  ) {
+    // i18n-ignore — 呼び出し側（指示書の承認）が自分の辞書で言い直す
+    super("selected wip stock is no longer available");
+    this.name = "WipDrawShortageError";
+  }
+}
+
+/**
+ * 指示書の承認で、投入に選んだ仕掛品を予約する（素材の予約と同じ位置づけ）。
+ *
+ * 素材の予約と違い、**足りなければ取らずに止める**（WipDrawShortageError）—
+ * 素材の予約超過は「発注せよ」の合図になるが、仕掛品は発注で増えない。空きを
+ * 超えて予約すると、ほかの指示書から見える「使える数」が嘘になる。
+ * 足りるかどうかは承認の前に `wipDrawShortages` で確かめておくこと — ここで
+ * 止まるのは、その後に別の指示書が先に取った一瞬の競合だけ。
+ *
+ * 行を FOR UPDATE で押さえてから空きを読む — 同じバケットを選んだ 2 枚の
+ * 指示書が同時に承認されても、空きを二重に配らない。
+ * 冪等: この指示書がそのバケットにもう予約を持っていれば、その分は取り直さない。
+ */
+export async function reserveWipDrawsTx(
+  tx: Tx,
+  openMovement: MovementOpener,
+  wo: { id: string; workOrderNumber: number },
+): Promise<number> {
+  const draws = await tx.workOrderWipDraw.findMany({
+    where: { workOrderId: wo.id },
+    select: { inventoryId: true, quantity: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (draws.length === 0) return 0;
+  const ids = draws.map((d) => d.inventoryId);
+  // wip-scope: 選んだバケット（id 指定）だけを押さえる。
+  // custody-scope: / owner-scope: 同上。
+  await tx.$queryRaw`
+    SELECT id FROM app.item_inventory
+    WHERE id = ANY(${ids}::uuid[])
+    ORDER BY id
+    FOR UPDATE`;
+  const [buckets, existing] = await Promise.all([
+    tx.itemInventory.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, quantity: true, reservedQuantity: true },
+    }),
+    tx.inventoryReservation.findMany({
+      where: {
+        workOrderId: wo.id,
+        inventoryType: "PRODUCT",
+        inventoryId: { in: ids },
+        status: "RESERVED",
+      },
+      select: { inventoryId: true, quantity: true },
+    }),
+  ]);
+  const bucketOf = new Map(buckets.map((b) => [b.id, b]));
+  const already = new Map<string, number>();
+  for (const r of existing) {
+    already.set(
+      r.inventoryId,
+      (already.get(r.inventoryId) ?? 0) + Number(r.quantity),
+    );
+  }
+  const todo = draws
+    .map((d) => {
+      const b = bucketOf.get(d.inventoryId);
+      const free = Number(b?.quantity ?? 0) - Number(b?.reservedQuantity ?? 0);
+      return {
+        inventoryId: d.inventoryId,
+        need: Math.max(0, d.quantity - (already.get(d.inventoryId) ?? 0)),
+        free: Math.max(0, free),
+      };
+    })
+    .filter((d) => d.need > 0);
+  const shortages = todo.filter((d) => d.need > d.free);
+  if (shortages.length > 0) {
+    throw new WipDrawShortageError(
+      shortages.map((d) => ({
+        inventoryId: d.inventoryId,
+        requested: d.need,
+        available: d.free,
+      })),
+    );
+  }
+  for (const d of todo) {
+    await applyTransaction(tx, await openMovement(), {
+      inventoryType: "PRODUCT",
+      inventoryId: d.inventoryId,
+      transactionType: "RESERVE",
+      quantity: d.need,
+      referenceType: "work_order",
+      referenceId: wo.id,
+      notes: encodeInventoryNote("wipDrawReserved", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+    });
+    await tx.inventoryReservation.create({
+      data: {
+        inventoryType: "PRODUCT",
+        inventoryId: d.inventoryId,
+        workOrderId: wo.id,
+        quantity: d.need,
+        status: "RESERVED",
+        reservedAt: new Date(),
+      },
+    });
+  }
+  return todo.length;
 }
 
 /**
@@ -230,6 +1411,43 @@ export async function onWorkOrderCompletedTx(
   tx: Tx,
   workOrderId: string,
 ): Promise<void> {
+  await settleWorkOrderTx(tx, workOrderId, null);
+}
+
+/** 打ち切りの計上の材料（lib/wip-abort-core.ts abortSettlement の結果）。 */
+export interface WorkOrderAbortSettlement {
+  /** 流れの途中から仕掛品として戻す分（位置 1 か所 = 1 本）。 */
+  postings: readonly AbortWipPosting[];
+  /** 戻さずに廃棄した本数（位置ごとの廃棄の合計）。 */
+  scrap: number;
+}
+
+/**
+ * 指示書の打ち切りの計上 — 打ち切りの遷移（CANCELLED + aborted_at）と**同一**
+ * トランザクションで呼ぶ。
+ *
+ * 完了の計上（onWorkOrderCompletedTx）と**同じ道**を通す: 完成数・工程に記録
+ * した半製品・素材の消費・投入した仕掛品の消費・外注の預けの戻しは、完了と
+ * まったく同じ規則で動く。違うのは 3 つだけ:
+ *   1. 流れの途中にいた品を、位置ごとに仕掛品として入れる（`postings`）
+ *   2. この指示書の予約は確定せず解除する（作り終えていない）
+ *   3. 伝票の事由が WORK_ORDER_ABORT
+ * 規則を 2 か所に書かないための形 — 打ち切りだけ素材を消費しない・仕掛品の
+ * 投入を落とさない、といったずれは在庫の二重計上に直結する。
+ */
+export async function onWorkOrderAbortedTx(
+  tx: Tx,
+  workOrderId: string,
+  abort: WorkOrderAbortSettlement,
+): Promise<void> {
+  await settleWorkOrderTx(tx, workOrderId, abort);
+}
+
+async function settleWorkOrderTx(
+  tx: Tx,
+  workOrderId: string,
+  abort: WorkOrderAbortSettlement | null,
+): Promise<void> {
   const wo = await tx.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
     // 工程はエンジンが読む列 + 入庫先の解決に使う plantId だけ
@@ -237,7 +1455,19 @@ export async function onWorkOrderCompletedTx(
     // migration 前の DB で P2022 に落ちる。
     include: {
       steps: {
-        select: { ...STEP_STATE_SELECT, plantId: true },
+        select: {
+          ...STEP_STATE_SELECT,
+          plantId: true,
+          // 半製品からの投入を落とすのに要る 2 つ。code は開始工程の判別、
+          // lotText はどのロットを出したかの手掛かり（自由記入なので当たれば
+          // 優先する程度に使う）。
+          lotText: true,
+          // 仕掛品として在庫に置く分の記録（工程完了のときに入れた値）。
+          finishedDiameterMm: true,
+          finishedLengthMm: true,
+          wipPathStepIds: true,
+          processStep: { select: { code: true, affectsWipState: true } },
+        },
         orderBy: { sortOrder: "asc" },
       },
       stepLinks: { select: STEP_LINK_STATE_SELECT },
@@ -245,9 +1475,17 @@ export async function onWorkOrderCompletedTx(
         select: { orderLineId: true },
         orderBy: { sortOrder: "asc" },
       },
+      // 在庫の仕掛品から始めた指示書: 開始状態（済んでいた工程）と、投入に
+      // 選んだバケット。
+      startWipState: { select: { stepIds: true } },
+      wipDraws: {
+        select: { inventoryId: true, quantity: true },
+        orderBy: { sortOrder: "asc" },
+      },
     },
   });
   const linkedLineIds = wo.orderLineLinks.map((l) => l.orderLineId);
+  const startStepIds = wo.startWipState?.stepIds ?? [];
   // 完成数 = 良品がどこにも流れない COMPLETED 工程の残良品合計。
   // sortOrder 最大では分岐合流 DAG（合流先が手前に並ぶ場合）で誤るため、
   // グラフ集計の純関数（workflow-core computeFinishedQuantity）で判定する
@@ -255,22 +1493,57 @@ export async function onWorkOrderCompletedTx(
   const engineSteps = wo.steps.map(toStepState);
   const engineLinks = wo.stepLinks;
   const finishedQty = computeFinishedQuantity(engineSteps, engineLinks);
-  // 半製品 = 全工程の半製品バケット合計 + 「半製品在庫で終わる分岐」の終端良品。
-  // 後者は完成数に入らない（computeFinishedQuantity が除外している）ので、
-  // ここで拾わないと行き場を失う。
-  const semiTotal =
-    wo.steps.reduce((sum, s) => sum + (s.outputDefectSemiFinished ?? 0), 0) +
-    computeBranchSemiFinishedQuantity(engineSteps, engineLinks);
+  // 半製品（仕掛品）= 工程の途中で半製品に振り分けた分 + 「半製品在庫で終わる
+  // 分岐」の終端良品。後者は完成数に入らない（computeFinishedQuantity が除外
+  // している）ので、ここで拾わないと行き場を失う。
+  // **発生元の工程ごとに 1 本** — 発生元が違えば済んだ工程（加工状態）が違う。
+  // 合計は 1 本にまとめていた頃と同じ（wip-state-core.test.ts が縛っている）。
+  const affectsWipState = new Map(
+    wo.steps.map((s) => [s.processStepId, s.processStep.affectsWipState]),
+  );
+  const affects = (processStepId: number) =>
+    affectsWipState.get(processStepId) ?? false;
+  const wipSteps: WipPostingStep[] = wo.steps.map((s) => ({
+    ...toStepState(s),
+    finishedDiameterMm:
+      s.finishedDiameterMm == null ? null : Number(s.finishedDiameterMm),
+    finishedLengthMm:
+      s.finishedLengthMm == null ? null : Number(s.finishedLengthMm),
+    wipPathStepIds: parseWipPathStepIds(s.wipPathStepIds),
+  }));
+  // 廃棄された数（全工程の合計）。**在庫から投入した指示書でだけ**台帳に
+  // 現れる — 製造分の仕掛品は元々台帳に無いので、そこでの廃棄は在庫の
+  // 出来事ではない（素材は予約ぶんを丸ごと消費済み。ここで廃棄も引くと
+  // 二重に減る）。
+  // 打ち切りで戻さなかった分も廃棄（位置ごとに明示した数）。
+  const scrapTotal =
+    wo.steps.reduce((sum, s) => sum + (s.outputDefectScrap ?? 0), 0) +
+    (abort?.scrap ?? 0);
   const plantId = wo.steps.find((s) => s.plantId != null)?.plantId ?? null;
 
+  // この完了で動く在庫はすべて 1 枚の伝票に入る（完成品の入庫・半製品の入庫・
+  // 材料の消費・在庫分の付け替え）。1 回の出来事だから 1 枚。打ち切りも同じ。
+  const openMovement = movementOpener(tx, {
+    cause: abort ? "WORK_ORDER_ABORT" : "WORK_ORDER_COMPLETION",
+    sourceType: "work_orders",
+    sourceId: String(wo.workOrderNumber),
+    plantId,
+  });
+
+  if (wo.type === "REGRIND") {
+    // 再研磨: 作った物は無い。自社在庫には何も入れず、預り品の帳尻だけ合わせる
+    // （返却本数 = 廃棄欄の合計。研磨できずそのまま返す分）。
+    await completeRegrindTx(tx, openMovement, wo, scrapTotal);
+    return;
+  }
+
   if (finishedQty > 0) {
-    const invId = await ensureProductInventory(tx, {
-      productId: wo.productId,
+    const invId = await ensureItemInventory(tx, {
+      itemId: wo.productItemId,
       plantId,
       lotNumber: wo.workOrderNumber,
-      isSemiFinished: false,
     });
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
       inventoryId: invId,
       transactionType: "IN",
@@ -282,29 +1555,161 @@ export async function onWorkOrderCompletedTx(
       }),
     });
   }
-  if (semiTotal > 0) {
-    const semiStep =
-      wo.steps.find((s) => (s.outputDefectSemiFinished ?? 0) > 0) ??
-      wo.steps.find((s) => s.branchStockDisposition === "SEMI_FINISHED");
-    const invId = await ensureProductInventory(tx, {
-      productId: wo.productId,
-      plantId,
-      lotNumber: wo.workOrderNumber,
-      isSemiFinished: true,
-      sourceStepId: semiStep?.id ?? null,
+  // 再研磨は上で抜けている — ここから下は自社の製品を作る指示書だけ。
+  const wipBlank = await workOrderWipBlankTx(tx, wo);
+  const wipPostings = planWipPostings(
+    wipSteps,
+    engineLinks,
+    affects,
+    wipBlank?.size ?? null,
+    // 仕掛品から始めた指示書の品は、投入した仕掛品で済んでいた工程も済んでいる。
+    startStepIds,
+  );
+  // 打ち切りで流れの途中から戻す分（位置 1 か所 = 1 本）も同じ形で入れる。
+  const allWipPostings = [
+    ...wipPostings.map((p) => ({
+      ...p,
+      noteKey: "workOrderCompletedSemiFinished",
+    })),
+    ...(abort?.postings ?? []).map((p) => ({
+      ...p,
+      noteKey: "workOrderAbortedWip",
+    })),
+  ];
+  if (allWipPostings.length > 0) {
+    // ブランクの行は目標製品の単位で数える（本数）。品目マスタのブランクの単位に
+    // 任せると、製品の単位が違う指示書で旧来の行（製品の単位のまま移行した）と
+    // 食い違う。
+    const blankItemId = wipBlank
+      ? await wipBlankItemIdTx(tx, wipBlank.size)
+      : null;
+    for (const posting of allWipPostings) {
+      const invId =
+        blankItemId != null && wipBlank
+          ? await ensureItemInventory(tx, {
+              itemId: blankItemId,
+              unit: wipBlank.unit,
+              plantId,
+              lotNumber: wo.workOrderNumber,
+              sourceStepId: posting.sourceStepId,
+              wipStateId: await wipStateIdTx(tx, posting.stepIds),
+              aimedItemId: wo.productItemId,
+              finishedDiameterMm: posting.finishedDiameterMm,
+              finishedLengthMm: posting.finishedLengthMm,
+            })
+          : // ブランクが決まらない（製品に要求素材が無い等）— 製品の行のまま
+            // 「未分類」の状態へ寄せる。数は失わない。
+            await ensureItemInventory(tx, {
+              itemId: wo.productItemId,
+              plantId,
+              lotNumber: wo.workOrderNumber,
+              sourceStepId: posting.sourceStepId,
+              wipStateId: await wipUnclassifiedStateIdTx(tx),
+              aimedItemId: wo.productItemId,
+            });
+      await applyTransaction(tx, await openMovement(), {
+        inventoryType: "PRODUCT",
+        inventoryId: invId,
+        transactionType: "IN",
+        quantity: posting.quantity,
+        referenceType: "work_order",
+        referenceId: wo.id,
+        notes: encodeInventoryNote(posting.noteKey, {
+          workOrderNumber: wo.workOrderNumber,
+        }),
+      });
+    }
+  }
+  // ── 半製品からの投入を在庫から落とす ─────────────────────────────────
+  //
+  // 半製品在庫は**増える一方だった**。出す工程（半製品出し）は受入数を記録
+  // するのに、その数を在庫から引く経路がどこにも無く、棚卸で「説明のつかない
+  // 差異」として消しても翌月また同じだけ積み上がる。
+  //
+  // 落とすのは完了時 — 素材の消費と同じ。在庫は全工程完了時にしか動かさない
+  // のがこの台帳の約束で、半製品だけ先に落とすと巻き戻せない中間状態ができる。
+  const semiIssueStep = wo.steps.find(
+    (s) =>
+      s.processStep?.code === SEMI_FINISHED_ISSUE_STEP_CODE &&
+      s.status !== "CANCELLED",
+  );
+  const semiIssueQty = semiIssueStep?.inputQuantity ?? 0;
+  if (wo.wipDraws.length > 0) {
+    // 投入する仕掛品を選んである指示書: **選んだバケットだけ**から落とす。
+    // 出した数が 0 でも通す — 承認のときに取った予約をほどくため（残すと下の
+    // 「予約 → 確定」が CONFIRMED に倒し、使われない引当が空き数量を食い続ける）。
+    await consumeWipDraws(tx, openMovement, {
+      workOrderId: wo.id,
+      workOrderNumber: wo.workOrderNumber,
+      draws: wo.wipDraws,
+      quantity: semiIssueQty,
+      scrap: scrapTotal,
     });
-    await applyTransaction(tx, {
+  } else if (semiIssueStep && semiIssueQty > 0) {
+    await consumeSemiFinishedStock(tx, openMovement, {
+      workOrderId: wo.id,
+      workOrderNumber: wo.workOrderNumber,
+      itemId: wo.productItemId,
+      plantId,
+      quantity: semiIssueQty,
+      scrap: scrapTotal,
+      lotHint: parseLotHint(semiIssueStep.lotText),
+      blank: wipBlank?.size ?? null,
+      routeStepIds: mainlinePartChangingStepIds(
+        engineSteps,
+        engineLinks,
+        affects,
+      ),
+    });
+  }
+
+  // ── 外注に預けたままの分を戻す ─────────────────────────────────────────
+  //
+  // 全工程が完了しているなら、外注へ出した物は戻っている（戻らなければ
+  // その工程は完了できない）。入荷日を入れ忘れただけで預け在庫が永久に
+  // 残ると、「外注先が何を持っているか」の答えが嘘になる。
+  //
+  // この行の事由は OUTSOURCE_RETURN ではなく **完了の伝票の中**に入る —
+  // 1 回の出来事（完了）で起きたことだから。戻したこと自体は備考で分かる。
+  const openCustody = await tx.itemInventory.findMany({
+    where: {
+      itemId: wo.productItemId,
+      lotNumber: wo.workOrderNumber,
+      custodyBpId: { not: null },
+      // 自社の物だけ（顧客の預り品は再研磨側 completeRegrindTx が扱う）。
+      ownerBpId: null,
+      // 外注へ預けた分は加工状態を持たない行（在庫の仕掛品とは別物）。
+      wipStateId: null,
+      quantity: { gt: 0 },
+    },
+    select: { id: true, quantity: true },
+  });
+  for (const bucket of openCustody) {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "PRODUCT",
-      inventoryId: invId,
-      transactionType: "IN",
-      quantity: semiTotal,
+      inventoryId: bucket.id,
+      transactionType: "OUT",
+      quantity: Number(bucket.quantity),
       referenceType: "work_order",
       referenceId: wo.id,
-      notes: encodeInventoryNote("workOrderCompletedSemiFinished", {
+      notes: encodeInventoryNote("outsourceReturnedOnCompletion", {
         workOrderNumber: wo.workOrderNumber,
       }),
     });
   }
+  if (openCustody.length > 0) {
+    // 工程からも伝票を辿れるようにしておく（戻りの印がないままだと、
+    // あとから入荷日を入れたときに二重で戻してしまう）。
+    await tx.workOrderStep.updateMany({
+      where: {
+        workOrderId: wo.id,
+        outsourceIssueMovementId: { not: null },
+        outsourceReturnMovementId: null,
+      },
+      data: { outsourceReturnMovementId: await openMovement() },
+    });
+  }
+
   // 素材予約の消費（監査 P2-1）: この WO の MATERIAL 予約を RELEASE +
   // OUT（実消費）。台帳が実態より少ない場合は OUT をスキップして警告
   // （完了を止めない — 素材台帳は運用中に追いつく）。
@@ -316,7 +1721,7 @@ export async function onWorkOrderCompletedTx(
     },
   });
   for (const r of materialReservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: "MATERIAL",
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -333,13 +1738,13 @@ export async function onWorkOrderCompletedTx(
     // PG は tx 内エラー後の継続が不可のため、残量を事前確認してから OUT。
     // 台帳が実態より少なければ残量分だけ消費（不足分は警告のみ — 完了を
     // 止めない。素材台帳は運用で追いつく）。
-    const inv = await tx.materialInventory.findUnique({
+    const inv = await tx.itemInventory.findUnique({
       where: { id: r.inventoryId },
       select: { quantity: true },
     });
     const consume = Math.min(Number(inv?.quantity ?? 0), Number(r.quantity));
     if (consume > 0) {
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "MATERIAL",
         inventoryId: r.inventoryId,
         transactionType: "OUT",
@@ -370,6 +1775,11 @@ export async function onWorkOrderCompletedTx(
     // 在庫分は割当 1 件のみなので linkedLineIds[0] がその明細。
     const head = wo.steps.find((s) => s.status !== "CANCELLED");
     let needed = head?.inputQuantity ?? wo.plannedQuantity;
+    // 出した数のうち、完成して入り直す分（付け替え）の残り。ここを超えた分は
+    // **廃棄**として別の行で記録する。以前は全部が付け替えの顔をしていたので、
+    // 在庫から出した品が現場で割れても台帳には「出庫 10 / 入庫 7」としか
+    // 残らず、3 本の行方を後から言えなかった。
+    let reassignLeft = Math.max(0, needed - scrapTotal);
     // 旧バグ（製造分の完了が姉妹の在庫分予約まで CONFIRMED に倒していた）
     // で残った行も消費対象に含める — RESERVED | CONFIRMED の両方を読む。
     const productReservations = await tx.inventoryReservation.findMany({
@@ -382,13 +1792,17 @@ export async function onWorkOrderCompletedTx(
     });
     for (const r of productReservations) {
       if (needed <= 0) break;
-      const inv = await tx.productInventory.findUnique({
+      const inv = await tx.itemInventory.findUnique({
         where: { id: r.inventoryId },
         select: { quantity: true },
       });
-      const take = Math.min(needed, Number(r.quantity), inv?.quantity ?? 0);
+      const take = Math.min(
+        needed,
+        Number(r.quantity),
+        Number(inv?.quantity ?? 0),
+      );
       if (take > 0) {
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: r.inventoryId,
           transactionType: "RELEASE",
@@ -399,17 +1813,25 @@ export async function onWorkOrderCompletedTx(
             workOrderNumber: wo.workOrderNumber,
           }),
         });
-        await applyTransaction(tx, {
-          inventoryType: "PRODUCT",
-          inventoryId: r.inventoryId,
-          transactionType: "OUT",
-          quantity: take,
-          referenceType: "work_order",
-          referenceId: wo.id,
-          notes: encodeInventoryNote("fromStockConsumedReassigned", {
-            workOrderNumber: wo.workOrderNumber,
-          }),
-        });
+        const share = splitScrapShare(take, reassignLeft);
+        for (const [quantity, key] of [
+          [share.reassign, "fromStockConsumedReassigned"],
+          [share.scrap, "fromStockScrapped"],
+        ] as const) {
+          if (quantity <= 0) continue;
+          await applyTransaction(tx, await openMovement(), {
+            inventoryType: "PRODUCT",
+            inventoryId: r.inventoryId,
+            transactionType: "OUT",
+            quantity,
+            referenceType: "work_order",
+            referenceId: wo.id,
+            notes: encodeInventoryNote(key, {
+              workOrderNumber: wo.workOrderNumber,
+            }),
+          });
+        }
+        reassignLeft -= share.reassign;
       }
       if (take >= Number(r.quantity)) {
         await tx.inventoryReservation.update({
@@ -430,6 +1852,17 @@ export async function onWorkOrderCompletedTx(
         `[inventory] 在庫分消費を一部スキップ（引当/台帳不足 残 ${needed}）: WO #${wo.workOrderNumber}`,
       );
     }
+  } else if (abort) {
+    // 打ち切り: 作り終えていないので確定しない — この指示書の残りの予約
+    // （素材・投入する仕掛品は上で落としてある）を解除する。
+    await releaseWorkOrderReservations(
+      tx,
+      wo.id,
+      encodeInventoryNote("workOrderAbortedReservationReleased", {
+        workOrderNumber: wo.workOrderNumber,
+      }),
+      openMovement,
+    );
   } else {
     // 予約 → 確定（§7: 全工程完了時）。**この指示書の予約だけ**を確定する。
     // 割当明細（orderLineId）で広げてはいけない — 明細の製品在庫予約
@@ -447,115 +1880,280 @@ export async function onWorkOrderCompletedTx(
   }
 }
 
+/** 台帳が足りない 1 行ぶん（確認ダイアログと、出荷後の警告の材料）。 */
+export interface ShipShortage {
+  /** 品目の内部 id。画面から 在庫・所要量 (ST03) へ飛ぶのに使う。 */
+  itemId: number;
+  /** 品目コード（PRD-… / 素材コード）。画面にはこれを出す。 */
+  item: string;
+  lotNumber: number | null;
+  /** 台帳に無い本数（出せば、この分だけマイナスになる）。 */
+  shortfall: number;
+}
+
+/** 出荷 1 行ぶんの引き当ての計画（実際に引くのも、数えるだけなのも同じ計算）。 */
+interface DispatchPlanLine {
+  item: {
+    itemId: number;
+    lotNumber: number | null;
+    quantity: number;
+    orderLineId: string | null;
+  };
+  /** 引いた先の所有者（null = 自社）。不足分の置き場も同じ所有者で作る。 */
+  ownerBpId: string | null;
+  /** 実在するバケット（無ければ空。**ここでは作らない**）。 */
+  buckets: { id: string; quantity: number; reservedQuantity: number }[];
+  steps: { bucketId: string; take: number }[];
+  shortfall: number;
+}
+
+/**
+ * 発送（DISPATCH）の各行が、どのバケットから何本引けるかを数える。
+ *
+ * **出荷そのものと、出荷前の確認が同じ関数を通る。** 別々に書くと、
+ * 「確認では足りていたのに出荷したらマイナスになった」（またはその逆）が
+ * 起きる — 引ける数の定義（予約を除いた分 + 自分の予約）は 1 か所にしか
+ * 置けない。
+ */
+async function planDispatchLines(
+  tx: Tx,
+  so: {
+    fromPlantId: number | null;
+    customerBpId: string;
+    items: {
+      itemId: number;
+      lotNumber: number | null;
+      quantity: number;
+      orderLineId: string | null;
+      orderLine: { orderType: string } | null;
+    }[];
+  },
+): Promise<DispatchPlanLine[]> {
+  const plans: DispatchPlanLine[] = [];
+  // 同じ出荷書の前の行がすでに取った分（バケット id → 本数）。同じ品の行が
+  // 2 本あると、どちらも同じスナップショットを見て同じ 10 本を取る計画になり、
+  // 確認では不足なしと言いながら出荷時の OUT で 2 本目が止まる。計画の段階で
+  // 先の行の取り分を引いておく — 確認と出荷が同じ答えを出すのはこれが前提。
+  const taken = new Map<string, number>();
+  for (const item of so.items) {
+    // 再研磨の明細は顧客の預り品を返す出荷 — 引く先は所有者バケット。
+    // それ以外は自社在庫（ownerBpId: null）。判定は lib/inventory-owner-core.ts。
+    const ownerBpId = ownerBucketFor(
+      item.orderLine?.orderType,
+      so.customerBpId,
+    );
+    // ロットは保管場所×棚で複数バケットに分かれ得るため、残量のある行から順に。
+    //
+    // **ロットを指定していない行は、どのロットから出してもよい。** 以前は
+    // `lotNumber: null` で引いていたので「ロット無しのバケット」しか当たらず、
+    // 製品在庫は指示書番号をロットに持つため該当が 1 行も無く、**ロットを
+    // 選ばずに作った出荷書は必ず在庫ゼロ扱い**になっていた（利用者が dev で
+    // 踏んだ「在庫台帳がありません」がこれ）。指定が無いのは「どれでもよい」
+    // であって「ロット無しのものだけ」ではない。
+    //
+    // 取る順は 未割当（ロット無し）→ 古いロットから（= 先入れ先出し）。
+    // 拠点は**出荷元に限る** — 別の拠点にある物を黙って出したことにすると、
+    // そちらの棚卸が合わなくなる（出荷元が未設定のときだけ拠点を問わない）。
+    const anyLot = item.lotNumber == null;
+    const buckets = (
+      await tx.itemInventory.findMany({
+        where: {
+          itemId: item.itemId,
+          ...(anyLot ? {} : { lotNumber: item.lotNumber }),
+          ...(anyLot && so.fromPlantId != null
+            ? { plantId: so.fromPlantId }
+            : {}),
+          // 仕掛品は出荷できない（完成していない）。
+          wipStateId: null,
+          // 外注が預かっている分からは出荷できない（手元に無い）。
+          custodyBpId: null,
+          // 自社在庫か、この顧客の預り品か（再研磨）。混ぜない。
+          ownerBpId,
+        },
+        select: { id: true, quantity: true, reservedQuantity: true },
+        orderBy: anyLot
+          ? [
+              { lotNumber: { sort: "asc", nulls: "first" } },
+              { quantity: "desc" },
+            ]
+          : [{ quantity: "desc" }],
+      })
+    ).map((r) => ({
+      id: r.id,
+      quantity: Number(r.quantity) - (taken.get(r.id) ?? 0),
+      reservedQuantity: Number(r.reservedQuantity),
+    }));
+
+    // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
+    // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
+    // 押さえている在庫を先に出荷したほうが食べてしまい、あとから相手が
+    // 在庫不足で出せなくなる。判定は lib/inventory-availability-core.ts。
+    const ownReserved = new Map<string, number>();
+    if (item.orderLineId && buckets.length > 0) {
+      const mine = await tx.inventoryReservation.groupBy({
+        by: ["inventoryId"],
+        where: {
+          orderLineId: item.orderLineId,
+          inventoryType: "PRODUCT",
+          status: { in: ["RESERVED", "CONFIRMED"] },
+          inventoryId: { in: buckets.map((r) => r.id) },
+        },
+        _sum: { quantity: true },
+      });
+      for (const m of mine) {
+        ownReserved.set(m.inventoryId, Number(m._sum.quantity ?? 0));
+      }
+    }
+    const { steps, shortfall } = allocateFromBuckets(
+      buckets,
+      item.quantity,
+      ownReserved,
+    );
+    for (const st of steps) {
+      taken.set(st.bucketId, (taken.get(st.bucketId) ?? 0) + st.take);
+    }
+    plans.push({ item, ownerBpId, buckets, steps, shortfall });
+  }
+  return plans;
+}
+
+/**
+ * 出荷したら足りなくなる分を数える（**書き込まない**）。
+ *
+ * 出荷の確認ダイアログが使う — 押す前に「何が何本足りないか」を見せ、
+ * そのうえで進むかどうかを人に決めてもらうため。
+ */
+export async function previewDeliveryShortagesTx(
+  tx: Tx,
+  key: DocKey,
+): Promise<ShipShortage[]> {
+  const so = await tx.deliveryOrder.findUniqueOrThrow({
+    where: { docRef: key.docRef },
+    include: {
+      items: { include: { orderLine: { select: { orderType: true } } } },
+    },
+  });
+  if (so.type !== "DISPATCH") return [];
+  const plans = await planDispatchLines(tx, so);
+  const shortages: ShipShortage[] = [];
+  for (const plan of plans) {
+    if (plan.shortfall <= 0) continue;
+    shortages.push({
+      itemId: plan.item.itemId,
+      item: await itemLabel(tx, plan.item.itemId),
+      lotNumber: plan.item.lotNumber,
+      shortfall: plan.shortfall,
+    });
+  }
+  return shortages;
+}
+
 /**
  * 出荷フック: DISPATCH は SO ロット在庫から出庫 + 予約解除。STOCK_STORAGE は
  * 保管入庫（予備製作分）。shipDeliveryOrder から呼ぶ。
  */
-export async function onDeliveryOrderShipped(key: {
-  yearMonth: string;
-  seq: number;
-}): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await onDeliveryOrderShippedTx(tx, key);
-  });
+export async function onDeliveryOrderShipped(
+  key: DocKey,
+): Promise<ShipShortage[]> {
+  return prisma.$transaction(async (tx) => onDeliveryOrderShippedTx(tx, key));
 }
 
 /**
  * onDeliveryOrderShipped の tx コア — 出荷アクションの状態遷移と同一
- * トランザクションで呼べる（在庫不足時に SHIPPED だけ立つ非整合を防ぐ）。
+ * トランザクションで呼べる。
+ *
+ * **在庫が足りなくても出荷は止めない。** 以前は台帳が足りなければ例外にして
+ * いたが、物が出て行ったあとに記録だけ拒んでも現実は変わらず、「出荷したのに
+ * 台帳に無い」という誰にも見えない食い違いが残るだけだった。足りない分は
+ * マイナスのまま計上し（備考で区別できる）、不足の一覧を返す — 呼び出し側は
+ * それを利用者への警告にする。マイナスは在庫一覧にも棚卸にも見えるので直せる。
  */
 export async function onDeliveryOrderShippedTx(
   tx: Tx,
-  key: { yearMonth: string; seq: number },
-): Promise<void> {
+  key: DocKey,
+): Promise<ShipShortage[]> {
   const so = await tx.deliveryOrder.findUniqueOrThrow({
-    where: { yearMonth_seq: key },
-    include: { items: true },
+    where: { docRef: key.docRef },
+    include: {
+      items: { include: { orderLine: { select: { orderType: true } } } },
+    },
   });
-  const ref = `DOR-${key.yearMonth}-${String(key.seq).padStart(5, "0")}`;
-  for (const item of so.items) {
+  // 備考に出すのは番号（人が読む姿）。在庫取引の reference_id と伝票の元書類は
+  // 法人コード付きの参照で残す（番号だけにしない）。
+  const ref = docRefNumber(key.docRef);
+  const refId = await requireDocRef("delivery_orders", key.docRef, tx);
+  /** 台帳が足りないまま出した分。呼び出し側が利用者へ警告する。 */
+  const shortages: ShipShortage[] = [];
+  // 出庫・在庫保管の入庫・予約解除は 1 回の出荷の中身なので 1 枚にまとめる。
+  const openMovement = movementOpener(tx, {
+    cause: "DELIVERY_SHIPMENT",
+    sourceType: "delivery_orders",
+    sourceId: refId,
+    plantId: so.fromPlantId,
+  });
+  // 発送の引き当ては**出荷前の確認と同じ関数**で計算する（planDispatchLines）。
+  const dispatchPlans =
+    so.type === "DISPATCH" ? await planDispatchLines(tx, so) : [];
+  for (const [index, item] of so.items.entries()) {
     if (so.type === "DISPATCH") {
-      // ロット在庫から出庫。行が無ければ失敗させる（黙ってスキップすると
-      // 台帳と実出荷が乖離する — 監査 P0-4）。ロットは保管場所×棚で複数
-      // バケットに分かれ得るため、残量のある行から順に消費する。
-      const invRows = await tx.productInventory.findMany({
-        where: {
-          productId: item.productId,
-          lotNumber: item.lotNumber,
-          isSemiFinished: false,
-        },
-        select: { id: true, quantity: true, reservedQuantity: true },
-        orderBy: { quantity: "desc" },
-      });
-      if (invRows.length === 0) {
-        throw new Error(
-          encodeInventoryNote("lotInventoryMissing", {
-            lotNumber: item.lotNumber ?? "-",
-            productId: item.productId,
-          }),
-        );
-      }
-      // 引ける数は **quantity ではなく「予約を除いた分 + 自分の予約」**。
-      // quantity をそのまま取ると、他の注文明細（FROM_STOCK の引当など）が
-      // 押さえている在庫を先に出荷したほうが食べてしまい、あとから相手が
-      // 在庫不足で出せなくなる。判定は lib/inventory-availability-core.ts。
-      const ownReserved = new Map<string, number>();
-      if (item.orderLineId) {
-        const mine = await tx.inventoryReservation.groupBy({
-          by: ["inventoryId"],
-          where: {
-            orderLineId: item.orderLineId,
-            inventoryType: "PRODUCT",
-            status: { in: ["RESERVED", "CONFIRMED"] },
-            inventoryId: { in: invRows.map((r) => r.id) },
-          },
-          _sum: { quantity: true },
-        });
-        for (const m of mine) {
-          ownReserved.set(m.inventoryId, Number(m._sum.quantity ?? 0));
-        }
-      }
-      const { steps, shortfall } = allocateFromBuckets(
-        invRows,
-        item.quantity,
-        ownReserved,
-      );
-      // 足りないときは 1 件も出庫せずに失敗させる（部分出庫してから落ちると
-      // 台帳だけ減って出荷が立たない）。
-      if (shortfall > 0) {
-        throw new Error(
-          encodeInventoryNote("outOfStockOnShip", {
-            quantity: item.quantity,
-            lotNumber: item.lotNumber ?? "-",
-          }),
-        );
-      }
-      for (const step of steps) {
-        await applyTransaction(tx, {
+      const plan = dispatchPlans[index];
+      for (const step of plan.steps) {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: "PRODUCT",
           inventoryId: step.bucketId,
           transactionType: "OUT",
           quantity: step.take,
           referenceType: "delivery_order",
-          referenceId: ref,
+          referenceId: refId,
           notes: encodeInventoryNote("shipped", { ref }),
+        });
+      }
+      // 足りなかった分も**出したことにする**。物は出て行ったので、ここで
+      // 止めても現実は変わらない。引く先は最初のバケット（= その品目・
+      // ロットの代表。1 行も無ければ作る）で、台帳はマイナスになる — それが
+      // 「合っていない」という事実の、見える置き場所になる。
+      if (plan.shortfall > 0) {
+        const bucketId =
+          plan.buckets[0]?.id ??
+          (await ensureItemInventory(tx, {
+            itemId: item.itemId,
+            plantId: so.fromPlantId,
+            lotNumber: item.lotNumber,
+            ownerBpId: plan.ownerBpId,
+          }));
+        await applyTransaction(tx, await openMovement(), {
+          inventoryType: "PRODUCT",
+          inventoryId: bucketId,
+          transactionType: "OUT",
+          quantity: plan.shortfall,
+          allowNegative: true,
+          referenceType: "delivery_order",
+          referenceId: refId,
+          // 備考で普通の出庫と分ける。伝票を見れば「どの行が在庫無しで
+          // 出たのか」が読める。
+          notes: encodeInventoryNote("shippedWithoutStock", { ref }),
+        });
+        shortages.push({
+          itemId: item.itemId,
+          item: await itemLabel(tx, item.itemId),
+          lotNumber: item.lotNumber,
+          shortfall: plan.shortfall,
         });
       }
     } else {
       // STOCK_STORAGE: 保管拠点へ入庫（請求フロー外の予備分）
-      const invId = await ensureProductInventory(tx, {
-        productId: item.productId,
+      const invId = await ensureItemInventory(tx, {
+        itemId: item.itemId,
         plantId: so.fromPlantId,
         lotNumber: item.lotNumber,
-        isSemiFinished: false,
       });
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
         inventoryId: invId,
         transactionType: "IN",
         quantity: item.quantity,
         referenceType: "delivery_order",
-        referenceId: ref,
+        referenceId: refId,
         notes: encodeInventoryNote("stockStorage", { ref }),
       });
     }
@@ -589,13 +2187,13 @@ export async function onDeliveryOrderShippedTx(
       for (const r of reservations) {
         if (remainingToRelease <= 0) break;
         const release = Math.min(Number(r.quantity), remainingToRelease);
-        await applyTransaction(tx, {
+        await applyTransaction(tx, await openMovement(), {
           inventoryType: r.inventoryType,
           inventoryId: r.inventoryId,
           transactionType: "RELEASE",
           quantity: release,
           referenceType: "delivery_order",
-          referenceId: ref,
+          referenceId: refId,
           notes: encodeInventoryNote("shippedReservationReleased", { ref }),
         });
         if (release >= Number(r.quantity)) {
@@ -614,6 +2212,7 @@ export async function onDeliveryOrderShippedTx(
       }
     }
   }
+  return shortages;
 }
 
 /**
@@ -624,12 +2223,13 @@ export async function releaseOrderLineReservations(
   tx: Tx,
   orderLineId: string,
   reason: string,
+  openMovement: MovementOpener,
 ): Promise<number> {
   const reservations = await tx.inventoryReservation.findMany({
     where: { orderLineId, status: { in: ["RESERVED", "CONFIRMED"] } },
   });
   for (const r of reservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: r.inventoryType,
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -656,12 +2256,13 @@ export async function releaseWorkOrderReservations(
   tx: Tx,
   workOrderId: string,
   reason: string,
+  openMovement: MovementOpener,
 ): Promise<number> {
   const reservations = await tx.inventoryReservation.findMany({
     where: { workOrderId, status: "RESERVED" },
   });
   for (const r of reservations) {
-    await applyTransaction(tx, {
+    await applyTransaction(tx, await openMovement(), {
       inventoryType: r.inventoryType,
       inventoryId: r.inventoryId,
       transactionType: "RELEASE",
@@ -691,15 +2292,17 @@ export async function releaseWorkOrderReservations(
  */
 export async function onMaterialReceipt(
   receiptId: string,
-  tx?: Tx,
+  tx: Tx,
+  openMovement: MovementOpener,
 ): Promise<void> {
-  if (tx) return onMaterialReceiptTx(tx, receiptId);
-  await prisma.$transaction(async (t) => {
-    await onMaterialReceiptTx(t, receiptId);
-  });
+  return onMaterialReceiptTx(tx, receiptId, openMovement);
 }
 
-async function onMaterialReceiptTx(tx: Tx, receiptId: string): Promise<void> {
+async function onMaterialReceiptTx(
+  tx: Tx,
+  receiptId: string,
+  openMovement: MovementOpener,
+): Promise<void> {
   const r = await tx.materialReceipt.findUniqueOrThrow({
     where: { id: receiptId },
   });
@@ -713,12 +2316,12 @@ async function onMaterialReceiptTx(tx: Tx, receiptId: string): Promise<void> {
     select: { id: true },
   });
   if (posted) return;
-  const invId = await ensureMaterialInventory(tx, {
-    materialId: r.materialId,
+  const invId = await ensureItemInventory(tx, {
+    itemId: r.itemId,
     plantId: r.plantId,
     unit: r.unit,
   });
-  await applyTransaction(tx, {
+  await applyTransaction(tx, await openMovement(), {
     inventoryType: "MATERIAL",
     inventoryId: invId,
     transactionType: "IN",
@@ -751,23 +2354,46 @@ export async function reserveProductStock(
   const so = await prisma.orderLine.findUniqueOrThrow({
     where: { id: orderLineId },
   });
-  // 確定前（枝番なし・製品未特定）の明細は引当対象にならない。
-  if (so.branch == null || so.productId == null) {
+  // 確定前（枝番なし・品目未特定）の明細は引当対象にならない。
+  if (so.branch == null || so.itemId == null) {
     throw new Error(encodeInventoryNote("onlyConfirmedLinesCanBeStockChecked"));
   }
-  const productId = so.productId;
+  // 再研磨の明細は顧客の工具を預かって返すもの — 自社在庫を引き当てる対象ではない。
+  if (so.orderType === "REGRIND") {
+    throw new Error(encodeInventoryNote("regrindLinesAreNotStockChecked"));
+  }
+  const itemId = so.itemId;
 
   return prisma.$transaction(async (tx) => {
+    const openMovement = movementOpener(tx, {
+      cause: "STOCK_RESERVATION",
+      sourceType: "order_lines",
+      sourceId: orderLineId,
+    });
     // 対象行をロック（FOR UPDATE）— 同時照合による二重引当を防ぐ（監査 P1-3）。
     // ロック取得後に読む値が確定値になる。
     await tx.$queryRaw`
-      SELECT id FROM app.product_inventory
-      WHERE product_id = ${productId} AND is_semi_finished = false
+      SELECT id FROM app.item_inventory
+      WHERE item_id = ${itemId} AND wip_state_id IS NULL
+        AND custody_bp_id IS NULL AND owner_bp_id IS NULL
       FOR UPDATE`;
-    const rows = await tx.productInventory.findMany({
-      where: { productId, isSemiFinished: false },
-      orderBy: { lotNumber: "asc" },
-    });
+    const rows = (
+      await tx.itemInventory.findMany({
+        // 引き当てられるのは自社の在庫だけ（預け中・顧客の預り品は除く）。
+        where: {
+          itemId,
+          // 仕掛品は受注へ引き当てられない（完成していない）。
+          wipStateId: null,
+          custodyBpId: null,
+          ownerBpId: null,
+        },
+        orderBy: { lotNumber: "asc" },
+      })
+    ).map((r) => ({
+      ...r,
+      quantity: Number(r.quantity),
+      reservedQuantity: Number(r.reservedQuantity),
+    }));
     const hasRecord = rows.length > 0;
     const available = rows.reduce(
       (sum, r) => sum + Math.max(0, r.quantity - r.reservedQuantity),
@@ -793,7 +2419,7 @@ export async function reserveProductStock(
       const free = row.quantity - row.reservedQuantity;
       if (free <= 0) continue;
       const take = Math.min(free, remaining);
-      await applyTransaction(tx, {
+      await applyTransaction(tx, await openMovement(), {
         inventoryType: "PRODUCT",
         inventoryId: row.id,
         transactionType: "RESERVE",
@@ -819,10 +2445,12 @@ export async function reserveProductStock(
     await recordAudit({
       action: "UPDATE",
       tableName: "order_lines",
-      recordId: `ORD-${so.acceptanceYearMonth}-${String(so.acceptanceSeq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
-      // so は findUniqueOrThrow 済みの行 — PK が既に手元にあるので直接渡す
+      // record_id は人が読む番号、record_key は法人コード付きの参照（line_ref）。
+      // so は findUniqueOrThrow 済みの行 — 参照が既に手元にあるので直接渡す
       // （キオスク側にはこのテーブル向けの解決レジストリが無いため必須）。
-      recordKey: so.id,
+      // 枝番の無い行は上で弾いているので line_ref は必ずある。
+      recordId: so.lineRef ? docRefNumber(so.lineRef) : so.id,
+      recordKey: so.lineRef ?? so.id,
       after: {
         note: encodeInventoryNote("stockCheckReservedAndShortage", {
           reservedNow,

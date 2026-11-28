@@ -1,10 +1,7 @@
 import { PriceListTable } from "@/components/sales/price-lists/PriceListTable";
 import { requireAppRead } from "@/lib/authz-page";
-import {
-  fetchCustomerOptions,
-  fetchProductOptions,
-} from "../trial-estimates/data";
-import { fetchPriceEntries } from "./data";
+import { fetchCustomerOptions } from "../trial-estimates/data";
+import { fetchPriceEntries, fetchPriceListItemOptions } from "./data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +12,7 @@ export default async function PriceListsPage() {
   const [entries, customerOptions, productOptions] = await Promise.all([
     fetchPriceEntries(),
     fetchCustomerOptions(),
-    fetchProductOptions(),
+    fetchPriceListItemOptions(),
   ]);
 
   return (

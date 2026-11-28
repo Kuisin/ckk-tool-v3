@@ -28,10 +28,11 @@ import {
   MasterListNav,
   type MasterNavItem,
 } from "@/components/ui/MasterListNav";
-import type {
-  Criterion,
-  CriterionRole,
-  ToolTypeDef,
+import {
+  type Criterion,
+  type CriterionRole,
+  criterionCostMode,
+  type ToolTypeDef,
 } from "@/lib/trial-pricing-criteria";
 
 const BASE = "/settings/trial-pricing-engine/criteria";
@@ -162,6 +163,13 @@ export function CriteriaListPanel({
           {roleMetaMap[c.role].label}
         </Badge>
         <ToolTypesBadge c={c} toolTypes={toolTypes} />
+        {criterionCostMode(c) !== "none" && (
+          <Badge color="orange" size="xs" variant="outline">
+            {criterionCostMode(c) === "costOnly"
+              ? tr("settings.criterionEditForm.costOnlyBadge")
+              : tr("settings.criterionEditForm.costBadge")}
+          </Badge>
+        )}
         {!c.enabled && (
           <Badge color="gray" size="xs" variant="light">
             {tr("common.disabled3")}

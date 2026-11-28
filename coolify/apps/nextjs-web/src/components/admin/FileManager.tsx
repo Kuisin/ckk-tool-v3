@@ -55,8 +55,9 @@ import {
   IconUpload,
   IconUsersGroup,
 } from "@tabler/icons-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FolderGrantsModal } from "@/components/admin/FolderGrantsModal";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
@@ -135,15 +136,27 @@ function childrenOf(files: StoredFile[], path: string) {
 const rawHref = (key: string, download = false) =>
   `/api/admin/files/raw?key=${encodeURIComponent(key)}${download ? "&download=1" : ""}`;
 
+/** GET /api/admin/files の返り値（一覧 + この利用者にできること）。 */
+interface FileListing {
+  files?: StoredFile[];
+  storageOk?: boolean;
+  isAdmin?: boolean;
+  canWritePrefixes?: string[] | null;
+}
+
+const FILES_KEY = ["admin-files"] as const;
+const NO_FILES: StoredFile[] = [];
+const NO_PREFIXES: string[] = [];
+
+async function fetchListing(): Promise<FileListing> {
+  const res = await fetch("/api/admin/files");
+  return (await res.json()) as FileListing;
+}
+
 export function FileManager() {
   const tr = useTranslations();
   const fmt = useFormat();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<StoredFile[]>([]);
-  const [storageOk, setStorageOk] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [writePrefixes, setWritePrefixes] = useState<string[] | null>([]);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -153,26 +166,26 @@ export function FileManager() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [grantsOpen, setGrantsOpen] = useState(false);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/files");
-      const json = await res.json();
-      setFiles(json.files ?? []);
-      setStorageOk(json.storageOk !== false);
-      setIsAdmin(json.isAdmin === true);
-      setWritePrefixes(json.canWritePrefixes ?? []);
-    } catch {
-      setStorageOk(false);
-      setFiles([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  const queryClient = useQueryClient();
+  const listing = useQuery({
+    queryKey: FILES_KEY,
+    queryFn: fetchListing,
+    retry: false,
+  });
+  // 取れなかったときは「ストレージに届かない」として空の一覧にする
+  // （前回の一覧を出し続けると、消えたはずのファイルが残って見える）。
+  const files = listing.isError ? NO_FILES : (listing.data?.files ?? NO_FILES);
+  const storageOk = !listing.isError && listing.data?.storageOk !== false;
+  const isAdmin = listing.data?.isAdmin === true;
+  // null = 管理者（全フォルダ書き込み可）。**`??` で潰さないこと** — 以前は
+  // `json.canWritePrefixes ?? []` で null を [] にしており、管理者ほど
+  // アップロード・削除のボタンが出なかった。「まだ取れていない」だけが [] 。
+  const writePrefixes: string[] | null =
+    listing.isError || listing.data?.canWritePrefixes === undefined
+      ? NO_PREFIXES
+      : listing.data.canWritePrefixes;
+  const loading = listing.isFetching;
+  const reload = useCallback(() => listing.refetch(), [listing.refetch]);
 
   const canWrite = useCallback(
     (key: string) => {
@@ -276,7 +289,12 @@ export function FileManager() {
         message: file.name,
         color: "green",
       });
-      setFiles((prev) => prev.filter((f) => f.key !== file.key));
+      // 消した 1 件を一覧から外す（全体を取り直すまで待たせない）。
+      queryClient.setQueryData<FileListing>(FILES_KEY, (prev) =>
+        prev
+          ? { ...prev, files: prev.files?.filter((f) => f.key !== file.key) }
+          : prev,
+      );
       if (selectedKey === file.key) setSelectedKey(null);
     } catch (err) {
       notifications.show({

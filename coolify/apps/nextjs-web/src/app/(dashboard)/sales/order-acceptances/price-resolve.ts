@@ -7,7 +7,7 @@
  * 上書きが入っている行はそのまま人の値を保存する。
  *
  * 解決ロジックは見積書・価格照合と同一（components/sales/quotes/model の
- * pure 関数 + fetchEntriesForCustomer）— 「どこで見た単価か」で結果が変わって
+ * pure 関数 + fetchCompanyEntriesForCustomer）— 「どこで見た単価か」で結果が変わって
  * よい場所ではないので、実装を増やさない。
  *
  * サーバー専用（prisma 経由の読み込み）。actions.ts の保存と price-check.ts の
@@ -16,33 +16,58 @@
 
 import type { getTranslations } from "next-intl/server";
 import type { PriceListEntry } from "@/components/sales/price-lists/model";
-import { resolvePriceFromEntries } from "@/components/sales/quotes/model";
+import {
+  lineToolItemId,
+  resolvePriceFromEntries,
+} from "@/components/sales/quotes/model";
 import {
   effectiveUnitPrice,
   normalizeOverride,
   type PriceMissReason,
 } from "@/lib/order-acceptance-price-core";
-import { fetchEntriesForCustomer } from "../quotes/data";
+import { loadStandardUnitPrices } from "@/lib/standard-price";
+import { fetchCompanyEntriesForCustomer } from "../quotes/data";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 照合・解決に必要な明細 1 行ぶん。 */
 export interface PriceResolvableItem {
-  /** 製品マスタ内部 id（文字列）。null = 未突合 → 価格表を引けない。 */
-  productId: string | null;
+  /**
+   * 突合済みの製品 — 値は品目 id（items.id）を文字列化したもの。
+   * null = 未突合 → 価格表を引けない。価格表のエントリも同じ id 空間
+   * （品目統合 第 2 段 C）。
+   */
+  itemId: string | null;
   orderType: string;
   quantity: number;
+  /**
+   * 研ぎ直す工具（品目 id の文字列）。**再研磨の行だけ**が意味を持つ —
+   * 価格表は 工具一致 → 工具なし → 標準価格 の順で引く。それ以外の種別では
+   * 渡しても無視する（工具付きの価格表は再研磨の品目にしか無い）。
+   */
+  toolItemId?: string | number | null;
+  /**
+   * 品目の標準価格（定価）。顧客の価格表が当たらないときの拠り所で、
+   * **再研磨の品目だけが持つ**（lib/standard-price.ts）。
+   * 省略 = 標準価格を見ない（従来どおり価格表だけ）。
+   */
+  standardUnitPrice?: number | null;
 }
 
 /**
- * 顧客の価格表エントリ。顧客未特定は空 — 価格表は顧客ごとなので、
+ * 顧客 × **発行会社**の価格表エントリ。顧客未特定は空 — 価格表は顧客ごとなので、
  * 顧客が決まるまで単価は解決できない（照合も行われない）。
+ *
+ * 価格表は会社ごとに別々で、書類はその**発行会社の価格表だけ**を引く。
+ * `ownCompanyId` = null / undefined は既定の法人（発行会社を決めずに作った
+ * 書類が入る先 — DB の列既定値と同じ）。
  */
 export async function loadCustomerPriceEntries(
   customerBpId: string | null,
+  ownCompanyId: number | null | undefined,
 ): Promise<PriceListEntry[]> {
   if (!customerBpId) return [];
-  return fetchEntriesForCustomer(customerBpId);
+  return fetchCompanyEntriesForCustomer(customerBpId, ownCompanyId);
 }
 
 /** 1 行の価格表単価と、引けなかったときの理由。 */
@@ -67,15 +92,18 @@ export function priceListLookup(
   item: PriceResolvableItem,
   tr: Tr,
 ): PriceListLookup {
-  if (!customerBpId || !item.productId)
+  if (!customerBpId || !item.itemId)
     return { expected: null, missReason: null };
   const r = resolvePriceFromEntries(
     entries,
     customerBpId,
-    item.productId,
+    item.itemId,
     item.orderType,
     item.quantity,
     tr,
+    new Date(),
+    item.standardUnitPrice ?? null,
+    lineToolItemId(item),
   );
   return r.ok
     ? { expected: r.price.unitPrice, missReason: null }
@@ -105,12 +133,30 @@ type SaveItem = PriceResolvableItem & {
  */
 export async function applyPriceListPrices<T extends SaveItem>(
   customerBpId: string | null,
+  /** 注文請書の発行会社 — その会社の価格表だけを引く。 */
+  ownCompanyId: number | null | undefined,
   items: readonly T[],
   tr: Tr,
 ): Promise<(T & { unitPrice: number | null; priceOverridden: boolean })[]> {
-  const entries = await loadCustomerPriceEntries(customerBpId);
+  // 標準価格は行が指す品目から引く（顧客に依らない）。価格表と同じ 1 回の
+  // 解決で使えるよう、ここでまとめて読む。
+  const [entries, standard] = await Promise.all([
+    loadCustomerPriceEntries(customerBpId, ownCompanyId),
+    loadStandardUnitPrices(items.map((it) => it.itemId)),
+  ]);
   return items.map((it) => {
-    const expected = priceListUnitPrice(entries, customerBpId, it, tr);
+    const withStandard = {
+      ...it,
+      standardUnitPrice:
+        it.standardUnitPrice ??
+        (it.itemId ? (standard.get(Number(it.itemId)) ?? null) : null),
+    };
+    const expected = priceListUnitPrice(
+      entries,
+      customerBpId,
+      withStandard,
+      tr,
+    );
     const overridden = normalizeOverride({
       expected,
       overridden: it.priceOverridden === true,

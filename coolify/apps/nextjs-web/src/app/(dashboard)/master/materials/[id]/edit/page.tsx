@@ -10,7 +10,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 素材 編集 (MS26 edit) — コード構成はロック、属性のみ編集可. */
+/**
+ * 素材 編集 (MS26 edit) — コード構成はロック、属性のみ編集可.
+ * URL の id は items.id（品目統合 第 3 段）。
+ */
 export default async function MasterMaterialsEditPage({
   params,
 }: {
@@ -19,13 +22,17 @@ export default async function MasterMaterialsEditPage({
   const denied = await requireAppRead("master-materials");
   if (denied) return denied;
   const { id: idParam } = await params;
-  const id = Number(idParam);
-  if (!Number.isInteger(id)) notFound();
-  const r = await prisma.material.findUnique({
-    where: { id },
-    include: { materialType: true, surfaceFinish: true },
-  });
+  const itemId = Number(idParam);
+  if (!Number.isInteger(itemId)) notFound();
+  const [r, finishes] = await Promise.all([
+    prisma.item.findFirst({
+      where: { id: itemId, itemType: "MATERIAL" },
+      include: { materialType: true },
+    }),
+    prisma.materialSurfaceFinish.findMany(),
+  ]);
   if (!r) notFound();
+  const surfaceFinish = finishes.find((f) => f.code === r.surfaceFinishCode);
 
   const name = r.name as LocalizedText | null;
 
@@ -34,16 +41,16 @@ export default async function MasterMaterialsEditPage({
       finishOptions={[]}
       initial={{
         id: r.id,
-        code: r.code,
-        materialTypeLabel: `${r.materialType.code ?? "未変換"} — ${localized(
-          r.materialType.name as LocalizedText | null,
+        code: r.code ?? "",
+        materialTypeLabel: `${r.materialType?.code ?? "未変換"} — ${localized(
+          r.materialType?.name as LocalizedText | null,
         )}`,
         surfaceFinishLabel: localized(
-          r.surfaceFinish.name as LocalizedText | null,
+          surfaceFinish?.name as LocalizedText | null,
         ),
-        diameterMm: Number(r.diameterMm),
-        lengthMm: Number(r.lengthMm),
-        kindLabel: r.kindCode,
+        diameterMm: Number(r.diameterMm ?? 0),
+        lengthMm: Number(r.lengthMm ?? 0),
+        kindLabel: r.kindCode ?? "",
         nameJa: name?.ja ?? "",
         nameTranslations: localizedTranslations(name),
         unit: r.unit,

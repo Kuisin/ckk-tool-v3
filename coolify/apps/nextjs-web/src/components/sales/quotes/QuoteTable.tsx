@@ -14,12 +14,16 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
+import { WithDocCompany } from "@/components/ui/DocCompanyBadge";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { docCompanyCode, matchesDocCompany } from "@/lib/doc-company-view-core";
+import { docNo } from "@/lib/doc-number";
+import { docSortValue } from "@/lib/doc-sort";
 import type { Option } from "@/lib/mock";
 import { statusOptions } from "@/lib/status-map";
 import { isoDateJst } from "../price-lists/model";
@@ -58,7 +62,9 @@ export function QuoteTable({
   const filtered = rows.filter((q) => {
     const matchesSearch =
       !search ||
-      q.quoteNumber.includes(search) ||
+      matchesDocCompany(docCompanyCode(q.quoteNumber), search) ||
+      docNo(q.quoteNumber).includes(search) ||
+      (q.legacyNumber?.includes(search) ?? false) ||
       q.customerName.includes(search);
     const matchesCustomer = !customer || q.customerId === customer;
     const matchesStatus = !status || quoteDisplayStatus(q, today) === status;
@@ -70,10 +76,13 @@ export function QuoteTable({
       key: "quoteNumber",
       header: tr("common.quoteNumber"),
       sortable: true,
+      sortValue: (q) => docSortValue(q.quoteNumber),
       render: (q) => (
-        <Text ff="mono" size="sm">
-          {q.quoteNumber}
-        </Text>
+        <WithDocCompany docId={q.quoteNumber}>
+          <Text ff="mono" size="sm">
+            {docNo(q.quoteNumber)}
+          </Text>
+        </WithDocCompany>
       ),
     },
     {
@@ -178,9 +187,11 @@ export function QuoteTable({
         renderCard={(q) => (
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
-              <Text c="dimmed" ff="mono" size="xs">
-                {q.quoteNumber}
-              </Text>
+              <WithDocCompany docId={q.quoteNumber}>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {docNo(q.quoteNumber)}
+                </Text>
+              </WithDocCompany>
               <Text fw={600} size="sm" truncate>
                 {q.customerName}
               </Text>

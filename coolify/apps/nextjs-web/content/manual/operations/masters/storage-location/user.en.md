@@ -5,7 +5,7 @@ screenshots: [master-storage-location-01, master-storage-location-new-01, master
 ---
 This app is for registering **warehouses and storage areas where things are kept**, such as 資材倉庫A (material warehouse A), and the **shelves** inside them. The operation code is `MS0E`.
 
-Stock is kept separately down to "which shelf in which storage location it is on". In the stock transfer of [inventory management (在庫管理)](/manual/en/operations/production/product-inventory/user), you can move things between the places registered here.
+Stock is kept separately down to "which shelf in which storage location it is on". In the stock transfer of [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user), you can move things between the places registered here.
 
 > ⚠️ This app is in trial release. Depending on your environment, it may not be shown yet.
 
@@ -34,6 +34,17 @@ There are three apps about places, and they are easy to mix up. Please take care
 - **Shelf** … a section inside a storage location, for example A-1 or A-2. Stock is counted in units of "storage location + shelf".
 - **Floor map** … the drawing of a floor of the site. The drawing itself is registered in [site (拠点)](/manual/en/operations/masters/plant/user).
 - **Pin** … the mark placed on the drawing that shows where a storage location is.
+
+As a diagram:
+
+```mermaid
+flowchart TD
+  plant["Site"] --> loc["Storage location<br/>(e.g. material warehouse A)"]
+  loc --> shelf["Shelf<br/>(e.g. A-1)"]
+  plant --> map["Floor map<br/>(registered in the site app)"]
+  loc -.->|"place a pin"| map
+  shelf -.-> stock["Stock is counted per<br/>storage location + shelf"]
+```
 
 ## Before you start
 
@@ -109,14 +120,14 @@ Every field on the Storage location screen.
 
 | Field | What to enter |
 |-------|---------------|
-| [Plant / floor](#field-plant) | Which plant and floor the location is on |
+| [Site / floor](#field-plant) | Which site and floor the location is on |
 | [Code / name (ja, en)](#field-code) | The location's code and name |
 | [Sort order](#field-sort-order) | Order in the pick list |
 | [Active / notes](#field-active) | Turning it off removes it from storage pick lists |
 
-### Plant / floor [#field-plant]
+### Site / floor [#field-plant]
 
-Which plant and floor the location is on. **Stock is located down to this level.**
+Which site and floor the location is on. **Stock is located down to this level.**
 
 ### Code / name (ja, en) [#field-code]
 
@@ -133,7 +144,7 @@ Turning it off removes it from storage pick lists. Notes are free text.
 ## Questions and problems
 
 **Q. I see 「この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）」 (this storage location cannot be deleted because stock refers to it; empty it with a stock transfer, or deactivate it).**
-A. There is still stock in that place. Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/production/product-inventory/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. It is the same when you delete a shelf.
+A. There is still stock in that place. Either move the contents to another place with a stock transfer in [inventory management (在庫管理)](/manual/en/operations/inventory/inventory-management/user) to empty it, or turn off 「**有効**」 (active) on the edit screen to make it inactive. It is the same when you delete a shelf.
 
 **Q. If I delete a storage location, what happens to the shelves inside it?**
 A. They are deleted with it. The confirmation screen shows how many shelves will be deleted. This cannot be undone.
