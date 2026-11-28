@@ -220,7 +220,15 @@ A. You can edit your own answer within the window the form allows. Open it and p
 <!-- permissions:start -->
 ## Permissions required
 
-This screen needs no special permission — being signed in is enough.
+Opening this screen needs no special permission, but the operations below each need one.
+
+### Permissions per operation
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Create or import a form | Forms（`form`）— Create |
+| Change a form's settings, fields or sharing (also needs edit access to that form) | Forms（`form`）— Update |
+| Export responses to CSV / PDF | Forms（`form`）— Export |
 
 Permissions come through roles. If something is missing, ask an administrator.
 
