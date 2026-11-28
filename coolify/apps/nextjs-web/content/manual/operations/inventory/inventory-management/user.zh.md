@@ -190,7 +190,7 @@ flowchart TD
 
 ## 交易历史
 
-产品和材料的详情画面都有「取引履歴」（交易历史）标签，列出库存变动的记录（日期时间・种类・数量・参照・备注）。
+产品和材料的详情画面都有「取引履歴」（交易历史）标签，列出库存变动的记录（日期时间・种类・数量・单据编号・参照・备注）。点击「**伝票番号**」（单据编号）即可打开该变动的[出入库单](/manual/zh/operations/inventory/inventory-movements/user)（ST04）。没有单据的旧记录显示「—」。
 
 ![交易历史标签](../../../assets/screenshots/inventory-transactions-01.png)
 

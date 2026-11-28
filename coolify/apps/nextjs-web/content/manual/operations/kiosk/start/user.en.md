@@ -110,6 +110,11 @@ You are always asked for it when:
 - you have not used the card on that tablet for **48 hours or more**
 - **two weeks** have passed since you last entered it
 
+The text on the PIN screen tells you why you are being asked:
+
+- 「**この端末で 48 時間以上使われていない（または初めて使う）ため、本人確認が必要です。**」 (Identity verification is required because this card has not been used on this device for 48 hours or more (or this is its first use here).) … the first or second case above
+- 「**前回の PIN 確認から 2 週間たったため、本人確認が必要です。**」 (Identity verification is required because two weeks have passed since your last PIN check.) … only the third case above
+
 Otherwise, holding up the card is enough. **Five wrong tries in a row locks it for 15 minutes.** If you forget it, ask an administrator to reset it.
 
 ### Language [#field-language]

@@ -52,9 +52,7 @@ You are done when 「**保存しました**」 (Saved) and 「**共有端末の�
 
 > ⚠️ If you turn a switch off, **the app also disappears for people who have permission to use it.** You cannot use this to show an app to only some people.
 
-The apps you can choose in this list are these 3: 「**工程実行**」 (Step execution), 「**指示書スキャン**」 (Work order scan), and 「**作業場所の工程**」 (Work location steps). As more apps are added, they will appear in this list.
-
-> 💡 The tablets also have another app, 「**指示書一覧**」 (Work order list). It is not in this list, so it cannot be hidden here. It is always shown to people who have the permission.
+The apps you can choose in this list are these 4: 「**工程実行**」 (Step execution), 「**指示書スキャン**」 (Work order scan), 「**指示書一覧**」 (Work order list), and 「**作業場所の工程**」 (Work location steps). Any of them can be hidden from the tablets by turning its switch off. As more apps are added, they will appear in this list.
 
 Under each app name you will see text such as 「**権限コード: work_order**」 (Permission code: work_order). This tells you which permission a person needs in order to use that app. Even if the switch is on, the app will not appear for a person who does not have that permission.
 

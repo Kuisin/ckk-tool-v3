@@ -10430,7 +10430,7 @@
       },
       "unit": {
         "label": "Unit",
-        "summary": "The unit of measure, such as pcs, kg, or m. It starts as pcs and does not change when you select a material. A purchase order only accepts the unit registered in the material master, so choose that material's unit."
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in the unit registered in the material master. This field cannot be edited. When the request is converted to a purchase order, the material master's unit at that time is used."
       },
       "desiredDate": {
         "label": "Requested date",

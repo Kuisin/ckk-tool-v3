@@ -81,6 +81,8 @@ When you need a category of your own (for example, to treat certain transactions
 5. Press 「作成」 (Create).
 6. After creating it, add **at least one rate**. Without a rate the tax cannot be worked out.
 
+> 💡 When you edit the category that is currently the default, its 「**既定の税区分**」 (default tax category) switch cannot be turned off (the screen shows 「**既定の税区分は外せません。先に別の税区分を既定にしてください。**」 (The default tax category cannot be unset. Make another category the default first.)). To move the default, open the category you want as the new default and switch on 「既定の税区分」. The previous category stops being the default automatically.
+
 ## Setting the account codes for accounting export
 
 At the bottom of the add / edit screen for a category is the 「**会計連携**」 (Accounting export) section. It decides which codes this category's lines carry in the journal CSV exported from invoices.

@@ -190,7 +190,7 @@ A screen listing how much is currently in progress, by work order and by process
 
 ## Transaction history
 
-Both the product and the material detail screens have a "取引履歴" (transaction history) tab, listing the record of stock movements (date/time, type, quantity, reference, notes).
+Both the product and the material detail screens have a "取引履歴" (transaction history) tab, listing the record of stock movements (date/time, type, quantity, movement number, reference, notes). Press the 「**伝票番号**」 (Movement no.) to open that movement's [inventory movement](/manual/en/operations/inventory/inventory-movements/user) (ST04). Old records without a slip show 「—」.
 
 ![Transaction history tab](../../../assets/screenshots/inventory-transactions-01.png)
 

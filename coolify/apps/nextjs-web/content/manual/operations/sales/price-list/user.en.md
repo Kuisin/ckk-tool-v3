@@ -223,7 +223,7 @@ The [quote](/manual/en/operations/sales/quote/user) creation screen opens with t
 
 From「**…**」at the top right of the price list screen, you can also do the following.
 
-- **有効期間を変更 (change the valid period)** … choose one order type; its prices stay the same and only the period moves to a new one. On a row's「**…**」in the list this is called「**有効期間を変えて複製**」(duplicate with a different valid period), but it is the same operation (no new price list is made).
+- **有効期間を変更 (change the valid period)** … choose one order type; its prices stay the same and only the period moves to a new one. The same 「**有効期間を変更**」 is also on a row's「**…**」in the list (no new price list is made).
 - **別の顧客・製品へコピー (copy to another customer or product)** … copies the same price settings to another customer or product. The link to the estimate is dropped, and the copy is treated as typed in by hand.
 - **削除 (delete)** … deletes that price list. This cannot be undone. Quotes made from this price list can no longer fill in the unit price automatically.
 
@@ -269,7 +269,7 @@ Production, test, sample or other. **The same customer and product can hold a di
 
 ### Price source (price estimate) [#field-estimate]
 
-The price estimate the base price comes from. **Only confirmed estimates can be chosen.** Cost-only estimates cannot be chosen. Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
+The price estimate the base price comes from. **Only confirmed estimates linked to this product can be chosen.** Estimates with no product, or for another product, cannot be chosen. Cost-only estimates cannot be chosen either. Choosing one copies its quoted unit price into the base price and locks that estimate as registered, so past prices cannot change afterwards. Leave it unset to enter the price by hand.
 
 ### Base price [#field-base-price]
 

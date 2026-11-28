@@ -14,7 +14,8 @@ This app only creates an **identity**. **What that client can read** is decided 
 - Issue a **token** (the key used to connect) to a client. The raw value is only ever shown once, right after issuing it.
 - **Activate** a client so it can actually connect.
 - **Revoke** a token that is no longer needed, or **disable** a client entirely.
-- Set the allowed **IP range** when creating a client.
+- **Revoke** a client you are done with, so it can never be used again.
+- Change the allowed **IP range** and **expiry date** from 「**編集**」 (Edit) in the list.
 - Check each client's **last used time**, **number of active tokens**, and **assigned roles**.
 
 ## Words used on this page
@@ -47,13 +48,13 @@ Press **API クライアント** (API Clients) inside 「システム」 (System
 
 When you open the app, the registered clients are listed.
 
-- **Name** … the client's name and, underneath it, the name of the system account behind it.
+- **Name** … the client's name and, underneath it, the name of the system account behind it. Below that are the 「**許可 IP 範囲**」 (Allowed IP ranges) and 「**有効期限**」 (Expires) (when there is no limit, they show 「**IP 制限なし**」 (No IP restriction) and 「**無期限**」 (No end date)).
 - **Status** … one of three: **Revoked** (red) / **Enabled** (green) / **Disabled** (gray). A newly created client shows "Disabled".
 - **Roles** … the roles assigned to the client. If none are assigned, it shows an orange 「**ロール未割当**」 (No roles), and the client can read nothing.
 - **Tokens** … the number of active tokens, shown as, for example, 「**1 / 2**」 against the cap of two.
 - **Last used** … the date and time of the client's last connection. If it has never been used, it shows 「**未使用**」 (Never used).
 
-On the right of each row are the 「**トークンを発行**」 (Issue token) and 「**有効化 / 無効化**」 (Enable / Disable) buttons.
+On the right of each row are the 「**トークンを発行**」 (Issue token), 「**有効化 / 無効化**」 (Enable / Disable), 「**編集**」 (Edit) and 「**失効**」 (Revoke) buttons. For a revoked client, 「編集」 and 「失効」 cannot be pressed.
 
 If any client has an issued token, a separate **token list** appears below the client list. The raw token value is never shown there — only the last four characters, as `••••••ab3x`.
 
@@ -67,7 +68,31 @@ If any client has an issued token, a separate **token list** appears below the c
 
 The client starts **disabled**, with no token. Activating it and issuing a token each need separate approval.
 
-> 💡 The allowed IP range can currently only be set **when creating** the client. Ask your system administrator if you need to change it afterward.
+## Changing the allowed IP ranges and expiry date
+
+1. In the list, press 「**編集**」 (Edit) for the client.
+2. On the 「**API クライアントを編集**」 (Edit API client) screen, change the 「**説明**」 (Description), 「**許可 IP 範囲**」 (Allowed IP ranges) and 「**有効期限**」 (Expires). Leave the expiry empty for no end date.
+3. Press 「**保存**」 (Save).
+
+> ⚠️ On an **enabled client** you can only **narrow** the allowed IP ranges and expiry (limit the ranges, bring the expiry forward). A change that **widens** them (adding a range, removing the restriction, pushing the expiry later, removing the expiry) is not saved, and the screen shows 「**有効なクライアントの許可 IP 範囲・有効期限は広げられません。無効化してから変更し、承認を受けて再有効化してください。**」 (The allowed IP ranges and expiry of an enabled client cannot be widened. Disable it, make the change, then re-enable it with approval.).
+
+To widen them, do it in this order:
+
+1. Press 「**無効化**」 (Disable) in the list (no approval needed).
+2. Change the allowed IP ranges or expiry with 「**編集**」 (Edit) and save.
+3. Get approval for 「**API クライアントの有効化**」 (Activate API client) in [Privileged Access](/manual/en/operations/system/privileged-access/user) (`SY0G`), then press 「**有効化**」 (Enable).
+
+## Revoking a client
+
+This makes a client you no longer use unusable for good.
+
+1. In the list, press 「**失効**」 (Revoke) for the client.
+2. On the confirmation screen, enter a 「**理由**」 (Reason) if you want (optional).
+3. Press 「**失効**」 (Revoke).
+
+> ⚠️ Revoking **cannot be undone**. All of the client's active tokens are revoked too. If you only want to stop it for a while, use 「**無効化**」 (Disable) instead.
+
+Revoking needs no approval. A revoked client's status becomes 「**失効済み**」 (Revoked).
 
 ## Activating a client
 
@@ -138,7 +163,7 @@ A. The cap is two active tokens per client. Revoke an unused old token first, th
 A. Check whether roles are assigned. A client marked 「ロール未割当」 (No roles) can read nothing, even with a valid identity. Assign roles in [User Management](/manual/en/operations/system/user-management/user). If you set an allowed IP range, also check that the connecting IP falls inside it.
 
 **Q. I want to change the allowed IP range later.**
-A. The current screen only lets you set it when creating the client. Please ask your system administrator.
+A. You can change it from 「**編集**」 (Edit) in the list. To widen the range on an enabled client, first 「無効化」 (Disable) it, make the change, then get approval and 「有効化」 (Enable) it again (see "Changing the allowed IP ranges and expiry date" above).
 
 ## Outbound webhooks
 

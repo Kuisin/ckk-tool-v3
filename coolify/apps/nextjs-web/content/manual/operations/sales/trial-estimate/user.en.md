@@ -45,7 +45,7 @@ When you open the app, you see a list of the estimates made so far.
 - **代表見積単価 (representative estimated unit price)** … the selling price per piece of that estimate. On a row with the orange「原価試算」(cost estimate) badge, the「原価合計」(total cost) is shown instead of a selling price (see "Estimating cost only" below).
 - Type an estimate number, a name, or a customer name in the search box at the top to narrow down the list. You can also narrow it down with「状態」(status) and「工具種」(tool type) on the right.
 - Click a row to open the detail screen for that estimate.
-- Press「**設定**」(settings) at the top right to open the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings) (SY02), which decides how the price is calculated. Only people with the system administration permission can use it.
+- Press「**設定**」(settings) at the top right to open the [Price estimate engine](/manual/en/operations/sales/trial-estimate/settings) (SY02), which decides how the price is calculated. This button is shown only to people with the system administration permission.
 
 ## Making an estimate
 
@@ -161,7 +161,7 @@ People with the「**価格試算の原価**」(price estimate cost) permission c
 
 - A cost estimate shows only the「**原価合計**」(total cost). No estimated unit price, gross margin or per-quantity prices are shown.
 - Cost estimates appear in the list and detail only for people with this permission.
-- In the list and the detail screen you can tell them apart by the orange「**原価試算**」(cost estimate) badge. In the list, the「代表見積単価」column shows the「原価合計」(total cost).
+- In the list and the detail screen you can tell them apart by the orange「**原価試算**」(cost estimate) badge. In the list, the「代表見積単価」column shows the「原価合計」(total cost). On a smartphone, too, a cost-estimate row in the list shows the「原価試算」badge and the「**原価合計**」(total cost) amount.
 - A cost estimate can also be confirmed, but even when confirmed it cannot be chosen as a price list base price. When you need a selling price, open the cost estimate and press「**売価試算を作成**」(create selling-price estimate) from「**…**」at the top right: an input screen for a selling-price estimate opens with the same inputs (the original cost estimate stays as it is).
 
 ## Input fields

@@ -190,7 +190,7 @@ flowchart TD
 
 ## 取引履歴
 
-製品・素材どちらの詳細画面にも「取引履歴」タブがあり、在庫が動いた記録（日時・種別・数量・参照・備考）が並びます。
+製品・素材どちらの詳細画面にも「取引履歴」タブがあり、在庫が動いた記録（日時・種別・数量・伝票番号・参照・備考）が並びます。「**伝票番号**」を押すと、その動きの[入出庫伝票](/manual/ja/operations/inventory/inventory-movements/user)（ST04）が開きます。伝票の無い古い記録では「—」と出ます。
 
 ![取引履歴タブ](../../../assets/screenshots/inventory-transactions-01.png)
 

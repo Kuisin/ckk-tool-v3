@@ -58,6 +58,8 @@ The change **reaches everyone's screen straight away**. Press it again and you c
 
 > ⚠️ If the change fails, the switch moves back to its original position by itself and a red 「**エラー**」 (Error) message appears. In that case nothing has been changed.
 
+For an app that belongs to a feature still under development, the switch in that environment's column is grayed out and shows a lock icon and 「**固定**」 (Locked). You cannot press this switch, so the app cannot be turned on in that environment. Hovering over it shows 「**開発中の機能のため、この環境ではコードで非表示に固定されています（dev-features.json）。公開するには PR とデプロイが必要です**」 (This feature is under development, so it is fixed as hidden in this environment by the code (dev-features.json). Publishing it needs a PR and a deploy). At the moment the 「main（本番）」 column of 「取引先ポータル」 (Partner portal) and 「API クライアント」 (API clients) is in this state.
+
 ## The difference between the two switches
 
 Even for the same app, the practice screen and the real screen have separate switches. They start out differently, so please note the following.
@@ -123,7 +125,7 @@ A. Press it again to turn it back on and it returns immediately. No data has bee
 A. You can check in the [Activity Log](/manual/en/operations/system/activity-log/user). Narrow 「**対象**」 (Target) to 「**アプリ管理**」 (App Management) and only the switch changes are listed.
 
 **Q. I turned on the 「main（本番）」 switch on the real screen, but the app does not appear.**
-A. 「取引先ポータル」 (Partner portal) and 「API クライアント」 (API clients) are apps that are still being prepared. For now they can only be used on the practice screen, and they do not appear on the real screen even if you turn the switch on.
+A. 「取引先ポータル」 (Partner portal) and 「API クライアント」 (API clients) are apps that are still being prepared. For now they can only be used on the practice screen. Their 「main（本番）」 switch is 「**固定**」 (Locked) and cannot be turned on.
 
 **Q. I want to hide an app just during maintenance.**
 A. Please turn off that app's switch. When the work is finished, turn it back on to resume. The data stays as it was.

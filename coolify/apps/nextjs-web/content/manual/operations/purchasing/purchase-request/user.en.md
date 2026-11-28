@@ -74,7 +74,7 @@ When you open the app, you see a list of the purchase requests made so far.
 3. Click the 「**素材**」 (material) box on the line item, search by material code or name, and choose one.
 4. Choose the site that will receive it in 「**入荷先拠点**」 (receiving site). You can also leave it blank and still save.
 5. Enter how many pieces you need in 「**数量**」 (quantity).
-6. Check 「**単位**」 (unit). It starts with 「本」 (pieces).
+6. Check 「**単位**」 (unit). When you choose the material, the unit from the material master is filled in automatically and cannot be changed.
 7. Enter the date you want the material by in 「**希望納期**」 (requested delivery date). You may leave it blank.
 8. To add another material, press 「**明細を追加**」 (Add line item) and repeat steps 3 to 7.
 9. Finally, press 「**保存**」 (Save).
@@ -128,7 +128,7 @@ An approved request becomes a purchase order, which is what you send to the supp
 
 ![Confirm conversion to purchase order screen](../../../assets/screenshots/purchase-request-convert-01.png)
 
-A [material purchase order](/manual/en/operations/purchasing/purchase-order/user) is created as a draft with the same line items, and you move to its screen. The request becomes 「**発注済**」 (ordered) and shows a link to the new purchase order number.
+A [material purchase order](/manual/en/operations/purchasing/purchase-order/user) is created as a draft with the same line items, and you move to its screen. The purchase order uses the material master's unit as of the conversion. The request becomes 「**発注済**」 (ordered) and shows a link to the new purchase order number.
 
 > 💡 On the new purchase order, **every unit price is 0 yen**. Please open 「編集」 (Edit) on the purchase order, enter the prices, and then request approval for the purchase order.
 
@@ -153,7 +153,7 @@ Every field on the purchase request screen. The **?** next to a field in the app
 | [Material](#field-material) | Required | The material you want |
 | [Receiving site](#field-plant) | Optional | Where it will be received |
 | [Quantity](#field-quantity) | Required | How much you want |
-| [Unit](#field-unit) | Required | Pieces, kg and so on |
+| [Unit](#field-unit) | Automatic | The material master's unit (pieces, kg and so on) |
 | [Requested date](#field-desired-date) | Optional | When you need it by |
 | [Line notes](#field-item-notes) | Optional | Notes for that material only |
 
@@ -179,7 +179,7 @@ How much you want. The same quantity carries over to the purchase order.
 
 ### Unit [#field-unit]
 
-Pieces, kg, m and so on. It starts as 「本」 (pieces). Choosing the material does not change it. A purchase order can only use the unit registered in the material master, so pick the unit that matches the material.
+Pieces, kg, m and so on. When you choose the material, the unit registered for it in the material master is filled in automatically (the field's note says 「**素材マスタの単位で登録します**」 (Registered in the material's unit)). The field is read-only and cannot be changed by hand. If you choose a different material, the unit is filled in again.
 
 ### Requested date [#field-desired-date]
 

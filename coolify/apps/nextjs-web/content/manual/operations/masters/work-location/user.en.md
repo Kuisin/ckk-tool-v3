@@ -159,7 +159,7 @@ When a step is started or resumed from a shared floor tablet, the tablet's **def
 
 On the lines of an [order acceptance](/manual/en/operations/sales/order-acceptance/user#field-shipping-work-location), you can choose the place where shipping work is done as 「**出荷作業場所**」 (shipping work location). To see, for each work location, which steps are waiting on a given day, use the [work location board](/manual/en/operations/production/work-location-board/user).
 
-Usage counts appear in the 「**計画 / 実績**」 (plans / actuals) column of the work location table. A place where either count is not 0 is still in use. A place is also treated as in use when it is the default work location of a shared device, the shipping work location of an order acceptance, or an allowed work location of a process step. Places in use cannot be deleted — deactivate them instead.
+Usage counts appear in the 「**計画 / 実績**」 (plans / actuals) column of the work location table. A place where either count is not 0 is still in use. A place is also treated as in use when it is the default work location of a shared device, the shipping work location of an order acceptance or of an order line, or an allowed work location of a process step. Places in use cannot be deleted — deactivate them instead. When you try to delete one, the confirmation screen lists every place it is used and how many times.
 
 ## Input fields
 
@@ -213,8 +213,8 @@ The maker of the machine model (optional).
 **Q. I want to add a machine, but I cannot find the 「場所を追加」 (Add location) button.**
 A. This button is inside a group card. When there is no group at all yet, make one first with 「**グループ追加**」 (Add group).
 
-**Q. I see 「この場所は 作業計画 3 件 / 作業実績 1 件 から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans / 1 work actual; it cannot be deleted, please consider deactivating it).**
-A. That machine is in use in the work plans or work actuals of a work order. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
+**Q. I see 「この場所は 作業計画 3 件 / 注文明細の出荷作業場所 1 件 から参照されています（削除できません — 無効化をご検討ください）。」 (this location is referred to by 3 work plans / 1 order-line shipping work location; it cannot be deleted, please consider deactivating it).**
+A. That machine is in use in the places listed in the message (work plans, work actuals, a shared device's default, the shipping work location of an order acceptance or order line, or a process step's allowed work locations). Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive. Once it is inactive it can no longer be chosen in plans made from now on.
 
 **Q. I see 「使用中の作業場所は削除できません（作業計画 2 件 / 共有端末の既定 1 台）」 (a work location in use cannot be deleted; 2 work plans / default of 1 shared device).**
 A. The place you tried to delete (or, when deleting a group, a machine inside it) is still used somewhere. The parentheses show where and how many. Do not delete it. Turn off 「**有効**」 (active) on the edit screen to make it inactive.

@@ -97,12 +97,18 @@ Issue 10 codes from **System → Partner portal**. Each works once.
 
 A URL that shows that one document only. **There are two kinds.**
 
-> **Right now the only way to mint one from the screens is the quote-issue email.**
-> When you issue a quote with 「発行後に顧客へメール送付する」 (Email it to the
-> customer once issued) ticked, a **verified** link bound to the recipient's
-> address is created and emailed (it expires at the end of the quote's valid-until
-> date, 180 days at most). Document detail screens do not yet have the
-> "Portal sharing" panel.
+> **There are two places to mint one from the screens.**
+> - The "Portal sharing" (「ポータル共有」) tab on the detail screen of quotes,
+>   order acceptances, delivery notes and invoices. It appears only when the
+>   portal is enabled in that environment, the viewer has the create permission
+>   for `Partner portal administration`, and the document is in a state that may
+>   be shown outside (a quote issued and not expired; an order acceptance
+>   approved / confirmed / archived; a delivery note issued / delivered; an
+>   invoice issued / sent / paid).
+> - Issuing a quote with 「発行後に顧客へメール送付する」 (Email it to the
+>   customer once issued) ticked. A **verified** link bound to the recipient's
+>   address is created and emailed (it expires at the end of the quote's
+>   valid-until date, 180 days at most).
 
 | | How it opens | If forwarded |
 |---|---|---|
@@ -115,8 +121,12 @@ makes a forwarded link worthless to anyone but the intended reader.
 
 Link-only **needs approval** (Privileged access `SY0G`).
 
-Both **must have an expiry** (30 days by default, 180 maximum). Links bound to an
-account can be revoked from "Issued links" on the account's detail screen.
+Both **must have an expiry** (30 days by default, 180 maximum). **Every** issued
+link can be revoked from "Document links" (「書類リンク」, the latest 100) below
+the SY0H list — including links not bound to an account (those issued from
+"Portal sharing" with only a recipient address, and those from the quote email).
+They can also be revoked from the document's "Portal sharing" tab and from
+"Issued links" on an account's detail screen.
 
 ## Who can administer it
 

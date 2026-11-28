@@ -107,12 +107,13 @@ Put the file in the import folder on the server and it is imported automatically
 1. Press「**手入力で新規**」(new, typed in) at the top right of the list screen.
 2. Choose the「**顧客**」(customer). This one is required. Choosing it fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
 3. Fill in「**顧客注文書番号**」(customer order form number),「**注文日**」(order date) and so on, as far as you know them.
-4. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
-5. To set where it goes, press「**配送**」(delivery) on that row to open it.
-6. Choose the「**配送方法**」(delivery method) — normal delivery or direct to user. With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
-7. If they are decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned site) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
-8. To add another row, press「**明細を追加**」(add line item).
-9. Press「**下書きを作成**」(create draft).
+4. If the customer provides their own delivery note, tick「**顧客提供の納品書**」(customer-supplied delivery note) (optional; you can also set it later when editing the draft).
+5. On the line item row, enter「**製品**」(product),「**種別**」(type) and「**数量**」(quantity). You can enter the unit price later.
+6. To set where it goes, press「**配送**」(delivery) on that row to open it.
+7. Choose the「**配送方法**」(delivery method) — normal delivery or direct to user. With direct to user, the「**エンドユーザー**」(end user) must also be chosen.
+8. If they are decided, also choose「**出荷先**」(ship-to),「**担当拠点**」(assigned site) and「**出荷作業場所**」(shipping work location). All of them are optional and can be entered later.
+9. To add another row, press「**明細を追加**」(add line item).
+10. Press「**下書きを作成**」(create draft).
 
 ![Order acceptance manual entry screen](../../../assets/screenshots/order-acceptance-new-01.png)
 

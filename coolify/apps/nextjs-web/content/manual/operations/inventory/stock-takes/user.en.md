@@ -58,7 +58,7 @@ Pressing 「**保存**」(Save) keeps what has been entered so far. **The first 
 Once at least one line is counted, you can press 「**承認依頼**」(Request approval) on the card at the top of the detail screen. This page calls that "submitting".
 
 - If the "棚卸" (Stock Take) flow in Approval Settings (MS0B) has **1 or more steps**, this becomes an approval request. The stock take's status stays "記入中" (Counting), and the approval status becomes 「**承認依頼中**」(pending approval).
-- If it has **no steps**, submitting confirms it right away. The same happens when 「**承認を使う**」(use approval) is turned off for stock takes in Approval Settings.
+- If it has **no steps**, submitting confirms it right away. The same happens when 「**承認を使う**」(use approval) is turned off for stock takes in Approval Settings. In these cases the screen shows 「**承認なしで承認済にしました**」 (Approved without an approval flow).
 - If 「承認を使う」 is on but there are no steps, you cannot submit (a message says the stock take approval flow is not set up).
 
 Once submitted, you cannot resume entering counts while it is awaiting approval (the entry grid becomes uneditable while pending).

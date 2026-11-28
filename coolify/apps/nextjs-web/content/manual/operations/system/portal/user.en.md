@@ -32,6 +32,8 @@ The list shows, for each account, 「取引先」 (Business partner), 「担当�
 - **Status** … 「有効」 (Enabled) or 「無効」 (Disabled).
 - **Actions** … the buttons 「有効にする」 (Enable), 「無効にする」 (Disable), 「案内」 (Guide) and 「バックアップコード」 (Backup code).
 
+Below the list is 「**書類リンク**」 (Document links). It shows the issued document links, newest first, up to 100 — including links not tied to any account (those issued from a document's 「ポータル共有」 (Portal sharing) or by emailing a quote).
+
 Press the contact person's name to open their detail screen. There you can check three things: 「**共有範囲**」 (Sharing scope), 「**発行済みのリンク**」 (Issued links) and 「**閲覧記録**」 (View log).
 
 ## Creating an account
@@ -84,14 +86,42 @@ You can also produce it from the detail screen: 「**この方の案内 PDF**」
 
 ## Showing a single document only (document link)
 
-A way to show just one document without creating an account. Currently, when you issue a [quote](/manual/en/operations/sales/quote/user) with 「**発行後に顧客へメール送付する**」 (Email it to the customer once issued) ticked, a document link is created and emailed to the customer. This link is verified.
+A way to show just one document without creating an account. Document links are created in two places:
+
+- **The 「ポータル共有」 (Portal sharing) tab on a document's detail screen** … on the detail screens of quotes, order acceptances, delivery notes and invoices (see "Issuing a link from a document's detail screen" below).
+- **Emailing a quote** … when you issue a [quote](/manual/en/operations/sales/quote/user) with 「**発行後に顧客へメール送付する**」 (Email it to the customer once issued) ticked, a verified document link is created and emailed to the customer.
 
 | Kind | What happens |
 |---|---|
 | **本人確認あり** (Verified) | A verification code is sent to the registered address. Even if the link is forwarded, nobody but that person can open it. |
 | **リンクのみ** (Link-only) | **Anyone who knows the URL can open it.** Be careful about forwarding. Issuing it requires privileged-access approval. |
 
-Links tied to a portal account are listed under 「**発行済みのリンク**」 (Issued links) on that person's detail screen. To stop one, press 「**失効**」 (Revoke) on its row. When you revoke a link, **any session opened through that link ends too**.
+### Issuing a link from a document's detail screen
+
+The 「**ポータル共有**」 (Portal sharing) tab appears only when all three of these are true:
+
+- The partner portal can be used in that environment (currently only the test environment)
+- The person viewing has the **create** permission for "Partner portal administration"
+- The document is in a state that may be shown outside the company — a quote is 「**発行済**」 (Issued) (not expired), an order acceptance is 「**承認済**」 (Approved), 「**確定**」 (Confirmed) or 「**アーカイブ**」 (Archived), a delivery note is 「**発行済**」 (Issued) or 「**納品済**」 (Delivered), and an invoice is 「**発行済**」 (Issued), 「**送付済**」 (Sent) or 「**支払済**」 (Paid). It does not appear for drafts and the like.
+
+1. On the document's detail screen, open the 「**ポータル共有**」 (Portal sharing) tab.
+2. Choose 「**本人確認あり（推奨）**」 (With identity check (recommended)) or 「**リンクのみ**」 (Link-only). 「リンクのみ」 can be chosen only while you have privileged-access (SY0G) approval.
+3. For a verified link, enter the 「**送信先メールアドレス**」 (Recipient email address). The verification code goes only to this address.
+4. Enter the 「**有効期間（日）**」 (Valid period (days)).
+5. Press 「**リンクを発行**」 (Issue a link).
+6. Copy the URL shown with 「**発行しました。この URL をお渡しください。**」 (Issued. Hand over this URL.) and give it to the recipient.
+
+Issued links are listed under 「**発行済みのリンク**」 (Issued links) on the same tab.
+
+### Revoking a link
+
+You can 「**失効**」 (Revoke) a link from any of these places:
+
+- 「**書類リンク**」 (Document links) below the SY0H list (every link appears here, including those not tied to an account)
+- 「**発行済みのリンク**」 (Issued links) on the 「**ポータル共有**」 (Portal sharing) tab of the document's detail screen
+- 「**発行済みのリンク**」 (Issued links) on a portal account's detail screen (only links tied to that person)
+
+When you revoke a link, **any session opened through that link ends too**. A revoked link is marked 「**失効済み**」 (Revoked).
 
 ## Backup codes
 

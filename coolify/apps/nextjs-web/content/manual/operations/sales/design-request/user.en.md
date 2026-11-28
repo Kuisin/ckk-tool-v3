@@ -178,7 +178,7 @@ While it is 未着手 (not started) or 進行中 (in progress), you can change t
 
 1. Open the「**ファイル**」(files) tab on the request screen.
 2. Press「**アップロード**」(upload) to the right of「**作業ファイル**」(working files).
-3. Choose the file (you can pick PDF, images (PNG, JPEG, WebP, HEIC), Excel (.xlsx) and CSV; up to 20MB each).
+3. Choose the file (any file type is accepted, including CAD and 3D model files; up to 20MB each).
 4. If you like, write a note in「**ラベル（任意）**」(label, optional).
 5. Press「**アップロード**」(upload).
 
@@ -206,6 +206,8 @@ You can only attach files **between approval and completion** (未着手 and 進
 How versions are counted (one registration = one version; versions are per product and ordering customer) is covered on the [Drawing](/manual/en/operations/production/design-file/user) page.
 
 The completion date is recorded, and the requester is notified — as is the sales rep on the quote, if it was raised at quote time. Completing the request does not switch the product's newest drawing. It switches when the version is **confirmed** in [Drawing](/manual/en/operations/production/design-file/user) (a draft version is not used by work orders or the product master).
+
+In the request's「手続き状況」(Progress) panel, under「次の書類へ」(To), pressing the product name under「**製品マスタ**」(product master) opens that product's [product master](/manual/en/operations/masters/product/user) (where the newest drawing is applied). To go to the Drawing screen, use「**設計図で管理**」(manage in Drawing) on the「ファイル」(Files) tab.
 
 If a correction is needed after it is completed, press「**差し戻し（作業）**」(send back — work) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress), the completion date is cleared, and the assignee is notified. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
 

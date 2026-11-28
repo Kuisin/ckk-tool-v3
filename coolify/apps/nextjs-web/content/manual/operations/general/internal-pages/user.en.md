@@ -12,6 +12,7 @@ An app for **writing and sharing documents inside the company** — procedures, 
 - Every rewrite leaves a version (revision), and you can compare it with earlier versions.
 - Before publishing, the document can be reviewed with comments attached line by line.
 - A document can be set so that "publishing needs approval".
+- Put away a document you have finished with by archiving it.
 - Use it to gather in one place things that used to be handed out on paper, such as shipping and inspection procedures.
 
 ## Words used on this page
@@ -24,7 +25,7 @@ An app for **writing and sharing documents inside the company** — procedures, 
 ## Before you start
 
 - Creating a document needs the Create permission (without it, the 「文書を作る」 (Create document) button does not appear).
-- The list shows only documents you can read. It shows 「タイトル」 (Title), 「状態」 (Status: Draft / Pending publish approval / Published), 「公開版」 (Published version), 「未解決」 (Unresolved — the number of comments not yet resolved) and 「更新日」 (Updated).
+- The list shows only documents you can read. It shows 「タイトル」 (Title), 「状態」 (Status: Draft / Pending publish approval / Published / Archived), 「公開版」 (Published version), 「未解決」 (Unresolved — the number of comments not yet resolved) and 「更新日」 (Updated).
 - If publishing is to use approval, set up the steps in [Approval settings](/manual/en/operations/masters/approval-setting/user) beforehand.
 
 ## Creating a document
@@ -107,6 +108,20 @@ Press 「**⋯**」 at the top right of the document screen and choose 「**履�
 - On the 「**差分**」 (Diff) tab, pick any two versions under 「比較元」 (Compare from) and 「比較先」 (Compare to). Only the surroundings of the changed lines are shown.
 - To go back to earlier content, press 「**復元**」 (Restore) on that version in the version list. The history is not rewound: **a new version is created with that content**, so you return by moving forward.
 
+## Archiving a document (putting it away)
+
+A document you have finished with can be put away by making it 「**アーカイブ**」 (Archived). The published version, history, comments and shares all stay as they are, and people it is shared with can still read it.
+
+1. Press 「**⋯**」 at the top right of the document screen.
+2. Choose 「**アーカイブする**」 (Archive).
+3. On the confirmation screen, press 「**アーカイブする**」 (Archive).
+
+- Only people who can edit the document can do this (people with the "update" permission for internal documents who are its creator or in a share that allows editing).
+- It cannot be pressed while publishing is pending approval (the screen shows 「**公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）**」 (Cannot archive while publishing is pending approval (wait for the decision, or send it back first))).
+- While it is archived, the publishing card (「公開する」 (Publish), 「公開を申請」 (Request publishing) and so on) does not appear. Unarchive it first if you want to publish.
+
+To bring it back, choose 「**アーカイブを解除**」 (Unarchive) from the same 「**⋯**」, then press 「**アーカイブを解除**」 on the confirmation screen. If the published version is the newest version, it returns to 「**公開中**」 (Published); if there is no published version, or there are edits made after publishing, it returns to 「**下書き**」 (Draft).
+
 ## Questions and problems
 
 **Q. I saved it, but other people cannot read it.**
@@ -119,7 +134,7 @@ A. That is how it is designed. Saving only adds a version; the published version
 A. No. Comments belong to the review screen only.
 
 **Q. I want to delete a document.**
-A. For now there is no screen operation to delete or archive a document. If you no longer want people to read it, remove its shares on the 「共有」 (Sharing) tab (only the creator and administrators can read it then).
+A. There is no screen operation to delete a document. A document you have finished with can be put away with 「**アーカイブする**」 (Archive) under 「**⋯**」 (see "Archiving a document" above). Archiving does not stop people it is shared with from reading it, though. If you no longer want people to read it, remove its shares on the 「共有」 (Sharing) tab (only the creator and administrators can read it then).
 
 **Q. When I tried to edit the body, it said the body cannot be edited while a publish approval is pending.**
 A. The body cannot be changed while publishing is waiting for approval. Wait for the decision, or ask an approver to send it back, then edit it.
