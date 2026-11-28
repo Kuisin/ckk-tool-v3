@@ -4917,7 +4917,9 @@
       "revokingTheLinkClosesTheSession": "失効させると、そのリンクで開いているセッションも終わります。",
       "viewingHistory": "閲覧記録",
       "nothingHasBeenViewedYet": "まだ何も閲覧されていません。",
-      "ipAddress": "IP アドレス"
+      "ipAddress": "IP アドレス",
+      "documentLinks": "書類リンク",
+      "documentLinksIntro": "アカウントに紐づかないリンク（書類の「ポータル共有」や見積書のメール送付で発行したもの）も含め、直近 100 件を表示します。"
     },
     "privileged": {
       "approveTab": "承認する",

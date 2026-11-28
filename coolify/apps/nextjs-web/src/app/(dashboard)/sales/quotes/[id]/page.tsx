@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { quoteDisplayStatus } from "@/components/sales/quotes/model";
 import { QuoteDetail } from "@/components/sales/quotes/QuoteDetail";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -8,6 +9,7 @@ import { docKeyFromParam } from "@/lib/doc-param";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { formatDocPageTitle } from "@/lib/page-title";
+import { loadPortalShare } from "@/lib/portal-share";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequestsForQuote } from "../../design-requests/data";
 import { fetchOrderAcceptancesForQuote } from "../../order-acceptances/data";
@@ -69,6 +71,12 @@ export default async function SalesQuotesDetailPage({
     fetchOrderAcceptancesForQuote(key),
   ]);
   if (!quote) notFound();
+  // 取引先ポータルの書類リンク（機能・権限・状態が揃ったときだけ出す）。
+  const portalShare = await loadPortalShare(
+    "quotes",
+    key.docRef,
+    quoteDisplayStatus(quote),
+  );
 
   // 保管済み PDF のメタ（発行済みのみ。未生成なら null → 初回表示時に生成）。
   const pdfMeta = isIssued(quote.status)
@@ -82,6 +90,7 @@ export default async function SalesQuotesDetailPage({
       designRequests={designRequests}
       memos={memos}
       pdfMeta={pdfMeta}
+      portalShare={portalShare}
       quote={quote}
       relatedEntries={relatedEntries}
     />

@@ -4917,7 +4917,9 @@
       "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
       "viewingHistory": "Viewing history",
       "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
-      "ipAddress": "IP address"
+      "ipAddress": "IP address",
+      "documentLinks": "Document links",
+      "documentLinksIntro": "Shows the latest 100 links, including those not tied to an account (issued from a document's Portal sharing or by emailing a quote)."
     },
     "privileged": {
       "approveTab": "Approve",

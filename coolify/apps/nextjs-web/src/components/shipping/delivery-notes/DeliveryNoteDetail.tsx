@@ -43,6 +43,7 @@ import {
 import type { InvoiceLink } from "@/components/billing/invoices/model";
 import { taxBucketLabel } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { PortalShareCard } from "@/components/settings/portal/PortalShareCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -70,6 +71,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { docNo } from "@/lib/doc-number";
 import { downloadFile } from "@/lib/download";
 import { formatMoney } from "@/lib/format";
+import type { PortalShareProps } from "@/lib/portal-share";
 import type { ActionResult } from "@/lib/server-action";
 import { statusLabel } from "@/lib/status-map";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
@@ -78,6 +80,7 @@ import { type DeliveryNote, deliveryNoteTotals, isEditable } from "./model";
 const BASE_PATH = "/shipping/delivery-notes";
 
 export function DeliveryNoteDetail({
+  portalShare = null,
   note,
   pdfMeta,
   auditEntries,
@@ -90,6 +93,8 @@ export function DeliveryNoteDetail({
   auditEntries: AuditEntry[];
   /** この納品書を請求した請求書（手続き状況の「次の書類へ」）。 */
   invoices?: InvoiceLink[];
+  /** ポータル共有（取引先ポータルの書類リンク）。出せないときは null。 */
+  portalShare?: PortalShareProps | null;
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
@@ -545,6 +550,11 @@ export function DeliveryNoteDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          {portalShare && (
+            <Tabs.Tab value="portal">
+              {tr("settings.portal.portalSharing")}
+            </Tabs.Tab>
+          )}
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
@@ -582,6 +592,12 @@ export function DeliveryNoteDetail({
             previewSrc={canViewPdf ? pdfUrl(`&v=${pdfNonce}`) : undefined}
           />
         </Tabs.Panel>
+
+        {portalShare && (
+          <Tabs.Panel pt="md" value="portal">
+            <PortalShareCard {...portalShare} />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />

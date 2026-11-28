@@ -4917,7 +4917,9 @@
       "revokingTheLinkClosesTheSession": "失效后，使用该链接打开的会话也会结束。",
       "viewingHistory": "浏览记录",
       "nothingHasBeenViewedYet": "尚未浏览任何内容。",
-      "ipAddress": "IP 地址"
+      "ipAddress": "IP 地址",
+      "documentLinks": "单据链接",
+      "documentLinksIntro": "显示最近 100 条链接，包括未关联账号的链接（从单据的“门户共享”或报价单邮件发送中发行的链接）。"
     },
     "privileged": {
       "approveTab": "批准",
