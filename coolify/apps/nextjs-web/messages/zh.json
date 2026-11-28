@@ -6976,7 +6976,8 @@
       "accountCodeHint": "仅限半角字母、数字、- 和 _，最多 16 位（可留空）",
       "taxCode": "税代码",
       "salesAccountCode": "销售收入 科目代码",
-      "taxAccountCode": "暂收消费税 科目代码"
+      "taxAccountCode": "暂收消费税 科目代码",
+      "cannotUnsetDefault": "无法取消默认税种。请先将其他税种设为默认。"
     },
     "chargeItems": {
       "pageTitle": "费用项目",

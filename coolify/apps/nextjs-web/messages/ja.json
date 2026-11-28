@@ -6976,7 +6976,8 @@
       "accountCodeHint": "半角英数字・16 桁まで（空欄可）",
       "taxCode": "消費税コード",
       "salesAccountCode": "売上高 科目コード",
-      "taxAccountCode": "仮受消費税 科目コード"
+      "taxAccountCode": "仮受消費税 科目コード",
+      "cannotUnsetDefault": "既定の税区分は外せません。先に別の税区分を既定にしてください。"
     },
     "chargeItems": {
       "pageTitle": "料金マスタ",

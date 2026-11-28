@@ -6976,7 +6976,8 @@
       "accountCodeHint": "Letters, digits, - and _ only, up to 16 (may be blank)",
       "taxCode": "Tax code",
       "salesAccountCode": "Sales account code",
-      "taxAccountCode": "Tax suspense account code"
+      "taxAccountCode": "Tax suspense account code",
+      "cannotUnsetDefault": "The default tax category cannot be unset. Make another category the default first."
     },
     "chargeItems": {
       "pageTitle": "Charge items",
