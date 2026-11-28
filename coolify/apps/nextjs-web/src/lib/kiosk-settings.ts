@@ -40,18 +40,21 @@ export interface KioskAppCatalogEntry {
 const KIOSK_APP_KEYS: readonly { key: string; permission: string }[] = [
   { key: "step-execution", permission: "work_order" },
   { key: "wo-scan", permission: "work_order" },
+  { key: "wo-list", permission: "work_order" },
   { key: "work-location", permission: "work_order" },
 ];
 
 /**
  * キオスクアプリのカタログ（表示名込み）。nextjs-kiosk の KIOSK_APPS と手動で
  * 対応させる（別アプリ・別 DB クライアントのため import はできない）。
- * アプリ追加時は `KIOSK_APP_KEYS` とここ、両方更新。
+ * アプリ追加時は `KIOSK_APP_KEYS` とここ、両方更新（キー集合の一致は
+ * kiosk-settings.test.ts が kiosk 側 app-list.ts を読んで固定する）。
  */
 export function kioskAppCatalog(tr: Tr): KioskAppCatalogEntry[] {
   const LABEL_KEY: Record<string, string> = {
     "step-execution": "settings.kioskSettings.stepExecution",
     "wo-scan": "settings.kioskSettings.workOrderScan",
+    "wo-list": "settings.kioskSettings.workOrderList",
     "work-location": "settings.kioskSettings.workLocationBoard",
   };
   return KIOSK_APP_KEYS.map((app) => ({

@@ -5420,7 +5420,8 @@
     "kioskSettings": {
       "stepExecution": "工序执行",
       "workOrderScan": "工单扫描",
-      "workLocationBoard": "作业场所工序"
+      "workLocationBoard": "作业场所工序",
+      "workOrderList": "工单列表"
     },
     "portalGuide": {
       "guide": "指南",

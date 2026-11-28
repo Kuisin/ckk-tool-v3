@@ -5420,7 +5420,8 @@
     "kioskSettings": {
       "stepExecution": "Step execution",
       "workOrderScan": "Work order scan",
-      "workLocationBoard": "Work location steps"
+      "workLocationBoard": "Work location steps",
+      "workOrderList": "Work order list"
     },
     "portalGuide": {
       "guide": "Guide",
