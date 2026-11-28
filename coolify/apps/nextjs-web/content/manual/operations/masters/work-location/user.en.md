@@ -168,7 +168,7 @@ Every field on the Work location screen.
 | Field | What to enter |
 |-------|---------------|
 | [Site](#field-plant) | Which site the work location belongs to |
-| [Code / name (ja, en)](#field-code) | The work location's code and name, selectable as where a step is carried out |
+| [Code / name](#field-code) | The work location's code and name, selectable as where a step is carried out |
 | [Type](#field-type) | The kind of work location |
 | [Capacity](#field-capacity) | A guide to how much it can handle at once |
 | [Machine model](#field-machine-model) | The machine model of this machine |
@@ -180,7 +180,7 @@ Every field on the Work location screen.
 
 Which site the work location belongs to. When picking where a step runs, **only that site's work locations** are offered.
 
-### Code / name (ja, en) [#field-code]
+### Code / name [#field-code]
 
 The work location's code and name, selectable as where a step is carried out.
 

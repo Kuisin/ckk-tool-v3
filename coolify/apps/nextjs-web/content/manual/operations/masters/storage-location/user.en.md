@@ -121,7 +121,7 @@ Every field on the Storage location screen.
 | Field | What to enter |
 |-------|---------------|
 | [Site / floor](#field-plant) | Which site and floor the location is on |
-| [Code / name (ja, en)](#field-code) | The location's code and name |
+| [Code / name](#field-code) | The location's code and name |
 | [Sort order](#field-sort-order) | Order in the pick list |
 | [Active / notes](#field-active) | Turning it off removes it from storage pick lists |
 
@@ -129,7 +129,7 @@ Every field on the Storage location screen.
 
 Which site and floor the location is on. **Stock is located down to this level.**
 
-### Code / name (ja, en) [#field-code]
+### Code / name [#field-code]
 
 The location's code and name. Once registered, it can be picked as where stock is kept.
 

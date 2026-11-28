@@ -126,6 +126,7 @@ A document you have finished with can be put away by making it 「**アーカイ
 - Only people who can edit the document can do this (people with the "update" permission for internal documents who are its creator or in a share that allows editing).
 - It cannot be pressed while publishing is pending approval (the screen shows 「**公開の承認依頼中はアーカイブできません（決裁を待つか、差し戻してから操作してください）**」 (Cannot archive while publishing is pending approval (wait for the decision, or send it back first))).
 - While it is archived, the publishing card (「公開する」 (Publish), 「公開を申請」 (Request publishing) and so on) does not appear. Unarchive it first if you want to publish.
+- While archived, 「**編集**」 (Edit) is not shown either, and you cannot change the body or settings or use 「この版に戻す」 (restore this version) — the screen shows why. To make changes, unarchive first.
 
 ![An archived document](../../../assets/screenshots/internal-page-archived-01.png)
 
