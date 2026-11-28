@@ -16,7 +16,11 @@ vi.mock("./app-config", () => ({
   writeConfigValues: vi.fn(),
 }));
 
+import type { Tr } from "./i18n";
 import { kioskAppCatalog } from "./kiosk-settings";
+
+/** 鍵をそのまま返す tr（表示名の鍵が割り当たっているかを見るため）。 */
+const keyTr = ((k: string) => k) as unknown as Tr;
 
 function kioskLauncherKeys(): string[] {
   const src = readFileSync(
@@ -29,12 +33,12 @@ function kioskLauncherKeys(): string[] {
 
 describe("kioskAppCatalog", () => {
   it("共有端末アプリのランチャーと同じアプリを同じ順で持つ", () => {
-    const keys = kioskAppCatalog((k) => k).map((a) => a.key);
+    const keys = kioskAppCatalog(keyTr).map((a) => a.key);
     expect(keys).toEqual(kioskLauncherKeys());
   });
 
   it("どのアプリにも表示名の鍵がある", () => {
-    for (const app of kioskAppCatalog((k) => k)) {
+    for (const app of kioskAppCatalog(keyTr)) {
       expect(app.label).toMatch(/^settings\.kioskSettings\./);
     }
   });
